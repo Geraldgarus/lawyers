@@ -127,7 +127,7 @@ function renderExpenses(expenses) {
   tbody.innerHTML = expenses.map(e => `
     <tr>
       <td>${fmtDate(e.expense_date)}</td>
-      <td><a href="/case-detail?id=${e.case_id}" style="color:var(--sidebar-bg);">${escapeHtml(e.case_number)}</a></td>
+      <td><a href="/case-detail?id=${e.case_id}" style="color:var(--accent-gold);">${escapeHtml(e.case_number)}</a></td>
       <td>${escapeHtml(e.description)}</td>
       <td><span class="badge neutral">${e.category.replace('_',' ')}</span></td>
       <td>${fmtCurrency(e.amount)}</td>

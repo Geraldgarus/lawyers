@@ -129,7 +129,7 @@ function renderTasks(tasks) {
     <tr>
       <td><input type="checkbox" ${t.status === 'done' ? 'checked' : ''} onchange="toggleTask(${t.id}, this.checked)"></td>
       <td style="${t.status === 'done' ? 'text-decoration:line-through;color:#94a3b8;' : ''}">${escapeHtml(t.title)}</td>
-      <td><a href="/case-detail?id=${t.case_id}" style="color:var(--sidebar-bg);">${escapeHtml(t.case_number)}</a></td>
+      <td><a href="/case-detail?id=${t.case_id}" style="color:var(--accent-gold);">${escapeHtml(t.case_number)}</a></td>
       <td style="${isPastDate(t.due_date) && t.status !== 'done' ? 'color:var(--danger);font-weight:600;' : ''}">${t.due_date ? fmtDate(t.due_date) : '—'}</td>
       <td><span class="priority-${t.priority}">${t.priority}</span></td>
       <td>${escapeHtml(t.assigned_to_name) || '—'}</td>

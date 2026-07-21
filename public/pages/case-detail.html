@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
-.case-header { background:white; border:1px solid var(--border); border-radius:12px; padding:20px 24px; margin-bottom:20px; }
+.case-header { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:20px 24px; margin-bottom:20px; }
 .case-header-top { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:14px; }
 .case-header h2 { font-size:20px; font-weight:700; }
 .case-header .case-sub { color:var(--text-muted); font-size:13px; margin-top:2px; }
@@ -736,8 +736,8 @@ async function loadTimeline() {
   const events = await apiGet(`/cases/${CASE_ID}/timeline`);
   if (!events.length) { body.innerHTML = '<div class="empty-state">No activity recorded yet</div>'; return; }
   body.innerHTML = events.map(e => `
-    <div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #f1f5f9;">
-      <div style="width:32px;height:32px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--sidebar-bg);">
+    <div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
+      <div style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--accent-gold);">
         <i class="fas ${TIMELINE_ICONS[e.type] || 'fa-circle'}"></i>
       </div>
       <div>

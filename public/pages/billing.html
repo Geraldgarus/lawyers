@@ -127,7 +127,7 @@ function renderInvoices(invoices) {
     return `
     <tr>
       <td><strong>${escapeHtml(i.invoice_number)}</strong></td>
-      <td><a href="/case-detail?id=${i.case_id}" style="color:var(--sidebar-bg);">${escapeHtml(i.case_number)}</a></td>
+      <td><a href="/case-detail?id=${i.case_id}" style="color:var(--accent-gold);">${escapeHtml(i.case_number)}</a></td>
       <td>${escapeHtml(i.client_name)}</td>
       <td>${fmtCurrency(i.total_amount)}</td>
       <td>${fmtCurrency(i.amount_paid)}</td>

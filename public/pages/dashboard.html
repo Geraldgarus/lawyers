@@ -13,7 +13,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 .dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; }
 @media (max-width:900px) { .dash-grid { grid-template-columns:1fr; } }
 .quick-actions { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
-.list-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #f1f5f9; font-size:13px; }
+.list-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:13px; }
 .list-row:last-child { border-bottom:none; }
 </style>
 <script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>
@@ -135,7 +135,7 @@ async function loadDashboard() {
     document.getElementById('today-hearings').innerHTML = data.todayHearings.length
       ? data.todayHearings.map(h => `
         <div class="list-row">
-          <span><a href="/case-detail?id=${h.case_id}" style="color:var(--sidebar-bg);font-weight:600;">${escapeHtml(h.case_number)}</a> — ${escapeHtml(h.client_name)}</span>
+          <span><a href="/case-detail?id=${h.case_id}" style="color:var(--accent-gold);font-weight:600;">${escapeHtml(h.case_number)}</a> — ${escapeHtml(h.client_name)}</span>
           <span>${new Date(h.hearing_date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span>
         </div>`).join('')
       : '<div class="empty-state">No hearings today</div>';
@@ -151,7 +151,7 @@ async function loadDashboard() {
     document.getElementById('overdue-tasks').innerHTML = data.overdueTasks.length
       ? data.overdueTasks.map(t => `
         <div class="list-row">
-          <span><a href="/case-detail?id=${t.case_id}" style="color:var(--sidebar-bg);font-weight:600;">${escapeHtml(t.case_number)}</a> — ${escapeHtml(t.title)}</span>
+          <span><a href="/case-detail?id=${t.case_id}" style="color:var(--accent-gold);font-weight:600;">${escapeHtml(t.case_number)}</a> — ${escapeHtml(t.title)}</span>
           <span style="color:var(--danger);">${fmtDate(t.due_date)}</span>
         </div>`).join('')
       : '<div class="empty-state">Nothing overdue</div>';

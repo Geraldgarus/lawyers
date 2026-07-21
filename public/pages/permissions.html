@@ -12,7 +12,7 @@
 body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 .perm-table td:nth-child(2), .perm-table td:nth-child(3), .perm-table td:nth-child(4) { text-align:center; }
 .perm-yes { color:var(--success); }
-.perm-no { color:#cbd5e1; }
+.perm-no { color:rgba(255,255,255,0.18); }
 </style>
 <script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>
 </head>
@@ -80,7 +80,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
       <p style="font-size:12.5px;color:var(--text-muted);margin:14px 0 18px;">
         Every capability below is enforced on the server, not just hidden in the menu — a role without access
         cannot use the feature even by navigating directly to it. To change a user's role, use
-        <a href="/users" style="color:var(--sidebar-bg);">User Management</a>.
+        <a href="/users" style="color:var(--accent-gold);">User Management</a>.
       </p>
       <div class="table-wrap">
         <table class="data-table perm-table">

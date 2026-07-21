@@ -11,9 +11,9 @@
 <style>body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 .dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
 @media (max-width:900px) { .dash-grid { grid-template-columns:1fr; } }
-.list-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #f1f5f9; font-size:13px; }
+.list-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:13px; }
 .list-row:last-child { border-bottom:none; }
-.bar-track { height:10px; background:#f1f5f9; border-radius:6px; overflow:hidden; margin-top:4px; }
+.bar-track { height:10px; background:rgba(255,255,255,0.08); border-radius:6px; overflow:hidden; margin-top:4px; }
 .bar-fill { height:100%; background:var(--accent-gold); border-radius:6px; }
 </style>
 <script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>

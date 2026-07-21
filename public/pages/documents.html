@@ -147,7 +147,7 @@ function renderDocuments(docs) {
     <tr>
       <td><i class="fas fa-file"></i> ${escapeHtml(d.filename)}</td>
       <td><span class="badge neutral">${d.category.replace('_',' ')}</span></td>
-      <td><a href="/case-detail?id=${d._case.id}" style="color:var(--sidebar-bg);">${escapeHtml(d._case.case_number)}</a></td>
+      <td><a href="/case-detail?id=${d._case.id}" style="color:var(--accent-gold);">${escapeHtml(d._case.case_number)}</a></td>
       <td>${escapeHtml(d._case.client_name)}</td>
       <td>${fmtDate(d.uploaded_at)}</td>
       <td><a class="btn-icon" href="/api/documents/${d.id}/download" title="Download"><i class="fas fa-download"></i></a></td>

@@ -12,10 +12,10 @@
 body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 .day-group { margin-bottom:18px; }
 .day-group-label { font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--border); }
-.cal-event { display:flex; align-items:center; gap:12px; padding:10px 14px; background:white; border:1px solid var(--border); border-radius:10px; margin-bottom:8px; }
+.cal-event { display:flex; align-items:center; gap:12px; padding:10px 14px; background:var(--bg-card); border:1px solid var(--border); border-radius:10px; margin-bottom:8px; }
 .cal-event .cal-icon { width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .cal-event.hearing .cal-icon { background:var(--info-light); color:var(--info); }
-.cal-event.appointment .cal-icon { background:var(--success-light); color:#166534; }
+.cal-event.appointment .cal-icon { background:var(--success-light); color:var(--success-text); }
 .cal-event .cal-time { font-weight:700; font-size:13px; min-width:70px; }
 .cal-event .cal-details { flex:1; }
 .cal-event .cal-title { font-size:13.5px; font-weight:600; }
