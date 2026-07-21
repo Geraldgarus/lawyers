@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cases - Advocate Suite</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}</style>
+<script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>
+</head>
+<body>
+
+<div class="overlay-main" id="overlay-main"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-top">
+    <a class="sidebar-logo" href="/dashboard">
+      <div class="logo-icon"><i class="fas fa-scale-balanced"></i></div>
+      <div class="logo-text"><span>Advocate Suite</span><span>Case Management</span></div>
+    </a>
+    <button class="sidebar-close-btn" id="sidebar-close-btn"><i class="fas fa-times"></i></button>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Dashboard</div>
+    <a href="/dashboard" class="nav-item" data-page="dashboard"><i class="fas fa-gauge-high"></i> Dashboard</a>
+    <div class="nav-section-label">Practice</div>
+    <a href="/clients" class="nav-item" data-page="clients"><i class="fas fa-address-book"></i> Clients</a>
+    <a href="/cases" class="nav-item" data-page="cases"><i class="fas fa-briefcase"></i> Cases</a>
+    <a href="/calendar" class="nav-item" data-page="calendar"><i class="fas fa-calendar-days"></i> Calendar</a>
+    <a href="/documents" class="nav-item" data-page="documents"><i class="fas fa-folder-open"></i> Documents</a>
+    <a href="/tasks" class="nav-item" data-page="tasks"><i class="fas fa-list-check"></i> Tasks</a>
+    <div class="nav-section-label">Finance</div>
+    <a href="/billing" class="nav-item" data-page="billing"><i class="fas fa-file-invoice-dollar"></i> Billing &amp; Payments</a>
+    <a href="/expenses" class="nav-item" data-page="expenses"><i class="fas fa-receipt"></i> Expenses</a>
+    <div class="nav-section-label">Reports</div>
+    <a href="/reports" class="nav-item" data-page="reports"><i class="fas fa-chart-line"></i> Reports</a>
+    <div class="nav-section-label">Admin</div>
+    <a href="/settings" class="nav-item" data-page="settings"><i class="fas fa-gear"></i> Settings</a>
+    <a href="/users" class="nav-item" data-page="users"><i class="fas fa-user-shield"></i> User Management</a>
+    <a href="/permissions" class="nav-item" data-page="permissions"><i class="fas fa-lock"></i> Permissions &amp; Access</a>
+    <div class="nav-section-label">Help</div>
+    <a href="/user-guide" class="nav-item" data-page="user-guide"><i class="fas fa-circle-question"></i> User Guide</a>
+  </nav>
+  <div class="sidebar-footer"><small>Advocate Suite &middot; v1.0</small></div>
+</aside>
+
+<nav class="navbar">
+  <div class="navbar-left">
+    <button class="hamburger" id="hamburger-btn"><span class="hb-bar"></span><span class="hb-bar"></span><span class="hb-bar"></span></button>
+    <div><div class="page-title">Cases</div><div class="page-subtitle">All legal matters</div></div>
+  </div>
+  <div class="navbar-right">
+    <div class="user-dropdown">
+      <div class="user-pill" id="userPill">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-info"><span id="userName">Loading...</span><span id="userRole">Loading...</span></div>
+        <i class="fas fa-chevron-down" style="font-size:10px;color:var(--text-muted);"></i>
+      </div>
+      <div class="dropdown-menu" id="dropdownMenu">
+        <button id="logoutBtn"><i class="fas fa-right-from-bracket"></i> Logout</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="main-content">
+  <div class="filter-bar">
+    <div class="filter-group">
+      <label>Status</label>
+      <select id="filter-status">
+        <option value="">All Statuses</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Case Type</label>
+      <select id="filter-type"><option value="">All Types</option></select>
+    </div>
+    <div class="filter-group" style="flex:1;">
+      <label>Search</label>
+      <input type="text" id="filter-q" placeholder="Case number, title, or client...">
+    </div>
+    <button class="btn-gold" onclick="loadCases()"><i class="fas fa-search"></i> Apply</button>
+    <button class="btn-outline" onclick="clearFilters()"><i class="fas fa-times"></i> Clear</button>
+    <button class="btn-primary" id="new-case-btn" onclick="openCaseModal()"><i class="fas fa-plus"></i> New Case</button>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3><i class="fas fa-briefcase"></i> All Cases</h3></div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Case #</th><th>Client</th><th>Title</th><th>Type</th><th>Status</th><th>Next Action</th><th>Actions</th></tr></thead>
+        <tbody id="cases-body"><tr><td colspan="7" class="empty-state">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- New Case Modal -->
+<div class="modal-overlay" id="case-modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3><i class="fas fa-briefcase"></i> New Case</h3>
+      <button onclick="closeCaseModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Client *</label>
+        <select class="form-control" id="case-client-select">
+          <option value="">— Search or add new below —</option>
+        </select>
+      </div>
+      <div id="new-client-fields" style="display:none;border:1px dashed var(--border);border-radius:10px;padding:14px;margin-bottom:16px;">
+        <div class="form-group" style="margin-bottom:10px;"><label>New Client Full Name *</label><input class="form-control" id="new-client-name"></div>
+        <div class="form-row">
+          <div class="form-group" style="margin-bottom:0;"><label>Phone</label><input class="form-control" id="new-client-phone"></div>
+          <div class="form-group" style="margin-bottom:0;"><label>Email</label><input class="form-control" id="new-client-email"></div>
+        </div>
+      </div>
+      <button type="button" class="btn-outline btn-sm" id="toggle-new-client-btn" style="margin-bottom:16px;" onclick="toggleNewClient()"><i class="fas fa-user-plus"></i> Add New Client Instead</button>
+
+      <div class="form-group"><label>Case Title *</label><input class="form-control" id="case-title"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Case Type *</label><select class="form-control" id="case-type"></select></div>
+        <div class="form-group"><label>Assigned Lawyer</label><select class="form-control" id="case-lawyer"><option value="">Unassigned</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Opposing Party</label><input class="form-control" id="case-opposing"></div>
+        <div class="form-group"><label>Court / Jurisdiction</label><input class="form-control" id="case-court"></div>
+      </div>
+      <div class="form-group"><label>Description</label><textarea class="form-control" id="case-description" rows="3"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-outline" onclick="closeCaseModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveCase()"><i class="fas fa-save"></i> Create Case</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+let casesData = [];
+let clientsList = [];
+let categoriesList = [];
+let usersList = [];
+
+async function loadLookups() {
+  [clientsList, categoriesList] = await Promise.all([apiGet('/clients'), apiGet('/case-categories')]);
+  try { usersList = await apiGet('/users'); } catch (e) { usersList = []; }
+
+  const statusSel = document.getElementById('filter-status');
+  statusSel.innerHTML = '<option value="">All Statuses</option>' + CASE_STATUSES.map(s => `<option value="${s.value}">${s.label}</option>`).join('');
+
+  const typeSel = document.getElementById('filter-type');
+  typeSel.innerHTML = '<option value="">All Types</option>' + categoriesList.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+
+  const caseTypeSel = document.getElementById('case-type');
+  caseTypeSel.innerHTML = categoriesList.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+
+  const clientSel = document.getElementById('case-client-select');
+  clientSel.innerHTML = '<option value="">— Select existing client —</option>' +
+    clientsList.map(c => `<option value="${c.id}">${escapeHtml(c.full_name)}${c.phone ? ' (' + c.phone + ')' : ''}</option>`).join('');
+
+  const lawyerSel = document.getElementById('case-lawyer');
+  lawyerSel.innerHTML = '<option value="">Unassigned</option>' +
+    usersList.filter(u => u.role === 'lawyer').map(u => `<option value="${u.id}">${escapeHtml(u.full_name)}</option>`).join('');
+}
+
+async function loadCases() {
+  setLoading('cases-body');
+  const params = new URLSearchParams();
+  const status = document.getElementById('filter-status').value;
+  const type = document.getElementById('filter-type').value;
+  const q = document.getElementById('filter-q').value.trim();
+  if (status) params.set('status', status);
+  if (type) params.set('case_type_id', type);
+  if (q) params.set('q', q);
+  try {
+    casesData = await apiGet('/cases?' + params.toString());
+    renderCases();
+  } catch (err) {
+    document.getElementById('cases-body').innerHTML = '<tr><td colspan="7" class="empty-state">Failed to load cases</td></tr>';
+    showToast(err.message, 'error');
+  }
+}
+
+function nextActionBadge(c) {
+  if (c.overdue_task_count > 0) {
+    return `<span style="color:var(--danger);font-weight:600;font-size:12px;"><i class="fas fa-triangle-exclamation"></i> ${c.overdue_task_count} task(s) overdue</span>`;
+  }
+  if (c.next_hearing_date) {
+    const days = Math.ceil((new Date(c.next_hearing_date) - new Date()) / 86400000);
+    return `<span style="color:var(--info);font-size:12px;"><i class="fas fa-gavel"></i> Hearing in ${days}d</span>`;
+  }
+  return '<span style="color:#94a3b8;font-size:12px;">—</span>';
+}
+
+function renderCases() {
+  const tbody = document.getElementById('cases-body');
+  if (!casesData.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-briefcase"></i>No cases found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = casesData.map(c => `
+    <tr style="cursor:pointer;" onclick="window.location.href='/case-detail?id=${c.id}'">
+      <td><strong>${escapeHtml(c.case_number)}</strong></td>
+      <td>${escapeHtml(c.client_name)}</td>
+      <td>${escapeHtml(c.case_title)}</td>
+      <td>${escapeHtml(c.case_type_name)}</td>
+      <td><span class="badge ${c.status}">${statusLabel(c.status)}</span></td>
+      <td>${nextActionBadge(c)}</td>
+      <td onclick="event.stopPropagation()"><button class="btn-icon" onclick="window.location.href='/case-detail?id=${c.id}'" title="View"><i class="fas fa-eye"></i></button></td>
+    </tr>
+  `).join('');
+}
+
+function clearFilters() {
+  document.getElementById('filter-status').value = '';
+  document.getElementById('filter-type').value = '';
+  document.getElementById('filter-q').value = '';
+  loadCases();
+}
+
+function toggleNewClient() {
+  const fields = document.getElementById('new-client-fields');
+  const select = document.getElementById('case-client-select');
+  const btn = document.getElementById('toggle-new-client-btn');
+  const showing = fields.style.display !== 'none';
+  fields.style.display = showing ? 'none' : 'block';
+  select.disabled = !showing;
+  if (!showing) select.value = '';
+  btn.innerHTML = showing ? '<i class="fas fa-user-plus"></i> Add New Client Instead' : '<i class="fas fa-arrow-left"></i> Use Existing Client Instead';
+}
+
+function openCaseModal() {
+  document.getElementById('new-client-fields').style.display = 'none';
+  document.getElementById('case-client-select').disabled = false;
+  document.getElementById('toggle-new-client-btn').innerHTML = '<i class="fas fa-user-plus"></i> Add New Client Instead';
+  ['case-client-select','case-title','case-opposing','case-court','case-description','new-client-name','new-client-phone','new-client-email'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('case-lawyer').value = '';
+  document.getElementById('case-modal-overlay').classList.add('show');
+}
+function closeCaseModal() { document.getElementById('case-modal-overlay').classList.remove('show'); }
+
+async function saveCase() {
+  const clientId = document.getElementById('case-client-select').value;
+  const newClientName = document.getElementById('new-client-name').value.trim();
+  const usingNewClient = document.getElementById('new-client-fields').style.display !== 'none';
+
+  const payload = {
+    caseTitle: document.getElementById('case-title').value.trim(),
+    caseTypeId: document.getElementById('case-type').value,
+    assignedLawyer: document.getElementById('case-lawyer').value || null,
+    opposingParty: document.getElementById('case-opposing').value.trim(),
+    court: document.getElementById('case-court').value.trim(),
+    description: document.getElementById('case-description').value.trim()
+  };
+
+  if (usingNewClient) {
+    if (!newClientName) { showToast('New client full name is required', 'error'); return; }
+    payload.newClient = {
+      fullName: newClientName,
+      phone: document.getElementById('new-client-phone').value.trim(),
+      email: document.getElementById('new-client-email').value.trim()
+    };
+  } else {
+    if (!clientId) { showToast('Select a client or add a new one', 'error'); return; }
+    payload.clientId = clientId;
+  }
+
+  if (!payload.caseTitle || !payload.caseTypeId) { showToast('Case title and type are required', 'error'); return; }
+
+  try {
+    const created = await apiPost('/cases', payload);
+    showToast('Case created: ' + created.case_number);
+    closeCaseModal();
+    window.location.href = '/case-detail?id=' + created.id;
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const user = initPageChrome();
+  if (user && user.role === 'assistant') document.getElementById('new-case-btn').style.display = 'none';
+  await loadLookups();
+  await loadCases();
+});
+</script>
+</body>
+</html>

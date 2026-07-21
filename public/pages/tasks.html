@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tasks - Advocate Suite</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}</style>
+<script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>
+</head>
+<body>
+
+<div class="overlay-main" id="overlay-main"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-top">
+    <a class="sidebar-logo" href="/dashboard">
+      <div class="logo-icon"><i class="fas fa-scale-balanced"></i></div>
+      <div class="logo-text"><span>Advocate Suite</span><span>Case Management</span></div>
+    </a>
+    <button class="sidebar-close-btn" id="sidebar-close-btn"><i class="fas fa-times"></i></button>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Dashboard</div>
+    <a href="/dashboard" class="nav-item" data-page="dashboard"><i class="fas fa-gauge-high"></i> Dashboard</a>
+    <div class="nav-section-label">Practice</div>
+    <a href="/clients" class="nav-item" data-page="clients"><i class="fas fa-address-book"></i> Clients</a>
+    <a href="/cases" class="nav-item" data-page="cases"><i class="fas fa-briefcase"></i> Cases</a>
+    <a href="/calendar" class="nav-item" data-page="calendar"><i class="fas fa-calendar-days"></i> Calendar</a>
+    <a href="/documents" class="nav-item" data-page="documents"><i class="fas fa-folder-open"></i> Documents</a>
+    <a href="/tasks" class="nav-item" data-page="tasks"><i class="fas fa-list-check"></i> Tasks</a>
+    <div class="nav-section-label">Finance</div>
+    <a href="/billing" class="nav-item" data-page="billing"><i class="fas fa-file-invoice-dollar"></i> Billing &amp; Payments</a>
+    <a href="/expenses" class="nav-item" data-page="expenses"><i class="fas fa-receipt"></i> Expenses</a>
+    <div class="nav-section-label">Reports</div>
+    <a href="/reports" class="nav-item" data-page="reports"><i class="fas fa-chart-line"></i> Reports</a>
+    <div class="nav-section-label">Admin</div>
+    <a href="/settings" class="nav-item" data-page="settings"><i class="fas fa-gear"></i> Settings</a>
+    <a href="/users" class="nav-item" data-page="users"><i class="fas fa-user-shield"></i> User Management</a>
+    <a href="/permissions" class="nav-item" data-page="permissions"><i class="fas fa-lock"></i> Permissions &amp; Access</a>
+    <div class="nav-section-label">Help</div>
+    <a href="/user-guide" class="nav-item" data-page="user-guide"><i class="fas fa-circle-question"></i> User Guide</a>
+  </nav>
+  <div class="sidebar-footer"><small>Advocate Suite &middot; v1.0</small></div>
+</aside>
+
+<nav class="navbar">
+  <div class="navbar-left">
+    <button class="hamburger" id="hamburger-btn"><span class="hb-bar"></span><span class="hb-bar"></span><span class="hb-bar"></span></button>
+    <div><div class="page-title">Tasks</div><div class="page-subtitle">Every to-do across all cases</div></div>
+  </div>
+  <div class="navbar-right">
+    <div class="user-dropdown">
+      <div class="user-pill" id="userPill">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-info"><span id="userName">Loading...</span><span id="userRole">Loading...</span></div>
+        <i class="fas fa-chevron-down" style="font-size:10px;color:var(--text-muted);"></i>
+      </div>
+      <div class="dropdown-menu" id="dropdownMenu">
+        <button id="logoutBtn"><i class="fas fa-right-from-bracket"></i> Logout</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="main-content">
+  <div class="filter-bar">
+    <div class="filter-group">
+      <label>Status</label>
+      <select id="filter-status"><option value="">All</option><option value="pending">Pending</option><option value="done">Done</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Assigned To</label>
+      <select id="filter-assigned"><option value="">Everyone</option></select>
+    </div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-muted);margin-bottom:9px;">
+      <input type="checkbox" id="filter-overdue"> Overdue only
+    </label>
+    <button class="btn-gold" onclick="loadTasks()"><i class="fas fa-search"></i> Filter</button>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3><i class="fas fa-list-check"></i> All Tasks</h3></div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Done</th><th>Title</th><th>Case</th><th>Due</th><th>Priority</th><th>Assigned</th></tr></thead>
+        <tbody id="tasks-body"><tr><td colspan="6" class="empty-state">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+async function loadUsersLookup() {
+  try {
+    const users = await apiGet('/users');
+    document.getElementById('filter-assigned').innerHTML = '<option value="">Everyone</option>' +
+      users.map(u => `<option value="${u.id}">${escapeHtml(u.full_name)}</option>`).join('');
+  } catch (e) {}
+}
+
+async function loadTasks() {
+  setLoading('tasks-body');
+  const params = new URLSearchParams();
+  const status = document.getElementById('filter-status').value;
+  const assigned = document.getElementById('filter-assigned').value;
+  const overdue = document.getElementById('filter-overdue').checked;
+  if (status) params.set('status', status);
+  if (assigned) params.set('assigned_to', assigned);
+  if (overdue) params.set('overdue', 'true');
+  try {
+    const tasks = await apiGet('/tasks?' + params.toString());
+    renderTasks(tasks);
+  } catch (err) {
+    document.getElementById('tasks-body').innerHTML = '<tr><td colspan="6" class="empty-state">Failed to load tasks</td></tr>';
+    showToast(err.message, 'error');
+  }
+}
+
+function renderTasks(tasks) {
+  const tbody = document.getElementById('tasks-body');
+  if (!tasks.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-list-check"></i>No tasks found</td></tr>'; return; }
+  tbody.innerHTML = tasks.map(t => `
+    <tr>
+      <td><input type="checkbox" ${t.status === 'done' ? 'checked' : ''} onchange="toggleTask(${t.id}, this.checked)"></td>
+      <td style="${t.status === 'done' ? 'text-decoration:line-through;color:#94a3b8;' : ''}">${escapeHtml(t.title)}</td>
+      <td><a href="/case-detail?id=${t.case_id}" style="color:var(--sidebar-bg);">${escapeHtml(t.case_number)}</a></td>
+      <td style="${isPastDate(t.due_date) && t.status !== 'done' ? 'color:var(--danger);font-weight:600;' : ''}">${t.due_date ? fmtDate(t.due_date) : '—'}</td>
+      <td><span class="priority-${t.priority}">${t.priority}</span></td>
+      <td>${escapeHtml(t.assigned_to_name) || '—'}</td>
+    </tr>
+  `).join('');
+}
+
+async function toggleTask(id, checked) {
+  try { await apiPut(`/tasks/${id}`, { status: checked ? 'done' : 'pending' }); loadTasks(); }
+  catch (err) { showToast(err.message, 'error'); }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  initPageChrome();
+  await loadUsersLookup();
+  await loadTasks();
+});
+</script>
+</body>
+</html>

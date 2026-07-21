@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clients - Advocate Suite</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}</style>
+<script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>
+</head>
+<body>
+
+<div class="overlay-main" id="overlay-main"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-top">
+    <a class="sidebar-logo" href="/dashboard">
+      <div class="logo-icon"><i class="fas fa-scale-balanced"></i></div>
+      <div class="logo-text"><span>Advocate Suite</span><span>Case Management</span></div>
+    </a>
+    <button class="sidebar-close-btn" id="sidebar-close-btn"><i class="fas fa-times"></i></button>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Dashboard</div>
+    <a href="/dashboard" class="nav-item" data-page="dashboard"><i class="fas fa-gauge-high"></i> Dashboard</a>
+    <div class="nav-section-label">Practice</div>
+    <a href="/clients" class="nav-item" data-page="clients"><i class="fas fa-address-book"></i> Clients</a>
+    <a href="/cases" class="nav-item" data-page="cases"><i class="fas fa-briefcase"></i> Cases</a>
+    <a href="/calendar" class="nav-item" data-page="calendar"><i class="fas fa-calendar-days"></i> Calendar</a>
+    <a href="/documents" class="nav-item" data-page="documents"><i class="fas fa-folder-open"></i> Documents</a>
+    <a href="/tasks" class="nav-item" data-page="tasks"><i class="fas fa-list-check"></i> Tasks</a>
+    <div class="nav-section-label">Finance</div>
+    <a href="/billing" class="nav-item" data-page="billing"><i class="fas fa-file-invoice-dollar"></i> Billing &amp; Payments</a>
+    <a href="/expenses" class="nav-item" data-page="expenses"><i class="fas fa-receipt"></i> Expenses</a>
+    <div class="nav-section-label">Reports</div>
+    <a href="/reports" class="nav-item" data-page="reports"><i class="fas fa-chart-line"></i> Reports</a>
+    <div class="nav-section-label">Admin</div>
+    <a href="/settings" class="nav-item" data-page="settings"><i class="fas fa-gear"></i> Settings</a>
+    <a href="/users" class="nav-item" data-page="users"><i class="fas fa-user-shield"></i> User Management</a>
+    <a href="/permissions" class="nav-item" data-page="permissions"><i class="fas fa-lock"></i> Permissions &amp; Access</a>
+    <div class="nav-section-label">Help</div>
+    <a href="/user-guide" class="nav-item" data-page="user-guide"><i class="fas fa-circle-question"></i> User Guide</a>
+  </nav>
+  <div class="sidebar-footer"><small>Advocate Suite &middot; v1.0</small></div>
+</aside>
+
+<nav class="navbar">
+  <div class="navbar-left">
+    <button class="hamburger" id="hamburger-btn"><span class="hb-bar"></span><span class="hb-bar"></span><span class="hb-bar"></span></button>
+    <div><div class="page-title">Clients</div><div class="page-subtitle">Client database</div></div>
+  </div>
+  <div class="navbar-right">
+    <div class="user-dropdown">
+      <div class="user-pill" id="userPill">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-info"><span id="userName">Loading...</span><span id="userRole">Loading...</span></div>
+        <i class="fas fa-chevron-down" style="font-size:10px;color:var(--text-muted);"></i>
+      </div>
+      <div class="dropdown-menu" id="dropdownMenu">
+        <button id="logoutBtn"><i class="fas fa-right-from-bracket"></i> Logout</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="main-content">
+  <div class="filter-bar">
+    <div class="filter-group" style="flex:1;">
+      <label>Search</label>
+      <input type="text" id="search-input" placeholder="Search by name, phone, or email..." style="width:100%;">
+    </div>
+    <button class="btn-gold" onclick="loadClients()"><i class="fas fa-search"></i> Search</button>
+    <button class="btn-primary" onclick="openClientModal()"><i class="fas fa-plus"></i> Add Client</button>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3><i class="fas fa-address-book"></i> All Clients</h3></div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Address</th><th>Added</th><th>Actions</th></tr></thead>
+        <tbody id="clients-body"><tr><td colspan="6" class="empty-state">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- Client Modal -->
+<div class="modal-overlay" id="client-modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="client-modal-title"><i class="fas fa-user-plus"></i> Add Client</h3>
+      <button onclick="closeClientModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="client-id">
+      <div class="form-group"><label>Full Name *</label><input class="form-control" id="client-name" required></div>
+      <div class="form-row">
+        <div class="form-group"><label>Phone</label><input class="form-control" id="client-phone"></div>
+        <div class="form-group"><label>Email</label><input class="form-control" type="email" id="client-email"></div>
+      </div>
+      <div class="form-group"><label>National ID</label><input class="form-control" id="client-national-id"></div>
+      <div class="form-group"><label>Address</label><textarea class="form-control" id="client-address" rows="2"></textarea></div>
+      <div class="form-group"><label>Notes</label><textarea class="form-control" id="client-notes" rows="2"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-outline" onclick="closeClientModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveClient()"><i class="fas fa-save"></i> Save Client</button>
+    </div>
+  </div>
+</div>
+
+<!-- Client Profile Modal -->
+<div class="modal-overlay" id="profile-modal-overlay">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-header">
+      <h3><i class="fas fa-id-card"></i> Client Profile</h3>
+      <button onclick="closeProfileModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body" id="profile-modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn-outline" onclick="closeProfileModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+let clientsData = [];
+
+async function loadClients() {
+  setLoading('clients-body');
+  const q = document.getElementById('search-input').value.trim();
+  try {
+    clientsData = await apiGet('/clients' + (q ? `?q=${encodeURIComponent(q)}` : ''));
+    renderClients();
+  } catch (err) {
+    document.getElementById('clients-body').innerHTML = '<tr><td colspan="6" class="empty-state">Failed to load clients</td></tr>';
+    showToast(err.message, 'error');
+  }
+}
+
+function renderClients() {
+  const tbody = document.getElementById('clients-body');
+  if (!clientsData.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-address-book"></i>No clients found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = clientsData.map(c => `
+    <tr>
+      <td><strong>${escapeHtml(c.full_name)}</strong></td>
+      <td>${escapeHtml(c.phone) || '—'}</td>
+      <td>${escapeHtml(c.email) || '—'}</td>
+      <td>${escapeHtml(c.address) || '—'}</td>
+      <td>${fmtDate(c.created_at)}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-icon" onclick="viewProfile(${c.id})" title="View Profile"><i class="fas fa-eye"></i></button>
+        <button class="btn-icon" onclick="openClientModal(${c.id})" title="Edit"><i class="fas fa-pen"></i></button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openClientModal(id) {
+  document.getElementById('client-id').value = id || '';
+  if (id) {
+    const c = clientsData.find(x => x.id === id);
+    document.getElementById('client-modal-title').innerHTML = '<i class="fas fa-user-pen"></i> Edit Client';
+    document.getElementById('client-name').value = c.full_name || '';
+    document.getElementById('client-phone').value = c.phone || '';
+    document.getElementById('client-email').value = c.email || '';
+    document.getElementById('client-national-id').value = c.national_id || '';
+    document.getElementById('client-address').value = c.address || '';
+    document.getElementById('client-notes').value = c.notes || '';
+  } else {
+    document.getElementById('client-modal-title').innerHTML = '<i class="fas fa-user-plus"></i> Add Client';
+    ['client-name','client-phone','client-email','client-national-id','client-address','client-notes'].forEach(id2 => document.getElementById(id2).value = '');
+  }
+  document.getElementById('client-modal-overlay').classList.add('show');
+}
+function closeClientModal() { document.getElementById('client-modal-overlay').classList.remove('show'); }
+
+async function saveClient() {
+  const id = document.getElementById('client-id').value;
+  const payload = {
+    fullName: document.getElementById('client-name').value.trim(),
+    phone: document.getElementById('client-phone').value.trim(),
+    email: document.getElementById('client-email').value.trim(),
+    nationalId: document.getElementById('client-national-id').value.trim(),
+    address: document.getElementById('client-address').value.trim(),
+    notes: document.getElementById('client-notes').value.trim()
+  };
+  if (!payload.fullName) { showToast('Full name is required', 'error'); return; }
+  try {
+    if (id) { await apiPut(`/clients/${id}`, payload); showToast('Client updated'); }
+    else { await apiPost('/clients', payload); showToast('Client added'); }
+    closeClientModal();
+    loadClients();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+async function viewProfile(id) {
+  try {
+    const c = await apiGet(`/clients/${id}`);
+    const body = document.getElementById('profile-modal-body');
+    body.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">
+        <div><div class="stat-label">Full Name</div><div style="font-weight:600;">${escapeHtml(c.full_name)}</div></div>
+        <div><div class="stat-label">Phone</div><div>${escapeHtml(c.phone) || '—'}</div></div>
+        <div><div class="stat-label">Email</div><div>${escapeHtml(c.email) || '—'}</div></div>
+        <div><div class="stat-label">National ID</div><div>${escapeHtml(c.national_id) || '—'}</div></div>
+        <div style="grid-column:1/-1;"><div class="stat-label">Address</div><div>${escapeHtml(c.address) || '—'}</div></div>
+        ${c.notes ? `<div style="grid-column:1/-1;"><div class="stat-label">Notes</div><div>${escapeHtml(c.notes)}</div></div>` : ''}
+      </div>
+      <h4 style="margin-bottom:10px;font-size:13px;color:var(--text-muted);text-transform:uppercase;">Case History (${c.cases.length})</h4>
+      ${c.cases.length ? `<div class="table-wrap"><table class="data-table">
+        <thead><tr><th>Case #</th><th>Title</th><th>Type</th><th>Status</th></tr></thead>
+        <tbody>${c.cases.map(cs => `
+          <tr style="cursor:pointer;" onclick="window.location.href='/case-detail?id=${cs.id}'">
+            <td><strong>${escapeHtml(cs.case_number)}</strong></td>
+            <td>${escapeHtml(cs.case_title)}</td>
+            <td>${escapeHtml(cs.case_type)}</td>
+            <td><span class="badge ${cs.status}">${statusLabel(cs.status)}</span></td>
+          </tr>`).join('')}</tbody>
+      </table></div>` : '<div class="empty-state">No cases yet for this client</div>'}
+    `;
+    document.getElementById('profile-modal-overlay').classList.add('show');
+  } catch (err) { showToast(err.message, 'error'); }
+}
+function closeProfileModal() { document.getElementById('profile-modal-overlay').classList.remove('show'); }
+
+document.addEventListener('DOMContentLoaded', () => {
+  initPageChrome();
+  loadClients();
+  document.getElementById('search-input').addEventListener('keydown', e => { if (e.key === 'Enter') loadClients(); });
+});
+</script>
+</body>
+</html>

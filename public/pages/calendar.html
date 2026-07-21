@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calendar - Advocate Suite</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
+.day-group { margin-bottom:18px; }
+.day-group-label { font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--border); }
+.cal-event { display:flex; align-items:center; gap:12px; padding:10px 14px; background:white; border:1px solid var(--border); border-radius:10px; margin-bottom:8px; }
+.cal-event .cal-icon { width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.cal-event.hearing .cal-icon { background:var(--info-light); color:var(--info); }
+.cal-event.appointment .cal-icon { background:var(--success-light); color:#166534; }
+.cal-event .cal-time { font-weight:700; font-size:13px; min-width:70px; }
+.cal-event .cal-details { flex:1; }
+.cal-event .cal-title { font-size:13.5px; font-weight:600; }
+.cal-event .cal-sub { font-size:11.5px; color:var(--text-muted); }
+</style>
+<script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>
+</head>
+<body>
+
+<div class="overlay-main" id="overlay-main"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-top">
+    <a class="sidebar-logo" href="/dashboard">
+      <div class="logo-icon"><i class="fas fa-scale-balanced"></i></div>
+      <div class="logo-text"><span>Advocate Suite</span><span>Case Management</span></div>
+    </a>
+    <button class="sidebar-close-btn" id="sidebar-close-btn"><i class="fas fa-times"></i></button>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Dashboard</div>
+    <a href="/dashboard" class="nav-item" data-page="dashboard"><i class="fas fa-gauge-high"></i> Dashboard</a>
+    <div class="nav-section-label">Practice</div>
+    <a href="/clients" class="nav-item" data-page="clients"><i class="fas fa-address-book"></i> Clients</a>
+    <a href="/cases" class="nav-item" data-page="cases"><i class="fas fa-briefcase"></i> Cases</a>
+    <a href="/calendar" class="nav-item" data-page="calendar"><i class="fas fa-calendar-days"></i> Calendar</a>
+    <a href="/documents" class="nav-item" data-page="documents"><i class="fas fa-folder-open"></i> Documents</a>
+    <a href="/tasks" class="nav-item" data-page="tasks"><i class="fas fa-list-check"></i> Tasks</a>
+    <div class="nav-section-label">Finance</div>
+    <a href="/billing" class="nav-item" data-page="billing"><i class="fas fa-file-invoice-dollar"></i> Billing &amp; Payments</a>
+    <a href="/expenses" class="nav-item" data-page="expenses"><i class="fas fa-receipt"></i> Expenses</a>
+    <div class="nav-section-label">Reports</div>
+    <a href="/reports" class="nav-item" data-page="reports"><i class="fas fa-chart-line"></i> Reports</a>
+    <div class="nav-section-label">Admin</div>
+    <a href="/settings" class="nav-item" data-page="settings"><i class="fas fa-gear"></i> Settings</a>
+    <a href="/users" class="nav-item" data-page="users"><i class="fas fa-user-shield"></i> User Management</a>
+    <a href="/permissions" class="nav-item" data-page="permissions"><i class="fas fa-lock"></i> Permissions &amp; Access</a>
+    <div class="nav-section-label">Help</div>
+    <a href="/user-guide" class="nav-item" data-page="user-guide"><i class="fas fa-circle-question"></i> User Guide</a>
+  </nav>
+  <div class="sidebar-footer"><small>Advocate Suite &middot; v1.0</small></div>
+</aside>
+
+<nav class="navbar">
+  <div class="navbar-left">
+    <button class="hamburger" id="hamburger-btn"><span class="hb-bar"></span><span class="hb-bar"></span><span class="hb-bar"></span></button>
+    <div><div class="page-title">Calendar</div><div class="page-subtitle">Hearings &amp; appointments</div></div>
+  </div>
+  <div class="navbar-right">
+    <div class="user-dropdown">
+      <div class="user-pill" id="userPill">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-info"><span id="userName">Loading...</span><span id="userRole">Loading...</span></div>
+        <i class="fas fa-chevron-down" style="font-size:10px;color:var(--text-muted);"></i>
+      </div>
+      <div class="dropdown-menu" id="dropdownMenu">
+        <button id="logoutBtn"><i class="fas fa-right-from-bracket"></i> Logout</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="main-content">
+  <div class="filter-bar">
+    <div class="filter-group"><label>From</label><input type="date" id="filter-from"></div>
+    <div class="filter-group"><label>To</label><input type="date" id="filter-to"></div>
+    <button class="btn-gold" onclick="loadCalendar()"><i class="fas fa-search"></i> Apply</button>
+    <button class="btn-outline" onclick="setThisWeek()"><i class="fas fa-calendar-week"></i> This Week</button>
+    <button class="btn-primary" onclick="openApptModal()"><i class="fas fa-plus"></i> Add Appointment</button>
+  </div>
+
+  <div id="calendar-list"><div class="empty-state">Loading...</div></div>
+</main>
+
+<!-- Appointment Modal -->
+<div class="modal-overlay" id="appt-modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="fas fa-calendar-plus"></i> Add Appointment</h3><button onclick="closeApptModal()"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Client *</label>
+        <select class="form-control" id="appt-client"></select>
+      </div>
+      <div class="form-group">
+        <label>Related Case (optional)</label>
+        <select class="form-control" id="appt-case"><option value="">— No case, general consultation —</option></select>
+      </div>
+      <div class="form-group"><label>Date &amp; Time *</label><input type="datetime-local" class="form-control" id="appt-date"></div>
+      <div class="form-group"><label>Purpose</label><input class="form-control" id="appt-purpose" placeholder="e.g. Initial consultation"></div>
+      <div class="form-group"><label>Consultation Fee (TSh, optional)</label><input type="number" class="form-control" id="appt-fee"></div>
+    </div>
+    <div class="modal-footer"><button class="btn-outline" onclick="closeApptModal()">Cancel</button><button class="btn-primary" onclick="saveAppointment()">Save</button></div>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+function setThisWeek() {
+  const today = new Date();
+  const from = new Date(today); from.setDate(today.getDate() - today.getDay());
+  const to = new Date(from); to.setDate(from.getDate() + 6);
+  document.getElementById('filter-from').value = isoDate(from);
+  document.getElementById('filter-to').value = isoDate(to);
+  loadCalendar();
+}
+
+async function loadCalendar() {
+  const list = document.getElementById('calendar-list');
+  list.innerHTML = '<div class="empty-state">Loading...</div>';
+  const from = document.getElementById('filter-from').value;
+  const to = document.getElementById('filter-to').value;
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  try {
+    const events = await apiGet('/calendar?' + params.toString());
+    renderCalendar(events);
+  } catch (err) {
+    list.innerHTML = '<div class="empty-state">Failed to load calendar</div>';
+    showToast(err.message, 'error');
+  }
+}
+
+function renderCalendar(events) {
+  const list = document.getElementById('calendar-list');
+  if (!events.length) { list.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-days"></i>Nothing scheduled in this range</div>'; return; }
+
+  const groups = {};
+  events.forEach(e => {
+    const day = isoDate(e.date);
+    if (!groups[day]) groups[day] = [];
+    groups[day].push(e);
+  });
+
+  list.innerHTML = Object.keys(groups).sort().map(day => `
+    <div class="day-group">
+      <div class="day-group-label">${fmtDate(day)}</div>
+      ${groups[day].map(e => `
+        <div class="cal-event ${e.type}" ${e.case_number ? `style="cursor:pointer;" onclick="window.location.href='/case-detail?id=${e.case_id || ''}'"` : ''}>
+          <div class="cal-icon"><i class="fas ${e.type === 'hearing' ? 'fa-gavel' : 'fa-user-clock'}"></i></div>
+          <div class="cal-time">${new Date(e.date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</div>
+          <div class="cal-details">
+            <div class="cal-title">${e.type === 'hearing' ? 'Hearing' : 'Appointment'} — ${escapeHtml(e.client_name)}</div>
+            <div class="cal-sub">${e.case_number ? escapeHtml(e.case_number) + ' — ' : ''}${escapeHtml(e.purpose) || (e.type === 'hearing' ? 'Court date' : 'Meeting')}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+async function openApptModal() {
+  const clientSel = document.getElementById('appt-client');
+  const caseSel = document.getElementById('appt-case');
+  try {
+    const [clients, cases] = await Promise.all([apiGet('/clients'), apiGet('/cases')]);
+    clientSel.innerHTML = '<option value="">— Select client —</option>' + clients.map(c => `<option value="${c.id}">${escapeHtml(c.full_name)}</option>`).join('');
+    caseSel.innerHTML = '<option value="">— No case, general consultation —</option>' + cases.map(c => `<option value="${c.id}">${escapeHtml(c.case_number)} — ${escapeHtml(c.case_title)}</option>`).join('');
+  } catch (err) { showToast(err.message, 'error'); }
+  document.getElementById('appt-date').value = '';
+  document.getElementById('appt-purpose').value = '';
+  document.getElementById('appt-fee').value = '';
+  document.getElementById('appt-modal-overlay').classList.add('show');
+}
+function closeApptModal() { document.getElementById('appt-modal-overlay').classList.remove('show'); }
+
+async function saveAppointment() {
+  const clientId = document.getElementById('appt-client').value;
+  const appointmentDate = document.getElementById('appt-date').value;
+  if (!clientId || !appointmentDate) { showToast('Client and date/time are required', 'error'); return; }
+  try {
+    await apiPost('/appointments', {
+      clientId, appointmentDate,
+      caseId: document.getElementById('appt-case').value || null,
+      purpose: document.getElementById('appt-purpose').value.trim(),
+      consultationFee: document.getElementById('appt-fee').value || null
+    });
+    closeApptModal();
+    showToast('Appointment added');
+    loadCalendar();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initPageChrome();
+  setThisWeek();
+});
+</script>
+</body>
+</html>

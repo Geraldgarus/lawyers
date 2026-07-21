@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Documents - Advocate Suite</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}</style>
+<script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>
+</head>
+<body>
+
+<div class="overlay-main" id="overlay-main"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-top">
+    <a class="sidebar-logo" href="/dashboard">
+      <div class="logo-icon"><i class="fas fa-scale-balanced"></i></div>
+      <div class="logo-text"><span>Advocate Suite</span><span>Case Management</span></div>
+    </a>
+    <button class="sidebar-close-btn" id="sidebar-close-btn"><i class="fas fa-times"></i></button>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Dashboard</div>
+    <a href="/dashboard" class="nav-item" data-page="dashboard"><i class="fas fa-gauge-high"></i> Dashboard</a>
+    <div class="nav-section-label">Practice</div>
+    <a href="/clients" class="nav-item" data-page="clients"><i class="fas fa-address-book"></i> Clients</a>
+    <a href="/cases" class="nav-item" data-page="cases"><i class="fas fa-briefcase"></i> Cases</a>
+    <a href="/calendar" class="nav-item" data-page="calendar"><i class="fas fa-calendar-days"></i> Calendar</a>
+    <a href="/documents" class="nav-item" data-page="documents"><i class="fas fa-folder-open"></i> Documents</a>
+    <a href="/tasks" class="nav-item" data-page="tasks"><i class="fas fa-list-check"></i> Tasks</a>
+    <div class="nav-section-label">Finance</div>
+    <a href="/billing" class="nav-item" data-page="billing"><i class="fas fa-file-invoice-dollar"></i> Billing &amp; Payments</a>
+    <a href="/expenses" class="nav-item" data-page="expenses"><i class="fas fa-receipt"></i> Expenses</a>
+    <div class="nav-section-label">Reports</div>
+    <a href="/reports" class="nav-item" data-page="reports"><i class="fas fa-chart-line"></i> Reports</a>
+    <div class="nav-section-label">Admin</div>
+    <a href="/settings" class="nav-item" data-page="settings"><i class="fas fa-gear"></i> Settings</a>
+    <a href="/users" class="nav-item" data-page="users"><i class="fas fa-user-shield"></i> User Management</a>
+    <a href="/permissions" class="nav-item" data-page="permissions"><i class="fas fa-lock"></i> Permissions &amp; Access</a>
+    <div class="nav-section-label">Help</div>
+    <a href="/user-guide" class="nav-item" data-page="user-guide"><i class="fas fa-circle-question"></i> User Guide</a>
+  </nav>
+  <div class="sidebar-footer"><small>Advocate Suite &middot; v1.0</small></div>
+</aside>
+
+<nav class="navbar">
+  <div class="navbar-left">
+    <button class="hamburger" id="hamburger-btn"><span class="hb-bar"></span><span class="hb-bar"></span><span class="hb-bar"></span></button>
+    <div><div class="page-title">Documents</div><div class="page-subtitle">Browse documents across all cases</div></div>
+  </div>
+  <div class="navbar-right">
+    <div class="user-dropdown">
+      <div class="user-pill" id="userPill">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-info"><span id="userName">Loading...</span><span id="userRole">Loading...</span></div>
+        <i class="fas fa-chevron-down" style="font-size:10px;color:var(--text-muted);"></i>
+      </div>
+      <div class="dropdown-menu" id="dropdownMenu">
+        <button id="logoutBtn"><i class="fas fa-right-from-bracket"></i> Logout</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="main-content">
+  <div class="filter-bar">
+    <div class="filter-group">
+      <label>Case</label>
+      <select id="filter-case"><option value="">All Cases</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Category</label>
+      <select id="filter-category">
+        <option value="">All Categories</option>
+        <option value="contract">Contract</option><option value="court_order">Court Order</option>
+        <option value="evidence">Evidence</option><option value="judgment">Judgment</option>
+        <option value="correspondence">Correspondence</option><option value="other">Other</option>
+      </select>
+    </div>
+    <button class="btn-gold" onclick="loadDocuments()"><i class="fas fa-search"></i> Filter</button>
+    <div style="flex:1;"></div>
+    <span style="font-size:12px;color:var(--text-muted);align-self:center;"><i class="fas fa-circle-info"></i> To upload a document, open the relevant case &rarr; Documents tab</span>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3><i class="fas fa-folder-open"></i> All Documents</h3></div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>File</th><th>Category</th><th>Case</th><th>Client</th><th>Uploaded</th><th></th></tr></thead>
+        <tbody id="documents-body"><tr><td colspan="6" class="empty-state">Select a case or search to begin</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+let allCases = [];
+
+async function loadCasesLookup() {
+  allCases = await apiGet('/cases');
+  document.getElementById('filter-case').innerHTML = '<option value="">All Cases</option>' +
+    allCases.map(c => `<option value="${c.id}">${escapeHtml(c.case_number)} — ${escapeHtml(c.case_title)}</option>`).join('');
+}
+
+async function loadDocuments() {
+  const caseId = document.getElementById('filter-case').value;
+  const category = document.getElementById('filter-category').value;
+  const tbody = document.getElementById('documents-body');
+
+  if (!caseId) {
+    // Aggregate across all cases (client-side merge, since documents are scoped per-case server-side)
+    setLoading('documents-body');
+    try {
+      const results = await Promise.all(allCases.map(c =>
+        apiGet(`/cases/${c.id}/documents${category ? '?category=' + category : ''}`).then(docs => docs.map(d => ({ ...d, _case: c })))
+      ));
+      const merged = results.flat().sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at));
+      renderDocuments(merged);
+    } catch (err) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Failed to load documents</td></tr>';
+      showToast(err.message, 'error');
+    }
+    return;
+  }
+
+  setLoading('documents-body');
+  try {
+    const c = allCases.find(x => x.id == caseId);
+    const docs = await apiGet(`/cases/${caseId}/documents${category ? '?category=' + category : ''}`);
+    renderDocuments(docs.map(d => ({ ...d, _case: c })));
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Failed to load documents</td></tr>';
+    showToast(err.message, 'error');
+  }
+}
+
+function renderDocuments(docs) {
+  const tbody = document.getElementById('documents-body');
+  if (!docs.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-folder-open"></i>No documents found</td></tr>'; return; }
+  tbody.innerHTML = docs.map(d => `
+    <tr>
+      <td><i class="fas fa-file"></i> ${escapeHtml(d.filename)}</td>
+      <td><span class="badge neutral">${d.category.replace('_',' ')}</span></td>
+      <td><a href="/case-detail?id=${d._case.id}" style="color:var(--sidebar-bg);">${escapeHtml(d._case.case_number)}</a></td>
+      <td>${escapeHtml(d._case.client_name)}</td>
+      <td>${fmtDate(d.uploaded_at)}</td>
+      <td><a class="btn-icon" href="/api/documents/${d.id}/download" title="Download"><i class="fas fa-download"></i></a></td>
+    </tr>
+  `).join('');
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  initPageChrome();
+  await loadCasesLookup();
+  await loadDocuments();
+});
+</script>
+</body>
+</html>

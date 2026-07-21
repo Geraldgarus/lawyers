@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reports - Advocate Suite</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
+.dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+@media (max-width:900px) { .dash-grid { grid-template-columns:1fr; } }
+.list-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #f1f5f9; font-size:13px; }
+.list-row:last-child { border-bottom:none; }
+.bar-track { height:10px; background:#f1f5f9; border-radius:6px; overflow:hidden; margin-top:4px; }
+.bar-fill { height:100%; background:var(--accent-gold); border-radius:6px; }
+</style>
+<script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>
+</head>
+<body>
+
+<div class="overlay-main" id="overlay-main"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-top">
+    <a class="sidebar-logo" href="/dashboard">
+      <div class="logo-icon"><i class="fas fa-scale-balanced"></i></div>
+      <div class="logo-text"><span>Advocate Suite</span><span>Case Management</span></div>
+    </a>
+    <button class="sidebar-close-btn" id="sidebar-close-btn"><i class="fas fa-times"></i></button>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Dashboard</div>
+    <a href="/dashboard" class="nav-item" data-page="dashboard"><i class="fas fa-gauge-high"></i> Dashboard</a>
+    <div class="nav-section-label">Practice</div>
+    <a href="/clients" class="nav-item" data-page="clients"><i class="fas fa-address-book"></i> Clients</a>
+    <a href="/cases" class="nav-item" data-page="cases"><i class="fas fa-briefcase"></i> Cases</a>
+    <a href="/calendar" class="nav-item" data-page="calendar"><i class="fas fa-calendar-days"></i> Calendar</a>
+    <a href="/documents" class="nav-item" data-page="documents"><i class="fas fa-folder-open"></i> Documents</a>
+    <a href="/tasks" class="nav-item" data-page="tasks"><i class="fas fa-list-check"></i> Tasks</a>
+    <div class="nav-section-label">Finance</div>
+    <a href="/billing" class="nav-item" data-page="billing"><i class="fas fa-file-invoice-dollar"></i> Billing &amp; Payments</a>
+    <a href="/expenses" class="nav-item" data-page="expenses"><i class="fas fa-receipt"></i> Expenses</a>
+    <div class="nav-section-label">Reports</div>
+    <a href="/reports" class="nav-item" data-page="reports"><i class="fas fa-chart-line"></i> Reports</a>
+    <div class="nav-section-label">Admin</div>
+    <a href="/settings" class="nav-item" data-page="settings"><i class="fas fa-gear"></i> Settings</a>
+    <a href="/users" class="nav-item" data-page="users"><i class="fas fa-user-shield"></i> User Management</a>
+    <a href="/permissions" class="nav-item" data-page="permissions"><i class="fas fa-lock"></i> Permissions &amp; Access</a>
+    <div class="nav-section-label">Help</div>
+    <a href="/user-guide" class="nav-item" data-page="user-guide"><i class="fas fa-circle-question"></i> User Guide</a>
+  </nav>
+  <div class="sidebar-footer"><small>Advocate Suite &middot; v1.0</small></div>
+</aside>
+
+<nav class="navbar">
+  <div class="navbar-left">
+    <button class="hamburger" id="hamburger-btn"><span class="hb-bar"></span><span class="hb-bar"></span><span class="hb-bar"></span></button>
+    <div><div class="page-title">Reports</div><div class="page-subtitle">Practice performance overview</div></div>
+  </div>
+  <div class="navbar-right">
+    <div class="user-dropdown">
+      <div class="user-pill" id="userPill">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-info"><span id="userName">Loading...</span><span id="userRole">Loading...</span></div>
+        <i class="fas fa-chevron-down" style="font-size:10px;color:var(--text-muted);"></i>
+      </div>
+      <div class="dropdown-menu" id="dropdownMenu">
+        <button id="logoutBtn"><i class="fas fa-right-from-bracket"></i> Logout</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="main-content" id="main-content">
+  <div class="filter-bar">
+    <div class="filter-group"><label>From</label><input type="date" id="filter-from"></div>
+    <div class="filter-group"><label>To</label><input type="date" id="filter-to"></div>
+    <button class="btn-gold" onclick="loadReports()"><i class="fas fa-search"></i> Apply</button>
+    <button class="btn-outline" onclick="clearFilters()"><i class="fas fa-times"></i> Clear</button>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-label">Total Income</div><div class="stat-value" id="stat-income" style="color:var(--success);">—</div></div>
+    <div class="stat-card"><div class="stat-label">Total Expenses</div><div class="stat-value" id="stat-expenses" style="color:var(--danger);">—</div></div>
+    <div class="stat-card"><div class="stat-label">Net Profit</div><div class="stat-value" id="stat-profit">—</div></div>
+  </div>
+
+  <div class="dash-grid">
+    <div class="card">
+      <div class="card-header"><h3><i class="fas fa-chart-pie"></i> Cases by Status</h3></div>
+      <div class="card-body" id="cases-summary"><div class="empty-state">Loading...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><h3><i class="fas fa-scale-balanced"></i> Case Load by Lawyer</h3></div>
+      <div class="card-body" id="case-load"><div class="empty-state">Loading...</div></div>
+    </div>
+  </div>
+</main>
+
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+function clearFilters() {
+  document.getElementById('filter-from').value = '';
+  document.getElementById('filter-to').value = '';
+  loadReports();
+}
+
+async function loadReports() {
+  const from = document.getElementById('filter-from').value;
+  const to = document.getElementById('filter-to').value;
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+
+  try {
+    const [financial, casesSummary, caseLoad] = await Promise.all([
+      apiGet('/reports/financial?' + params.toString()),
+      apiGet('/reports/cases-summary?' + params.toString()),
+      apiGet('/reports/case-load')
+    ]);
+
+    document.getElementById('stat-income').innerText = fmtCurrency(financial.totalIncome);
+    document.getElementById('stat-expenses').innerText = fmtCurrency(financial.totalExpenses);
+    const profitEl = document.getElementById('stat-profit');
+    profitEl.innerText = fmtCurrency(financial.netProfit);
+    profitEl.style.color = financial.netProfit >= 0 ? 'var(--success)' : 'var(--danger)';
+
+    document.getElementById('cases-summary').innerHTML = casesSummary.length
+      ? casesSummary.map(s => `<div class="list-row"><span class="badge ${s.status}">${statusLabel(s.status)}</span><span style="font-weight:700;">${s.count}</span></div>`).join('')
+      : '<div class="empty-state">No cases in this period</div>';
+
+    const maxLoad = Math.max(...caseLoad.map(l => l.open_cases), 1);
+    document.getElementById('case-load').innerHTML = caseLoad.length
+      ? caseLoad.map(l => `
+        <div style="margin-bottom:12px;">
+          <div class="list-row" style="border:none;padding-bottom:2px;"><span>${escapeHtml(l.full_name)}</span><span style="font-weight:700;">${l.open_cases}</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:${(l.open_cases / maxLoad * 100)}%;"></div></div>
+        </div>`).join('')
+      : '<div class="empty-state">No lawyers on record</div>';
+
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const user = initPageChrome();
+  if (user && user.role !== 'lawyer') {
+    document.getElementById('main-content').innerHTML = '<div class="empty-state"><i class="fas fa-lock"></i>You do not have permission to view reports</div>';
+    return;
+  }
+  loadReports();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Management - Advocate Suite</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}</style>
+<script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>
+</head>
+<body>
+
+<div class="overlay-main" id="overlay-main"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-top">
+    <a class="sidebar-logo" href="/dashboard">
+      <div class="logo-icon"><i class="fas fa-scale-balanced"></i></div>
+      <div class="logo-text"><span>Advocate Suite</span><span>Case Management</span></div>
+    </a>
+    <button class="sidebar-close-btn" id="sidebar-close-btn"><i class="fas fa-times"></i></button>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Dashboard</div>
+    <a href="/dashboard" class="nav-item" data-page="dashboard"><i class="fas fa-gauge-high"></i> Dashboard</a>
+    <div class="nav-section-label">Practice</div>
+    <a href="/clients" class="nav-item" data-page="clients"><i class="fas fa-address-book"></i> Clients</a>
+    <a href="/cases" class="nav-item" data-page="cases"><i class="fas fa-briefcase"></i> Cases</a>
+    <a href="/calendar" class="nav-item" data-page="calendar"><i class="fas fa-calendar-days"></i> Calendar</a>
+    <a href="/documents" class="nav-item" data-page="documents"><i class="fas fa-folder-open"></i> Documents</a>
+    <a href="/tasks" class="nav-item" data-page="tasks"><i class="fas fa-list-check"></i> Tasks</a>
+    <div class="nav-section-label">Finance</div>
+    <a href="/billing" class="nav-item" data-page="billing"><i class="fas fa-file-invoice-dollar"></i> Billing &amp; Payments</a>
+    <a href="/expenses" class="nav-item" data-page="expenses"><i class="fas fa-receipt"></i> Expenses</a>
+    <div class="nav-section-label">Reports</div>
+    <a href="/reports" class="nav-item" data-page="reports"><i class="fas fa-chart-line"></i> Reports</a>
+    <div class="nav-section-label">Admin</div>
+    <a href="/settings" class="nav-item" data-page="settings"><i class="fas fa-gear"></i> Settings</a>
+    <a href="/users" class="nav-item" data-page="users"><i class="fas fa-user-shield"></i> User Management</a>
+    <a href="/permissions" class="nav-item" data-page="permissions"><i class="fas fa-lock"></i> Permissions &amp; Access</a>
+    <div class="nav-section-label">Help</div>
+    <a href="/user-guide" class="nav-item" data-page="user-guide"><i class="fas fa-circle-question"></i> User Guide</a>
+  </nav>
+  <div class="sidebar-footer"><small>Advocate Suite &middot; v1.0</small></div>
+</aside>
+
+<nav class="navbar">
+  <div class="navbar-left">
+    <button class="hamburger" id="hamburger-btn"><span class="hb-bar"></span><span class="hb-bar"></span><span class="hb-bar"></span></button>
+    <div><div class="page-title">User Management</div><div class="page-subtitle">Staff accounts</div></div>
+  </div>
+  <div class="navbar-right">
+    <div class="user-dropdown">
+      <div class="user-pill" id="userPill">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-info"><span id="userName">Loading...</span><span id="userRole">Loading...</span></div>
+        <i class="fas fa-chevron-down" style="font-size:10px;color:var(--text-muted);"></i>
+      </div>
+      <div class="dropdown-menu" id="dropdownMenu">
+        <button id="logoutBtn"><i class="fas fa-right-from-bracket"></i> Logout</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="main-content" id="main-content">
+  <div class="filter-bar">
+    <div style="flex:1;"></div>
+    <button class="btn-primary" onclick="openUserModal()"><i class="fas fa-user-plus"></i> Add User</button>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3><i class="fas fa-user-shield"></i> All Users</h3></div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Name</th><th>Username</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead>
+        <tbody id="users-body"><tr><td colspan="6" class="empty-state">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- User Modal -->
+<div class="modal-overlay" id="user-modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3 id="user-modal-title"><i class="fas fa-user-plus"></i> Add User</h3><button onclick="closeModal('user-modal-overlay')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="user-id">
+      <div class="form-group"><label>Full Name *</label><input class="form-control" id="user-fullname"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Username *</label><input class="form-control" id="user-username"></div>
+        <div class="form-group"><label>Email *</label><input type="email" class="form-control" id="user-email"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Role *</label>
+          <select class="form-control" id="user-role">
+            <option value="lawyer">Lawyer</option><option value="secretary">Secretary</option><option value="assistant">Assistant</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Phone</label><input class="form-control" id="user-phone"></div>
+      </div>
+      <div class="form-group" id="password-field"><label>Password *</label><input type="password" class="form-control" id="user-password"></div>
+    </div>
+    <div class="modal-footer"><button class="btn-outline" onclick="closeModal('user-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveUser()">Save</button></div>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal-overlay" id="reset-modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="fas fa-key"></i> Reset Password</h3><button onclick="closeModal('reset-modal-overlay')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="reset-user-id">
+      <div class="form-group"><label>New Password *</label><input type="password" class="form-control" id="reset-password"></div>
+    </div>
+    <div class="modal-footer"><button class="btn-outline" onclick="closeModal('reset-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveResetPassword()">Reset</button></div>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+let usersData = [];
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+async function loadUsers() {
+  setLoading('users-body');
+  try {
+    usersData = await apiGet('/users');
+    renderUsers();
+  } catch (err) {
+    document.getElementById('users-body').innerHTML = '<tr><td colspan="6" class="empty-state">Failed to load users</td></tr>';
+    showToast(err.message, 'error');
+  }
+}
+
+function renderUsers() {
+  const tbody = document.getElementById('users-body');
+  tbody.innerHTML = usersData.map(u => `
+    <tr>
+      <td><strong>${escapeHtml(u.full_name)}</strong></td>
+      <td>${escapeHtml(u.username)}</td>
+      <td>${escapeHtml(u.email)}</td>
+      <td><span class="badge info">${u.role}</span></td>
+      <td>
+        <span class="badge ${u.is_active ? 'success' : 'danger'}">${u.is_active ? 'Active' : 'Deactivated'}</span>
+        ${u.locked_until && new Date(u.locked_until) > new Date() ? '<span class="badge warning" style="margin-left:4px;">Locked</span>' : ''}
+      </td>
+      <td style="white-space:nowrap;">
+        <button class="btn-icon" onclick="openUserModal(${u.id})" title="Edit"><i class="fas fa-pen"></i></button>
+        <button class="btn-icon" onclick="openResetModal(${u.id})" title="Reset Password"><i class="fas fa-key"></i></button>
+        ${u.locked_until ? `<button class="btn-icon" onclick="unlockUser(${u.id})" title="Unlock"><i class="fas fa-lock-open"></i></button>` : ''}
+        ${u.is_active ? `<button class="btn-icon danger" onclick="deactivateUser(${u.id})" title="Deactivate"><i class="fas fa-user-slash"></i></button>` : ''}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openUserModal(id) {
+  document.getElementById('user-id').value = id || '';
+  document.getElementById('password-field').style.display = id ? 'none' : 'block';
+  if (id) {
+    const u = usersData.find(x => x.id === id);
+    document.getElementById('user-modal-title').innerHTML = '<i class="fas fa-user-pen"></i> Edit User';
+    document.getElementById('user-fullname').value = u.full_name;
+    document.getElementById('user-username').value = u.username;
+    document.getElementById('user-email').value = u.email;
+    document.getElementById('user-role').value = u.role;
+    document.getElementById('user-phone').value = u.phone || '';
+    document.getElementById('user-username').disabled = true;
+    document.getElementById('user-email').disabled = true;
+  } else {
+    document.getElementById('user-modal-title').innerHTML = '<i class="fas fa-user-plus"></i> Add User';
+    ['user-fullname','user-username','user-email','user-phone','user-password'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('user-role').value = 'assistant';
+    document.getElementById('user-username').disabled = false;
+    document.getElementById('user-email').disabled = false;
+  }
+  document.getElementById('user-modal-overlay').classList.add('show');
+}
+
+async function saveUser() {
+  const id = document.getElementById('user-id').value;
+  try {
+    if (id) {
+      await apiPut(`/users/${id}`, {
+        fullName: document.getElementById('user-fullname').value.trim(),
+        role: document.getElementById('user-role').value,
+        phone: document.getElementById('user-phone').value.trim()
+      });
+      showToast('User updated');
+    } else {
+      const payload = {
+        fullName: document.getElementById('user-fullname').value.trim(),
+        username: document.getElementById('user-username').value.trim(),
+        email: document.getElementById('user-email').value.trim(),
+        role: document.getElementById('user-role').value,
+        phone: document.getElementById('user-phone').value.trim(),
+        password: document.getElementById('user-password').value
+      };
+      if (!payload.password || payload.password.length < 6) { showToast('Password must be at least 6 characters', 'error'); return; }
+      await apiPost('/users', payload);
+      showToast('User created');
+    }
+    closeModal('user-modal-overlay');
+    loadUsers();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+function openResetModal(id) {
+  document.getElementById('reset-user-id').value = id;
+  document.getElementById('reset-password').value = '';
+  document.getElementById('reset-modal-overlay').classList.add('show');
+}
+async function saveResetPassword() {
+  const id = document.getElementById('reset-user-id').value;
+  const newPassword = document.getElementById('reset-password').value;
+  if (!newPassword || newPassword.length < 6) { showToast('Password must be at least 6 characters', 'error'); return; }
+  try {
+    await apiPut(`/users/${id}/reset-password`, { newPassword });
+    closeModal('reset-modal-overlay');
+    showToast('Password reset');
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+async function unlockUser(id) {
+  try { await apiPut(`/users/${id}/unlock`, {}); showToast('Account unlocked'); loadUsers(); }
+  catch (err) { showToast(err.message, 'error'); }
+}
+
+async function deactivateUser(id) {
+  if (!confirm('Deactivate this user? They will no longer be able to log in.')) return;
+  try { await apiDelete(`/users/${id}`); showToast('User deactivated'); loadUsers(); }
+  catch (err) { showToast(err.message, 'error'); }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const user = initPageChrome();
+  if (user && user.role !== 'lawyer') {
+    document.getElementById('main-content').innerHTML = '<div class="empty-state"><i class="fas fa-lock"></i>You do not have permission to manage users</div>';
+    return;
+  }
+  loadUsers();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Permissions &amp; Access - Advocate Suite</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
+.perm-table td:nth-child(2), .perm-table td:nth-child(3), .perm-table td:nth-child(4) { text-align:center; }
+.perm-yes { color:var(--success); }
+.perm-no { color:#cbd5e1; }
+</style>
+<script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>
+</head>
+<body>
+
+<div class="overlay-main" id="overlay-main"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-top">
+    <a class="sidebar-logo" href="/dashboard">
+      <div class="logo-icon"><i class="fas fa-scale-balanced"></i></div>
+      <div class="logo-text"><span>Advocate Suite</span><span>Case Management</span></div>
+    </a>
+    <button class="sidebar-close-btn" id="sidebar-close-btn"><i class="fas fa-times"></i></button>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Dashboard</div>
+    <a href="/dashboard" class="nav-item" data-page="dashboard"><i class="fas fa-gauge-high"></i> Dashboard</a>
+    <div class="nav-section-label">Practice</div>
+    <a href="/clients" class="nav-item" data-page="clients"><i class="fas fa-address-book"></i> Clients</a>
+    <a href="/cases" class="nav-item" data-page="cases"><i class="fas fa-briefcase"></i> Cases</a>
+    <a href="/calendar" class="nav-item" data-page="calendar"><i class="fas fa-calendar-days"></i> Calendar</a>
+    <a href="/documents" class="nav-item" data-page="documents"><i class="fas fa-folder-open"></i> Documents</a>
+    <a href="/tasks" class="nav-item" data-page="tasks"><i class="fas fa-list-check"></i> Tasks</a>
+    <div class="nav-section-label">Finance</div>
+    <a href="/billing" class="nav-item" data-page="billing"><i class="fas fa-file-invoice-dollar"></i> Billing &amp; Payments</a>
+    <a href="/expenses" class="nav-item" data-page="expenses"><i class="fas fa-receipt"></i> Expenses</a>
+    <div class="nav-section-label">Reports</div>
+    <a href="/reports" class="nav-item" data-page="reports"><i class="fas fa-chart-line"></i> Reports</a>
+    <div class="nav-section-label">Admin</div>
+    <a href="/settings" class="nav-item" data-page="settings"><i class="fas fa-gear"></i> Settings</a>
+    <a href="/users" class="nav-item" data-page="users"><i class="fas fa-user-shield"></i> User Management</a>
+    <a href="/permissions" class="nav-item" data-page="permissions"><i class="fas fa-lock"></i> Permissions &amp; Access</a>
+    <div class="nav-section-label">Help</div>
+    <a href="/user-guide" class="nav-item" data-page="user-guide"><i class="fas fa-circle-question"></i> User Guide</a>
+  </nav>
+  <div class="sidebar-footer"><small>Advocate Suite &middot; v1.0</small></div>
+</aside>
+
+<nav class="navbar">
+  <div class="navbar-left">
+    <button class="hamburger" id="hamburger-btn"><span class="hb-bar"></span><span class="hb-bar"></span><span class="hb-bar"></span></button>
+    <div><div class="page-title">Permissions &amp; Access</div><div class="page-subtitle">What each role can do</div></div>
+  </div>
+  <div class="navbar-right">
+    <div class="user-dropdown">
+      <div class="user-pill" id="userPill">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-info"><span id="userName">Loading...</span><span id="userRole">Loading...</span></div>
+        <i class="fas fa-chevron-down" style="font-size:10px;color:var(--text-muted);"></i>
+      </div>
+      <div class="dropdown-menu" id="dropdownMenu">
+        <button id="logoutBtn"><i class="fas fa-right-from-bracket"></i> Logout</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="main-content" id="main-content">
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fas fa-table"></i> Role Capability Matrix</h3>
+      <a href="/users" class="btn-outline btn-sm"><i class="fas fa-user-shield"></i> Manage Users</a>
+    </div>
+    <div class="card-body" style="padding-top:0;">
+      <p style="font-size:12.5px;color:var(--text-muted);margin:14px 0 18px;">
+        Every capability below is enforced on the server, not just hidden in the menu — a role without access
+        cannot use the feature even by navigating directly to it. To change a user's role, use
+        <a href="/users" style="color:var(--sidebar-bg);">User Management</a>.
+      </p>
+      <div class="table-wrap">
+        <table class="data-table perm-table">
+          <thead><tr><th>Capability</th><th>Lawyer</th><th>Secretary</th><th>Assistant</th></tr></thead>
+          <tbody id="perm-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+const PERMISSIONS = [
+  ['Create / edit a case', true, true, false],
+  ['Delete a case', true, false, false],
+  ['Add / edit clients', true, true, true],
+  ['Delete a client', true, false, false],
+  ['Log a hearing or appointment', true, true, true],
+  ['Delete a hearing or appointment', true, true, false],
+  ['Upload a document', true, true, true],
+  ['Delete a document', true, true, false],
+  ['Create / update a task', true, true, true],
+  ['Delete a task', true, true, false],
+  ['View &amp; record expenses', true, true, false],
+  ['Delete an expense', true, false, false],
+  ['View billing figures &amp; invoices', true, false, false],
+  ['Create invoices / record payments', true, false, false],
+  ['Add a case note', true, true, true],
+  ['View reports', true, false, false],
+  ['Manage users', true, false, false],
+  ['Manage case categories &amp; settings', true, false, false],
+];
+
+function icon(v) { return v ? '<i class="fas fa-check perm-yes"></i>' : '<i class="fas fa-xmark perm-no"></i>'; }
+
+document.addEventListener('DOMContentLoaded', () => {
+  initPageChrome();
+  document.getElementById('perm-body').innerHTML = PERMISSIONS.map(([label, l, s, a]) => `
+    <tr><td>${label}</td><td>${icon(l)}</td><td>${icon(s)}</td><td>${icon(a)}</td></tr>
+  `).join('');
+});
+</script>
+</body>
+</html>

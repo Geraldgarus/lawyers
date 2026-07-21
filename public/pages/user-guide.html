@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Guide - Advocate Suite</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
+.guide-section { margin-bottom:24px; }
+.guide-section h4 { font-size:14px; margin-bottom:10px; display:flex; align-items:center; gap:8px; color:var(--sidebar-bg); }
+.guide-section ol, .guide-section ul { margin-left:20px; font-size:13.5px; line-height:1.9; color:var(--text-dark); }
+.guide-section p { font-size:13px; color:var(--text-muted); margin-bottom:8px; }
+.guide-note { background:#f8fafc; border-left:3px solid var(--accent-gold); padding:10px 14px; border-radius:6px; font-size:12.5px; color:var(--text-muted); margin-top:8px; }
+</style>
+<script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>
+</head>
+<body>
+
+<div class="overlay-main" id="overlay-main"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-top">
+    <a class="sidebar-logo" href="/dashboard">
+      <div class="logo-icon"><i class="fas fa-scale-balanced"></i></div>
+      <div class="logo-text"><span>Advocate Suite</span><span>Case Management</span></div>
+    </a>
+    <button class="sidebar-close-btn" id="sidebar-close-btn"><i class="fas fa-times"></i></button>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Dashboard</div>
+    <a href="/dashboard" class="nav-item" data-page="dashboard"><i class="fas fa-gauge-high"></i> Dashboard</a>
+    <div class="nav-section-label">Practice</div>
+    <a href="/clients" class="nav-item" data-page="clients"><i class="fas fa-address-book"></i> Clients</a>
+    <a href="/cases" class="nav-item" data-page="cases"><i class="fas fa-briefcase"></i> Cases</a>
+    <a href="/calendar" class="nav-item" data-page="calendar"><i class="fas fa-calendar-days"></i> Calendar</a>
+    <a href="/documents" class="nav-item" data-page="documents"><i class="fas fa-folder-open"></i> Documents</a>
+    <a href="/tasks" class="nav-item" data-page="tasks"><i class="fas fa-list-check"></i> Tasks</a>
+    <div class="nav-section-label">Finance</div>
+    <a href="/billing" class="nav-item" data-page="billing"><i class="fas fa-file-invoice-dollar"></i> Billing &amp; Payments</a>
+    <a href="/expenses" class="nav-item" data-page="expenses"><i class="fas fa-receipt"></i> Expenses</a>
+    <div class="nav-section-label">Reports</div>
+    <a href="/reports" class="nav-item" data-page="reports"><i class="fas fa-chart-line"></i> Reports</a>
+    <div class="nav-section-label">Admin</div>
+    <a href="/settings" class="nav-item" data-page="settings"><i class="fas fa-gear"></i> Settings</a>
+    <a href="/users" class="nav-item" data-page="users"><i class="fas fa-user-shield"></i> User Management</a>
+    <a href="/permissions" class="nav-item" data-page="permissions"><i class="fas fa-lock"></i> Permissions &amp; Access</a>
+    <div class="nav-section-label">Help</div>
+    <a href="/user-guide" class="nav-item" data-page="user-guide"><i class="fas fa-circle-question"></i> User Guide</a>
+  </nav>
+  <div class="sidebar-footer"><small>Advocate Suite &middot; v1.0</small></div>
+</aside>
+
+<nav class="navbar">
+  <div class="navbar-left">
+    <button class="hamburger" id="hamburger-btn"><span class="hb-bar"></span><span class="hb-bar"></span><span class="hb-bar"></span></button>
+    <div><div class="page-title">User Guide</div><div class="page-subtitle">How to use Advocate Suite</div></div>
+  </div>
+  <div class="navbar-right">
+    <div class="user-dropdown">
+      <div class="user-pill" id="userPill">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-info"><span id="userName">Loading...</span><span id="userRole">Loading...</span></div>
+        <i class="fas fa-chevron-down" style="font-size:10px;color:var(--text-muted);"></i>
+      </div>
+      <div class="dropdown-menu" id="dropdownMenu">
+        <button id="logoutBtn"><i class="fas fa-right-from-bracket"></i> Logout</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="main-content">
+  <div class="card"><div class="card-body">
+
+    <div class="guide-section">
+      <h4><i class="fas fa-lightbulb"></i> The Core Idea: Everything Lives Inside a Case</h4>
+      <p>A <strong>Case</strong> is the hub for one legal matter. Hearings, documents, tasks, expenses, invoices, and notes are
+      all created from <em>inside</em> that case — never anywhere else. The Calendar, Documents, Tasks, Expenses, and
+      Billing menus are just <em>views</em> that pull everything together across all cases so you can search and browse —
+      they are not separate places you enter new data.</p>
+    </div>
+
+    <div class="guide-section">
+      <h4><i class="fas fa-user-plus"></i> Registering a Client &amp; Opening a Case</h4>
+      <ol>
+        <li>Go to <strong>Cases</strong> and click <strong>+ New Case</strong>.</li>
+        <li>Search for the client by name. If they're new, click <strong>Add New Client Instead</strong> and fill in their details right there — no need to visit the Clients page first.</li>
+        <li>Fill in the case title, type, and any known details, then click <strong>Create Case</strong>.</li>
+        <li>You're taken straight to the new case's page, where everything else happens.</li>
+      </ol>
+      <div class="guide-note">If the same client returns later for a different matter, search for their existing name instead of adding them again — this keeps their full case history in one place under <strong>Clients</strong>.</div>
+    </div>
+
+    <div class="guide-section">
+      <h4><i class="fas fa-gavel"></i> Scheduling a Hearing</h4>
+      <ol>
+        <li>Open the case, go to the <strong>Hearings</strong> tab, click <strong>Add Hearing</strong>.</li>
+        <li>It automatically appears on the <strong>Calendar</strong> and on the Dashboard as the date approaches.</li>
+        <li>After the hearing happens, come back and click the clipboard icon to record the <strong>outcome</strong> (e.g. "Adjourned to 15 Aug"), then add the next hearing date if there is one.</li>
+      </ol>
+    </div>
+
+    <div class="guide-section">
+      <h4><i class="fas fa-money-bill-wave"></i> Billing a Client</h4>
+      <ol>
+        <li>Open the case, go to the <strong>Payments</strong> tab, click <strong>New Invoice</strong>.</li>
+        <li>When the client pays (in full or partially), click the money icon next to the invoice to <strong>Record Payment</strong>.</li>
+        <li>The outstanding balance updates automatically and shows on the case Overview.</li>
+      </ol>
+      <div class="guide-note">Billing &amp; Payments is only visible to the Lawyer role.</div>
+    </div>
+
+    <div class="guide-section">
+      <h4><i class="fas fa-timeline"></i> The Timeline Tab</h4>
+      <p>The <strong>Timeline</strong> tab on every case is automatically generated — every hearing, document, completed
+      task, expense, payment, and note you add shows up there in order, with no extra effort. Use the
+      <strong>Notes</strong> tab instead for private thoughts or meeting summaries that don't belong anywhere else.</p>
+    </div>
+
+    <div class="guide-section">
+      <h4><i class="fas fa-users-gear"></i> Roles</h4>
+      <ul>
+        <li><strong>Lawyer</strong> — full access, including billing, reports, and user management.</li>
+        <li><strong>Secretary</strong> — can manage clients, cases, hearings, documents, tasks, and expenses, but cannot see billing figures or reports.</li>
+        <li><strong>Assistant</strong> — can manage clients, hearings, documents, and tasks, but cannot edit cases, expenses, or see billing.</li>
+      </ul>
+      <p>See the full breakdown on the <a href="/permissions" style="color:var(--sidebar-bg);">Permissions &amp; Access</a> page.</p>
+    </div>
+
+  </div></div>
+</main>
+
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/auth.js"></script>
+<script>document.addEventListener('DOMContentLoaded', () => initPageChrome());</script>
+</body>
+</html>

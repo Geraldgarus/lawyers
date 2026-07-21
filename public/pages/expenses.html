@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Expenses - Advocate Suite</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}</style>
+<script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>
+</head>
+<body>
+
+<div class="overlay-main" id="overlay-main"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-top">
+    <a class="sidebar-logo" href="/dashboard">
+      <div class="logo-icon"><i class="fas fa-scale-balanced"></i></div>
+      <div class="logo-text"><span>Advocate Suite</span><span>Case Management</span></div>
+    </a>
+    <button class="sidebar-close-btn" id="sidebar-close-btn"><i class="fas fa-times"></i></button>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Dashboard</div>
+    <a href="/dashboard" class="nav-item" data-page="dashboard"><i class="fas fa-gauge-high"></i> Dashboard</a>
+    <div class="nav-section-label">Practice</div>
+    <a href="/clients" class="nav-item" data-page="clients"><i class="fas fa-address-book"></i> Clients</a>
+    <a href="/cases" class="nav-item" data-page="cases"><i class="fas fa-briefcase"></i> Cases</a>
+    <a href="/calendar" class="nav-item" data-page="calendar"><i class="fas fa-calendar-days"></i> Calendar</a>
+    <a href="/documents" class="nav-item" data-page="documents"><i class="fas fa-folder-open"></i> Documents</a>
+    <a href="/tasks" class="nav-item" data-page="tasks"><i class="fas fa-list-check"></i> Tasks</a>
+    <div class="nav-section-label">Finance</div>
+    <a href="/billing" class="nav-item" data-page="billing"><i class="fas fa-file-invoice-dollar"></i> Billing &amp; Payments</a>
+    <a href="/expenses" class="nav-item" data-page="expenses"><i class="fas fa-receipt"></i> Expenses</a>
+    <div class="nav-section-label">Reports</div>
+    <a href="/reports" class="nav-item" data-page="reports"><i class="fas fa-chart-line"></i> Reports</a>
+    <div class="nav-section-label">Admin</div>
+    <a href="/settings" class="nav-item" data-page="settings"><i class="fas fa-gear"></i> Settings</a>
+    <a href="/users" class="nav-item" data-page="users"><i class="fas fa-user-shield"></i> User Management</a>
+    <a href="/permissions" class="nav-item" data-page="permissions"><i class="fas fa-lock"></i> Permissions &amp; Access</a>
+    <div class="nav-section-label">Help</div>
+    <a href="/user-guide" class="nav-item" data-page="user-guide"><i class="fas fa-circle-question"></i> User Guide</a>
+  </nav>
+  <div class="sidebar-footer"><small>Advocate Suite &middot; v1.0</small></div>
+</aside>
+
+<nav class="navbar">
+  <div class="navbar-left">
+    <button class="hamburger" id="hamburger-btn"><span class="hb-bar"></span><span class="hb-bar"></span><span class="hb-bar"></span></button>
+    <div><div class="page-title">Expenses</div><div class="page-subtitle">Costs incurred across all cases</div></div>
+  </div>
+  <div class="navbar-right">
+    <div class="user-dropdown">
+      <div class="user-pill" id="userPill">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-info"><span id="userName">Loading...</span><span id="userRole">Loading...</span></div>
+        <i class="fas fa-chevron-down" style="font-size:10px;color:var(--text-muted);"></i>
+      </div>
+      <div class="dropdown-menu" id="dropdownMenu">
+        <button id="logoutBtn"><i class="fas fa-right-from-bracket"></i> Logout</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="main-content">
+  <div class="filter-bar">
+    <div class="filter-group"><label>From</label><input type="date" id="filter-from"></div>
+    <div class="filter-group"><label>To</label><input type="date" id="filter-to"></div>
+    <div class="filter-group">
+      <label>Category</label>
+      <select id="filter-category">
+        <option value="">All</option>
+        <option value="filing_fees">Filing Fees</option><option value="transport">Transport</option>
+        <option value="photocopying">Photocopying</option><option value="court_fees">Court Fees</option>
+        <option value="accommodation">Accommodation</option><option value="other">Other</option>
+      </select>
+    </div>
+    <button class="btn-gold" onclick="loadExpenses()"><i class="fas fa-search"></i> Filter</button>
+    <button class="btn-outline" onclick="clearFilters()"><i class="fas fa-times"></i> Clear</button>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-label">Total Expenses</div><div class="stat-value" id="stat-total">—</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3><i class="fas fa-receipt"></i> All Expenses</h3></div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Date</th><th>Case</th><th>Description</th><th>Category</th><th>Amount</th></tr></thead>
+        <tbody id="expenses-body"><tr><td colspan="5" class="empty-state">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+async function loadExpenses() {
+  setLoading('expenses-body');
+  const params = new URLSearchParams();
+  const from = document.getElementById('filter-from').value;
+  const to = document.getElementById('filter-to').value;
+  const category = document.getElementById('filter-category').value;
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  if (category) params.set('category', category);
+  try {
+    const expenses = await apiGet('/expenses?' + params.toString());
+    renderExpenses(expenses);
+  } catch (err) {
+    document.getElementById('expenses-body').innerHTML = '<tr><td colspan="5" class="empty-state">Failed to load expenses</td></tr>';
+    showToast(err.message, 'error');
+  }
+}
+
+function renderExpenses(expenses) {
+  const tbody = document.getElementById('expenses-body');
+  const total = expenses.reduce((s, e) => s + parseFloat(e.amount), 0);
+  document.getElementById('stat-total').innerText = fmtCurrency(total);
+  if (!expenses.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><i class="fas fa-receipt"></i>No expenses found</td></tr>'; return; }
+  tbody.innerHTML = expenses.map(e => `
+    <tr>
+      <td>${fmtDate(e.expense_date)}</td>
+      <td><a href="/case-detail?id=${e.case_id}" style="color:var(--sidebar-bg);">${escapeHtml(e.case_number)}</a></td>
+      <td>${escapeHtml(e.description)}</td>
+      <td><span class="badge neutral">${e.category.replace('_',' ')}</span></td>
+      <td>${fmtCurrency(e.amount)}</td>
+    </tr>
+  `).join('');
+}
+
+function clearFilters() {
+  document.getElementById('filter-from').value = '';
+  document.getElementById('filter-to').value = '';
+  document.getElementById('filter-category').value = '';
+  loadExpenses();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const user = initPageChrome();
+  if (user && user.role === 'assistant') {
+    document.querySelector('.main-content').innerHTML = '<div class="empty-state"><i class="fas fa-lock"></i>You do not have permission to view expenses</div>';
+    return;
+  }
+  loadExpenses();
+});
+</script>
+</body>
+</html>

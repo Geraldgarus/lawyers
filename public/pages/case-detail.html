@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Case Detail - Advocate Suite</title>
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
+.case-header { background:white; border:1px solid var(--border); border-radius:12px; padding:20px 24px; margin-bottom:20px; }
+.case-header-top { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:14px; }
+.case-header h2 { font-size:20px; font-weight:700; }
+.case-header .case-sub { color:var(--text-muted); font-size:13px; margin-top:2px; }
+.case-meta-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; }
+.case-meta-grid .m-label { font-size:10.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
+.case-meta-grid .m-value { font-size:13.5px; font-weight:600; color:var(--text-dark); }
+</style>
+<script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>
+</head>
+<body>
+
+<div class="overlay-main" id="overlay-main"></div>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-top">
+    <a class="sidebar-logo" href="/dashboard">
+      <div class="logo-icon"><i class="fas fa-scale-balanced"></i></div>
+      <div class="logo-text"><span>Advocate Suite</span><span>Case Management</span></div>
+    </a>
+    <button class="sidebar-close-btn" id="sidebar-close-btn"><i class="fas fa-times"></i></button>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Dashboard</div>
+    <a href="/dashboard" class="nav-item" data-page="dashboard"><i class="fas fa-gauge-high"></i> Dashboard</a>
+    <div class="nav-section-label">Practice</div>
+    <a href="/clients" class="nav-item" data-page="clients"><i class="fas fa-address-book"></i> Clients</a>
+    <a href="/cases" class="nav-item" data-page="cases"><i class="fas fa-briefcase"></i> Cases</a>
+    <a href="/calendar" class="nav-item" data-page="calendar"><i class="fas fa-calendar-days"></i> Calendar</a>
+    <a href="/documents" class="nav-item" data-page="documents"><i class="fas fa-folder-open"></i> Documents</a>
+    <a href="/tasks" class="nav-item" data-page="tasks"><i class="fas fa-list-check"></i> Tasks</a>
+    <div class="nav-section-label">Finance</div>
+    <a href="/billing" class="nav-item" data-page="billing"><i class="fas fa-file-invoice-dollar"></i> Billing &amp; Payments</a>
+    <a href="/expenses" class="nav-item" data-page="expenses"><i class="fas fa-receipt"></i> Expenses</a>
+    <div class="nav-section-label">Reports</div>
+    <a href="/reports" class="nav-item" data-page="reports"><i class="fas fa-chart-line"></i> Reports</a>
+    <div class="nav-section-label">Admin</div>
+    <a href="/settings" class="nav-item" data-page="settings"><i class="fas fa-gear"></i> Settings</a>
+    <a href="/users" class="nav-item" data-page="users"><i class="fas fa-user-shield"></i> User Management</a>
+    <a href="/permissions" class="nav-item" data-page="permissions"><i class="fas fa-lock"></i> Permissions &amp; Access</a>
+    <div class="nav-section-label">Help</div>
+    <a href="/user-guide" class="nav-item" data-page="user-guide"><i class="fas fa-circle-question"></i> User Guide</a>
+  </nav>
+  <div class="sidebar-footer"><small>Advocate Suite &middot; v1.0</small></div>
+</aside>
+
+<nav class="navbar">
+  <div class="navbar-left">
+    <button class="hamburger" id="hamburger-btn"><span class="hb-bar"></span><span class="hb-bar"></span><span class="hb-bar"></span></button>
+    <div><div class="page-title">Case Detail</div><div class="page-subtitle"><a href="/cases" style="color:var(--text-muted);text-decoration:none;"><i class="fas fa-arrow-left"></i> Back to Cases</a></div></div>
+  </div>
+  <div class="navbar-right">
+    <div class="user-dropdown">
+      <div class="user-pill" id="userPill">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-info"><span id="userName">Loading...</span><span id="userRole">Loading...</span></div>
+        <i class="fas fa-chevron-down" style="font-size:10px;color:var(--text-muted);"></i>
+      </div>
+      <div class="dropdown-menu" id="dropdownMenu">
+        <button id="logoutBtn"><i class="fas fa-right-from-bracket"></i> Logout</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="main-content">
+  <div class="case-header" id="case-header">
+    <div class="empty-state">Loading case...</div>
+  </div>
+
+  <div class="tabs-bar" id="tabs-bar" style="display:none;">
+    <button class="tab-btn active" data-tab="overview">Overview</button>
+    <button class="tab-btn" data-tab="hearings">Hearings</button>
+    <button class="tab-btn" data-tab="documents">Documents</button>
+    <button class="tab-btn" data-tab="tasks">Tasks</button>
+    <button class="tab-btn" data-tab="expenses" id="tab-btn-expenses">Expenses</button>
+    <button class="tab-btn" data-tab="payments" id="tab-btn-payments">Payments</button>
+    <button class="tab-btn" data-tab="notes">Notes</button>
+    <button class="tab-btn" data-tab="timeline">Timeline</button>
+  </div>
+
+  <!-- OVERVIEW -->
+  <div class="tab-panel active" id="panel-overview">
+    <div class="card"><div class="card-body" id="overview-body"></div></div>
+  </div>
+
+  <!-- HEARINGS -->
+  <div class="tab-panel" id="panel-hearings">
+    <div class="card">
+      <div class="card-header"><h3><i class="fas fa-gavel"></i> Hearings</h3><button class="btn-primary btn-sm" onclick="openHearingModal()"><i class="fas fa-plus"></i> Add Hearing</button></div>
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr><th>Date</th><th>Court</th><th>Purpose</th><th>Outcome</th><th></th></tr></thead>
+        <tbody id="hearings-body"><tr><td colspan="5" class="empty-state">Loading...</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- DOCUMENTS -->
+  <div class="tab-panel" id="panel-documents">
+    <div class="card">
+      <div class="card-header"><h3><i class="fas fa-folder-open"></i> Documents</h3><button class="btn-primary btn-sm" onclick="openDocModal()"><i class="fas fa-upload"></i> Upload</button></div>
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr><th>File</th><th>Category</th><th>Size</th><th>Uploaded</th><th></th></tr></thead>
+        <tbody id="documents-body"><tr><td colspan="5" class="empty-state">Loading...</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- TASKS -->
+  <div class="tab-panel" id="panel-tasks">
+    <div class="card">
+      <div class="card-header"><h3><i class="fas fa-list-check"></i> Tasks</h3><button class="btn-primary btn-sm" onclick="openTaskModal()"><i class="fas fa-plus"></i> Add Task</button></div>
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr><th>Done</th><th>Title</th><th>Due</th><th>Priority</th><th>Assigned</th><th></th></tr></thead>
+        <tbody id="tasks-body"><tr><td colspan="6" class="empty-state">Loading...</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- EXPENSES -->
+  <div class="tab-panel" id="panel-expenses">
+    <div class="card">
+      <div class="card-header"><h3><i class="fas fa-receipt"></i> Expenses</h3><button class="btn-primary btn-sm" onclick="openExpenseModal()"><i class="fas fa-plus"></i> Add Expense</button></div>
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th></th></tr></thead>
+        <tbody id="expenses-body"><tr><td colspan="5" class="empty-state">Loading...</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- PAYMENTS / BILLING -->
+  <div class="tab-panel" id="panel-payments">
+    <div class="card">
+      <div class="card-header"><h3><i class="fas fa-file-invoice-dollar"></i> Invoices &amp; Payments</h3><button class="btn-primary btn-sm" onclick="openInvoiceModal()"><i class="fas fa-plus"></i> New Invoice</button></div>
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr><th>Invoice #</th><th>Description</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th></th></tr></thead>
+        <tbody id="invoices-body"><tr><td colspan="7" class="empty-state">Loading...</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- NOTES -->
+  <div class="tab-panel" id="panel-notes">
+    <div class="card">
+      <div class="card-header"><h3><i class="fas fa-note-sticky"></i> Notes</h3></div>
+      <div class="card-body">
+        <div class="form-group" style="display:flex;gap:10px;align-items:flex-start;">
+          <textarea class="form-control" id="new-note-body" rows="2" placeholder="Add a private note or meeting summary..."></textarea>
+          <button class="btn-primary" onclick="addNote()" style="flex-shrink:0;">Add</button>
+        </div>
+        <div id="notes-list" style="margin-top:16px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIMELINE -->
+  <div class="tab-panel" id="panel-timeline">
+    <div class="card">
+      <div class="card-header"><h3><i class="fas fa-timeline"></i> Timeline</h3></div>
+      <div class="card-body" id="timeline-body"><div class="empty-state">Loading...</div></div>
+    </div>
+  </div>
+</main>
+
+<!-- Hearing Modal -->
+<div class="modal-overlay" id="hearing-modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="fas fa-gavel"></i> Add Hearing</h3><button onclick="closeModal('hearing-modal-overlay')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Hearing Date &amp; Time *</label><input type="datetime-local" class="form-control" id="hearing-date"></div>
+      <div class="form-group"><label>Court</label><input class="form-control" id="hearing-court"></div>
+      <div class="form-group"><label>Purpose</label><input class="form-control" id="hearing-purpose"></div>
+    </div>
+    <div class="modal-footer"><button class="btn-outline" onclick="closeModal('hearing-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveHearing()">Save</button></div>
+  </div>
+</div>
+
+<!-- Hearing Outcome Modal -->
+<div class="modal-overlay" id="outcome-modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="fas fa-clipboard-check"></i> Record Outcome</h3><button onclick="closeModal('outcome-modal-overlay')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="outcome-hearing-id">
+      <div class="form-group"><label>Outcome</label><textarea class="form-control" id="outcome-text" rows="3" placeholder="e.g. Case adjourned to 15 Aug"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn-outline" onclick="closeModal('outcome-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveOutcome()">Save</button></div>
+  </div>
+</div>
+
+<!-- Document Modal -->
+<div class="modal-overlay" id="doc-modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="fas fa-upload"></i> Upload Document</h3><button onclick="closeModal('doc-modal-overlay')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Category</label>
+        <select class="form-control" id="doc-category">
+          <option value="contract">Contract</option>
+          <option value="court_order">Court Order</option>
+          <option value="evidence">Evidence</option>
+          <option value="judgment">Judgment</option>
+          <option value="correspondence">Correspondence</option>
+          <option value="other" selected>Other</option>
+        </select>
+      </div>
+      <div class="form-group"><label>File *</label><input type="file" class="form-control" id="doc-file"></div>
+    </div>
+    <div class="modal-footer"><button class="btn-outline" onclick="closeModal('doc-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveDocument()">Upload</button></div>
+  </div>
+</div>
+
+<!-- Task Modal -->
+<div class="modal-overlay" id="task-modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="fas fa-list-check"></i> Add Task</h3><button onclick="closeModal('task-modal-overlay')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Title *</label><input class="form-control" id="task-title"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Due Date</label><input type="date" class="form-control" id="task-due"></div>
+        <div class="form-group"><label>Priority</label>
+          <select class="form-control" id="task-priority"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label>Assigned To</label><select class="form-control" id="task-assigned"><option value="">Unassigned</option></select></div>
+    </div>
+    <div class="modal-footer"><button class="btn-outline" onclick="closeModal('task-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveTask()">Save</button></div>
+  </div>
+</div>
+
+<!-- Expense Modal -->
+<div class="modal-overlay" id="expense-modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="fas fa-receipt"></i> Add Expense</h3><button onclick="closeModal('expense-modal-overlay')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Description *</label><input class="form-control" id="expense-desc"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Category</label>
+          <select class="form-control" id="expense-category">
+            <option value="filing_fees">Filing Fees</option><option value="transport">Transport</option>
+            <option value="photocopying">Photocopying</option><option value="court_fees">Court Fees</option>
+            <option value="accommodation">Accommodation</option><option value="other" selected>Other</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Amount (TSh) *</label><input type="number" class="form-control" id="expense-amount"></div>
+      </div>
+      <div class="form-group"><label>Date</label><input type="date" class="form-control" id="expense-date"></div>
+    </div>
+    <div class="modal-footer"><button class="btn-outline" onclick="closeModal('expense-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveExpense()">Save</button></div>
+  </div>
+</div>
+
+<!-- Invoice Modal -->
+<div class="modal-overlay" id="invoice-modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="fas fa-file-invoice-dollar"></i> New Invoice</h3><button onclick="closeModal('invoice-modal-overlay')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Description</label><input class="form-control" id="invoice-desc" placeholder="e.g. Legal fees — land dispute filing"></div>
+      <div class="form-group"><label>Total Amount (TSh) *</label><input type="number" class="form-control" id="invoice-amount"></div>
+      <div class="form-group"><label>Due Date</label><input type="date" class="form-control" id="invoice-due"></div>
+    </div>
+    <div class="modal-footer"><button class="btn-outline" onclick="closeModal('invoice-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveInvoice()">Create Invoice</button></div>
+  </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal-overlay" id="payment-modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="fas fa-money-bill-wave"></i> Record Payment</h3><button onclick="closeModal('payment-modal-overlay')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="payment-invoice-id">
+      <div class="form-group"><label>Amount (TSh) *</label><input type="number" class="form-control" id="payment-amount"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Date</label><input type="date" class="form-control" id="payment-date"></div>
+        <div class="form-group"><label>Method</label>
+          <select class="form-control" id="payment-method">
+            <option value="cash">Cash</option><option value="bank_transfer">Bank Transfer</option>
+            <option value="mpesa">Mobile Money</option><option value="cheque">Cheque</option><option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn-outline" onclick="closeModal('payment-modal-overlay')">Cancel</button><button class="btn-primary" onclick="savePayment()">Record Payment</button></div>
+  </div>
+</div>
+
+<!-- Edit Case Modal -->
+<div class="modal-overlay" id="edit-case-modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="fas fa-pen"></i> Edit Case</h3><button onclick="closeModal('edit-case-modal-overlay')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Case Title</label><input class="form-control" id="edit-case-title"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Status</label><select class="form-control" id="edit-case-status"></select></div>
+        <div class="form-group"><label>Assigned Lawyer</label><select class="form-control" id="edit-case-lawyer"><option value="">Unassigned</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Opposing Party</label><input class="form-control" id="edit-case-opposing"></div>
+        <div class="form-group"><label>Court / Jurisdiction</label><input class="form-control" id="edit-case-court"></div>
+      </div>
+      <div class="form-group"><label>Description</label><textarea class="form-control" id="edit-case-description" rows="3"></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn-outline" onclick="closeModal('edit-case-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveEditCase()">Save Changes</button></div>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+const CASE_ID = new URLSearchParams(window.location.search).get('id');
+let currentCase = null;
+let currentUser = null;
+let usersList = [];
+
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+// ---------- TABS ----------
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    loadTabData(btn.dataset.tab);
+  });
+});
+
+async function loadTabData(tab) {
+  try {
+    if (tab === 'hearings') await loadHearings();
+    else if (tab === 'documents') await loadDocuments();
+    else if (tab === 'tasks') await loadTasks();
+    else if (tab === 'expenses') await loadExpenses();
+    else if (tab === 'payments') await loadInvoices();
+    else if (tab === 'notes') await loadNotes();
+    else if (tab === 'timeline') await loadTimeline();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+// ---------- CASE OVERVIEW ----------
+async function loadCase() {
+  if (!CASE_ID) { document.getElementById('case-header').innerHTML = '<div class="empty-state">No case specified</div>'; return; }
+  try {
+    currentCase = await apiGet(`/cases/${CASE_ID}`);
+    renderCaseHeader();
+    renderOverview();
+    document.getElementById('tabs-bar').style.display = 'flex';
+  } catch (err) {
+    document.getElementById('case-header').innerHTML = '<div class="empty-state">Failed to load case</div>';
+    showToast(err.message, 'error');
+  }
+}
+
+function renderCaseHeader() {
+  const c = currentCase;
+  document.getElementById('case-header').innerHTML = `
+    <div class="case-header-top">
+      <div>
+        <h2>${escapeHtml(c.case_number)} — ${escapeHtml(c.case_title)}</h2>
+        <div class="case-sub"><i class="fas fa-user"></i> ${escapeHtml(c.client_name)} &middot; ${escapeHtml(c.case_type_name)}</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span class="badge ${c.status}" style="font-size:12px;padding:5px 14px;">${statusLabel(c.status)}</span>
+        <button class="btn-outline btn-sm" onclick="openEditCaseModal()"><i class="fas fa-pen"></i> Edit</button>
+      </div>
+    </div>
+  `;
+}
+
+async function renderOverview() {
+  const c = currentCase;
+  let nextHearingHtml = '<span style="color:#94a3b8;">None scheduled</span>';
+  try {
+    const hearings = await apiGet(`/cases/${CASE_ID}/hearings`);
+    const upcoming = hearings.filter(h => new Date(h.hearing_date) >= new Date()).sort((a,b) => new Date(a.hearing_date) - new Date(b.hearing_date));
+    if (upcoming.length) nextHearingHtml = fmtDateTime(upcoming[0].hearing_date) + (upcoming[0].court ? ' — ' + escapeHtml(upcoming[0].court) : '');
+  } catch (e) {}
+
+  let balanceHtml = '';
+  if (currentUser.role === 'lawyer') {
+    try {
+      const invoices = await apiGet(`/cases/${CASE_ID}/invoices`);
+      const balance = invoices.reduce((s, i) => s + (parseFloat(i.total_amount) - parseFloat(i.amount_paid)), 0);
+      balanceHtml = `<div><div class="m-label">Outstanding Balance</div><div class="m-value" style="color:${balance > 0 ? 'var(--danger)' : 'var(--success)'};">${fmtCurrency(balance)}</div></div>`;
+    } catch (e) {}
+  }
+
+  document.getElementById('overview-body').innerHTML = `
+    <div class="case-meta-grid">
+      <div><div class="m-label">Client</div><div class="m-value"><a href="/clients" style="color:inherit;">${escapeHtml(c.client_name)}</a></div></div>
+      <div><div class="m-label">Client Phone</div><div class="m-value">${escapeHtml(c.client_phone) || '—'}</div></div>
+      <div><div class="m-label">Case Type</div><div class="m-value">${escapeHtml(c.case_type_name)}</div></div>
+      <div><div class="m-label">Assigned Lawyer</div><div class="m-value">${escapeHtml(c.assigned_lawyer_name) || 'Unassigned'}</div></div>
+      <div><div class="m-label">Opposing Party</div><div class="m-value">${escapeHtml(c.opposing_party) || '—'}</div></div>
+      <div><div class="m-label">Court / Jurisdiction</div><div class="m-value">${escapeHtml(c.court) || '—'}</div></div>
+      <div><div class="m-label">Next Hearing</div><div class="m-value">${nextHearingHtml}</div></div>
+      <div><div class="m-label">Case Opened</div><div class="m-value">${fmtDate(c.created_at)}</div></div>
+      ${balanceHtml}
+    </div>
+    ${c.description ? `<hr style="margin:18px 0;border:none;border-top:1px solid var(--border);"><div class="m-label">Description</div><div style="margin-top:6px;font-size:13.5px;">${escapeHtml(c.description)}</div>` : ''}
+  `;
+}
+
+function openEditCaseModal() {
+  const sel = document.getElementById('edit-case-status');
+  sel.innerHTML = CASE_STATUSES.map(s => `<option value="${s.value}" ${s.value === currentCase.status ? 'selected' : ''}>${s.label}</option>`).join('');
+  const lawyerSel = document.getElementById('edit-case-lawyer');
+  lawyerSel.innerHTML = '<option value="">Unassigned</option>' + usersList.filter(u => u.role === 'lawyer').map(u =>
+    `<option value="${u.id}" ${u.id === currentCase.assigned_lawyer ? 'selected' : ''}>${escapeHtml(u.full_name)}</option>`).join('');
+  document.getElementById('edit-case-title').value = currentCase.case_title || '';
+  document.getElementById('edit-case-opposing').value = currentCase.opposing_party || '';
+  document.getElementById('edit-case-court').value = currentCase.court || '';
+  document.getElementById('edit-case-description').value = currentCase.description || '';
+  document.getElementById('edit-case-modal-overlay').classList.add('show');
+}
+
+async function saveEditCase() {
+  const payload = {
+    caseTitle: document.getElementById('edit-case-title').value.trim(),
+    status: document.getElementById('edit-case-status').value,
+    assignedLawyer: document.getElementById('edit-case-lawyer').value || null,
+    opposingParty: document.getElementById('edit-case-opposing').value.trim(),
+    court: document.getElementById('edit-case-court').value.trim(),
+    description: document.getElementById('edit-case-description').value.trim()
+  };
+  try {
+    currentCase = await apiPut(`/cases/${CASE_ID}`, payload);
+    closeModal('edit-case-modal-overlay');
+    renderCaseHeader();
+    renderOverview();
+    showToast('Case updated');
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+// ---------- HEARINGS ----------
+async function loadHearings() {
+  setLoading('hearings-body');
+  const hearings = await apiGet(`/cases/${CASE_ID}/hearings`);
+  const tbody = document.getElementById('hearings-body');
+  if (!hearings.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No hearings recorded</td></tr>'; return; }
+  tbody.innerHTML = hearings.map(h => `
+    <tr>
+      <td>${fmtDateTime(h.hearing_date)}</td>
+      <td>${escapeHtml(h.court) || '—'}</td>
+      <td>${escapeHtml(h.purpose) || '—'}</td>
+      <td>${escapeHtml(h.outcome) || '<span style="color:#94a3b8;">Pending</span>'}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-icon" onclick="openOutcomeModal(${h.id}, '${(h.outcome||'').replace(/'/g,"\\'")}')" title="Record Outcome"><i class="fas fa-clipboard-check"></i></button>
+        <button class="btn-icon danger" onclick="deleteHearing(${h.id})" title="Delete"><i class="fas fa-trash"></i></button>
+      </td>
+    </tr>
+  `).join('');
+}
+function openHearingModal() {
+  document.getElementById('hearing-date').value = '';
+  document.getElementById('hearing-court').value = '';
+  document.getElementById('hearing-purpose').value = '';
+  document.getElementById('hearing-modal-overlay').classList.add('show');
+}
+async function saveHearing() {
+  const hearingDate = document.getElementById('hearing-date').value;
+  if (!hearingDate) { showToast('Hearing date is required', 'error'); return; }
+  try {
+    await apiPost(`/cases/${CASE_ID}/hearings`, {
+      hearingDate,
+      court: document.getElementById('hearing-court').value.trim(),
+      purpose: document.getElementById('hearing-purpose').value.trim()
+    });
+    closeModal('hearing-modal-overlay');
+    showToast('Hearing added');
+    loadHearings();
+    renderOverview();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+function openOutcomeModal(id, existing) {
+  document.getElementById('outcome-hearing-id').value = id;
+  document.getElementById('outcome-text').value = existing || '';
+  document.getElementById('outcome-modal-overlay').classList.add('show');
+}
+async function saveOutcome() {
+  const id = document.getElementById('outcome-hearing-id').value;
+  try {
+    await apiPut(`/hearings/${id}`, { outcome: document.getElementById('outcome-text').value.trim() });
+    closeModal('outcome-modal-overlay');
+    showToast('Outcome saved');
+    loadHearings();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+async function deleteHearing(id) {
+  if (!confirm('Delete this hearing?')) return;
+  try { await apiDelete(`/hearings/${id}`); showToast('Hearing deleted'); loadHearings(); renderOverview(); }
+  catch (err) { showToast(err.message, 'error'); }
+}
+
+// ---------- DOCUMENTS ----------
+async function loadDocuments() {
+  setLoading('documents-body');
+  const docs = await apiGet(`/cases/${CASE_ID}/documents`);
+  const tbody = document.getElementById('documents-body');
+  if (!docs.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No documents uploaded</td></tr>'; return; }
+  tbody.innerHTML = docs.map(d => `
+    <tr>
+      <td><i class="fas fa-file"></i> ${escapeHtml(d.filename)}</td>
+      <td><span class="badge neutral">${d.category.replace('_',' ')}</span></td>
+      <td>${(d.file_size / 1024).toFixed(0)} KB</td>
+      <td>${fmtDate(d.uploaded_at)}</td>
+      <td style="white-space:nowrap;">
+        <a class="btn-icon" href="/api/documents/${d.id}/download" title="Download"><i class="fas fa-download"></i></a>
+        <button class="btn-icon danger" onclick="deleteDocument(${d.id})" title="Delete"><i class="fas fa-trash"></i></button>
+      </td>
+    </tr>
+  `).join('');
+}
+function openDocModal() {
+  document.getElementById('doc-category').value = 'other';
+  document.getElementById('doc-file').value = '';
+  document.getElementById('doc-modal-overlay').classList.add('show');
+}
+async function saveDocument() {
+  const fileInput = document.getElementById('doc-file');
+  if (!fileInput.files.length) { showToast('Select a file', 'error'); return; }
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+  formData.append('category', document.getElementById('doc-category').value);
+  try {
+    await apiPost(`/cases/${CASE_ID}/documents`, formData);
+    closeModal('doc-modal-overlay');
+    showToast('Document uploaded');
+    loadDocuments();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+async function deleteDocument(id) {
+  if (!confirm('Delete this document?')) return;
+  try { await apiDelete(`/documents/${id}`); showToast('Document deleted'); loadDocuments(); }
+  catch (err) { showToast(err.message, 'error'); }
+}
+
+// ---------- TASKS ----------
+async function loadTasks() {
+  setLoading('tasks-body');
+  const tasks = await apiGet(`/cases/${CASE_ID}/tasks`);
+  const tbody = document.getElementById('tasks-body');
+  if (!tasks.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No tasks yet</td></tr>'; return; }
+  tbody.innerHTML = tasks.map(t => `
+    <tr>
+      <td><input type="checkbox" ${t.status === 'done' ? 'checked' : ''} onchange="toggleTask(${t.id}, this.checked)"></td>
+      <td style="${t.status === 'done' ? 'text-decoration:line-through;color:#94a3b8;' : ''}">${escapeHtml(t.title)}</td>
+      <td style="${isPastDate(t.due_date) && t.status !== 'done' ? 'color:var(--danger);font-weight:600;' : ''}">${t.due_date ? fmtDate(t.due_date) : '—'}</td>
+      <td><span class="priority-${t.priority}">${t.priority}</span></td>
+      <td>${escapeHtml(t.assigned_to_name) || '—'}</td>
+      <td><button class="btn-icon danger" onclick="deleteTask(${t.id})" title="Delete"><i class="fas fa-trash"></i></button></td>
+    </tr>
+  `).join('');
+}
+function openTaskModal() {
+  const sel = document.getElementById('task-assigned');
+  sel.innerHTML = '<option value="">Unassigned</option>' + usersList.map(u => `<option value="${u.id}">${escapeHtml(u.full_name)}</option>`).join('');
+  document.getElementById('task-title').value = '';
+  document.getElementById('task-due').value = '';
+  document.getElementById('task-priority').value = 'medium';
+  document.getElementById('task-modal-overlay').classList.add('show');
+}
+async function saveTask() {
+  const title = document.getElementById('task-title').value.trim();
+  if (!title) { showToast('Title is required', 'error'); return; }
+  try {
+    await apiPost(`/cases/${CASE_ID}/tasks`, {
+      title, dueDate: document.getElementById('task-due').value || null,
+      priority: document.getElementById('task-priority').value,
+      assignedTo: document.getElementById('task-assigned').value || null
+    });
+    closeModal('task-modal-overlay');
+    showToast('Task added');
+    loadTasks();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+async function toggleTask(id, checked) {
+  try { await apiPut(`/tasks/${id}`, { status: checked ? 'done' : 'pending' }); loadTasks(); }
+  catch (err) { showToast(err.message, 'error'); }
+}
+async function deleteTask(id) {
+  if (!confirm('Delete this task?')) return;
+  try { await apiDelete(`/tasks/${id}`); showToast('Task deleted'); loadTasks(); }
+  catch (err) { showToast(err.message, 'error'); }
+}
+
+// ---------- EXPENSES ----------
+async function loadExpenses() {
+  setLoading('expenses-body');
+  const expenses = await apiGet(`/cases/${CASE_ID}/expenses`);
+  const tbody = document.getElementById('expenses-body');
+  if (!expenses.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No expenses recorded</td></tr>'; return; }
+  tbody.innerHTML = expenses.map(e => `
+    <tr>
+      <td>${fmtDate(e.expense_date)}</td>
+      <td>${escapeHtml(e.description)}</td>
+      <td><span class="badge neutral">${e.category.replace('_',' ')}</span></td>
+      <td>${fmtCurrency(e.amount)}</td>
+      <td><button class="btn-icon danger" onclick="deleteExpense(${e.id})" title="Delete"><i class="fas fa-trash"></i></button></td>
+    </tr>
+  `).join('');
+}
+function openExpenseModal() {
+  document.getElementById('expense-desc').value = '';
+  document.getElementById('expense-amount').value = '';
+  document.getElementById('expense-date').value = isoDate(new Date());
+  document.getElementById('expense-modal-overlay').classList.add('show');
+}
+async function saveExpense() {
+  const description = document.getElementById('expense-desc').value.trim();
+  const amount = document.getElementById('expense-amount').value;
+  if (!description || !amount) { showToast('Description and amount are required', 'error'); return; }
+  try {
+    await apiPost(`/cases/${CASE_ID}/expenses`, {
+      description, amount, category: document.getElementById('expense-category').value,
+      expenseDate: document.getElementById('expense-date').value
+    });
+    closeModal('expense-modal-overlay');
+    showToast('Expense recorded');
+    loadExpenses();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+async function deleteExpense(id) {
+  if (!confirm('Delete this expense?')) return;
+  try { await apiDelete(`/expenses/${id}`); showToast('Expense deleted'); loadExpenses(); }
+  catch (err) { showToast(err.message, 'error'); }
+}
+
+// ---------- INVOICES / PAYMENTS ----------
+async function loadInvoices() {
+  setLoading('invoices-body');
+  const invoices = await apiGet(`/cases/${CASE_ID}/invoices`);
+  const tbody = document.getElementById('invoices-body');
+  if (!invoices.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No invoices yet</td></tr>'; return; }
+  tbody.innerHTML = invoices.map(i => {
+    const balance = parseFloat(i.total_amount) - parseFloat(i.amount_paid);
+    return `
+    <tr>
+      <td><strong>${escapeHtml(i.invoice_number)}</strong></td>
+      <td>${escapeHtml(i.description) || '—'}</td>
+      <td>${fmtCurrency(i.total_amount)}</td>
+      <td>${fmtCurrency(i.amount_paid)}</td>
+      <td style="color:${balance > 0 ? 'var(--danger)' : 'var(--success)'};font-weight:600;">${fmtCurrency(balance)}</td>
+      <td><span class="badge ${i.status}">${statusLabel(i.status)}</span></td>
+      <td style="white-space:nowrap;">
+        ${balance > 0 ? `<button class="btn-icon" onclick="openPaymentModal(${i.id})" title="Record Payment"><i class="fas fa-money-bill-wave"></i></button>` : ''}
+        <button class="btn-icon danger" onclick="deleteInvoice(${i.id})" title="Delete"><i class="fas fa-trash"></i></button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+function openInvoiceModal() {
+  document.getElementById('invoice-desc').value = '';
+  document.getElementById('invoice-amount').value = '';
+  document.getElementById('invoice-due').value = '';
+  document.getElementById('invoice-modal-overlay').classList.add('show');
+}
+async function saveInvoice() {
+  const totalAmount = document.getElementById('invoice-amount').value;
+  if (!totalAmount) { showToast('Total amount is required', 'error'); return; }
+  try {
+    await apiPost(`/cases/${CASE_ID}/invoices`, {
+      description: document.getElementById('invoice-desc').value.trim(),
+      totalAmount, dueDate: document.getElementById('invoice-due').value || null
+    });
+    closeModal('invoice-modal-overlay');
+    showToast('Invoice created');
+    loadInvoices();
+    renderOverview();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+function openPaymentModal(invoiceId) {
+  document.getElementById('payment-invoice-id').value = invoiceId;
+  document.getElementById('payment-amount').value = '';
+  document.getElementById('payment-date').value = isoDate(new Date());
+  document.getElementById('payment-modal-overlay').classList.add('show');
+}
+async function savePayment() {
+  const invoiceId = document.getElementById('payment-invoice-id').value;
+  const amount = document.getElementById('payment-amount').value;
+  if (!amount) { showToast('Amount is required', 'error'); return; }
+  try {
+    await apiPost(`/invoices/${invoiceId}/payments`, {
+      amount, paymentDate: document.getElementById('payment-date').value,
+      paymentMethod: document.getElementById('payment-method').value
+    });
+    closeModal('payment-modal-overlay');
+    showToast('Payment recorded');
+    loadInvoices();
+    renderOverview();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+async function deleteInvoice(id) {
+  if (!confirm('Delete this invoice and its payments?')) return;
+  try { await apiDelete(`/invoices/${id}`); showToast('Invoice deleted'); loadInvoices(); renderOverview(); }
+  catch (err) { showToast(err.message, 'error'); }
+}
+
+// ---------- NOTES ----------
+async function loadNotes() {
+  const notes = await apiGet(`/cases/${CASE_ID}/notes`);
+  const list = document.getElementById('notes-list');
+  if (!notes.length) { list.innerHTML = '<div class="empty-state">No notes yet</div>'; return; }
+  list.innerHTML = notes.map(n => `
+    <div style="padding:12px 0;border-bottom:1px solid var(--border);">
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">${escapeHtml(n.author_name) || 'Unknown'} &middot; ${fmtDateTime(n.created_at)}</div>
+      <div style="font-size:13.5px;">${escapeHtml(n.body)}</div>
+    </div>
+  `).join('');
+}
+async function addNote() {
+  const body = document.getElementById('new-note-body').value.trim();
+  if (!body) return;
+  try {
+    await apiPost(`/cases/${CASE_ID}/notes`, { body });
+    document.getElementById('new-note-body').value = '';
+    loadNotes();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+// ---------- TIMELINE ----------
+const TIMELINE_ICONS = { hearing: 'fa-gavel', document: 'fa-file', task: 'fa-check', expense: 'fa-receipt', payment: 'fa-money-bill-wave', note: 'fa-note-sticky' };
+async function loadTimeline() {
+  const body = document.getElementById('timeline-body');
+  body.innerHTML = '<div class="empty-state">Loading...</div>';
+  const events = await apiGet(`/cases/${CASE_ID}/timeline`);
+  if (!events.length) { body.innerHTML = '<div class="empty-state">No activity recorded yet</div>'; return; }
+  body.innerHTML = events.map(e => `
+    <div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #f1f5f9;">
+      <div style="width:32px;height:32px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--sidebar-bg);">
+        <i class="fas ${TIMELINE_ICONS[e.type] || 'fa-circle'}"></i>
+      </div>
+      <div>
+        <div style="font-size:13.5px;">${escapeHtml(e.description)}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${fmtDateTime(e.date)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ---------- INIT ----------
+document.addEventListener('DOMContentLoaded', async () => {
+  currentUser = initPageChrome();
+  if (!currentUser) return;
+
+  if (currentUser.role === 'assistant') {
+    document.getElementById('tab-btn-expenses').style.display = 'none';
+    document.getElementById('tab-btn-payments').style.display = 'none';
+  }
+  if (currentUser.role !== 'lawyer') {
+    document.getElementById('tab-btn-payments').style.display = 'none';
+  }
+
+  try { usersList = await apiGet('/users'); } catch (e) { usersList = []; }
+  await loadCase();
+});
+</script>
+</body>
+</html>
