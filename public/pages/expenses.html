@@ -71,12 +71,7 @@
     <div class="filter-group"><label>To</label><input type="date" id="filter-to"></div>
     <div class="filter-group">
       <label>Category</label>
-      <select id="filter-category">
-        <option value="">All</option>
-        <option value="filing_fees">Filing Fees</option><option value="transport">Transport</option>
-        <option value="photocopying">Photocopying</option><option value="court_fees">Court Fees</option>
-        <option value="accommodation">Accommodation</option><option value="other">Other</option>
-      </select>
+      <select id="filter-category"><option value="">All</option></select>
     </div>
     <button class="btn-gold" onclick="loadExpenses()"><i class="fas fa-search"></i> Filter</button>
     <button class="btn-outline" onclick="clearFilters()"><i class="fas fa-times"></i> Clear</button>
@@ -142,12 +137,21 @@ function clearFilters() {
   loadExpenses();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+async function loadCategoriesLookup() {
+  try {
+    const cats = await apiGet('/expense-categories');
+    document.getElementById('filter-category').innerHTML = '<option value="">All</option>' +
+      cats.map(c => `<option value="${c.name}">${escapeHtml(c.label)}</option>`).join('');
+  } catch (e) {}
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
   const user = initPageChrome();
   if (user && user.role === 'assistant') {
     document.querySelector('.main-content').innerHTML = '<div class="empty-state"><i class="fas fa-lock"></i>You do not have permission to view expenses</div>';
     return;
   }
+  await loadCategoriesLookup();
   loadExpenses();
 });
 </script>

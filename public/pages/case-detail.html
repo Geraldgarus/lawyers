@@ -321,6 +321,8 @@ const CASE_ID = new URLSearchParams(window.location.search).get('id');
 let currentCase = null;
 let currentUser = null;
 let usersList = [];
+let statusesList = [];
+let expenseCategoriesList = [];
 
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 
@@ -413,7 +415,7 @@ async function renderOverview() {
 
 function openEditCaseModal() {
   const sel = document.getElementById('edit-case-status');
-  sel.innerHTML = CASE_STATUSES.map(s => `<option value="${s.value}" ${s.value === currentCase.status ? 'selected' : ''}>${s.label}</option>`).join('');
+  sel.innerHTML = statusesList.map(s => `<option value="${s.name}" ${s.name === currentCase.status ? 'selected' : ''}>${escapeHtml(s.label)}</option>`).join('');
   const lawyerSel = document.getElementById('edit-case-lawyer');
   lawyerSel.innerHTML = '<option value="">Unassigned</option>' + usersList.filter(u => u.role === 'lawyer').map(u =>
     `<option value="${u.id}" ${u.id === currentCase.assigned_lawyer ? 'selected' : ''}>${escapeHtml(u.full_name)}</option>`).join('');
@@ -611,6 +613,8 @@ async function loadExpenses() {
   `).join('');
 }
 function openExpenseModal() {
+  const sel = document.getElementById('expense-category');
+  sel.innerHTML = expenseCategoriesList.map(c => `<option value="${c.name}" ${c.name === 'other' ? 'selected' : ''}>${escapeHtml(c.label)}</option>`).join('');
   document.getElementById('expense-desc').value = '';
   document.getElementById('expense-amount').value = '';
   document.getElementById('expense-date').value = isoDate(new Date());
@@ -762,6 +766,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   try { usersList = await apiGet('/users'); } catch (e) { usersList = []; }
+  try { statusesList = await apiGet('/case-statuses'); } catch (e) { statusesList = []; }
+  try { expenseCategoriesList = await apiGet('/expense-categories'); } catch (e) { expenseCategoriesList = []; }
   await loadCase();
 });
 </script>

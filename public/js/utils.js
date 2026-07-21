@@ -66,14 +66,3 @@ function setLoading(containerId) {
 function statusLabel(status) {
   return String(status || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
-
-const CASE_STATUSES = [
-  { value: 'intake', label: 'Intake' },
-  { value: 'active', label: 'Active' },
-  { value: 'filed', label: 'Filed' },
-  { value: 'in_hearing', label: 'In Hearing' },
-  { value: 'judgment', label: 'Judgment' },
-  { value: 'closed_won', label: 'Closed — Won' },
-  { value: 'closed_lost', label: 'Closed — Lost' },
-  { value: 'closed_settled', label: 'Closed — Settled' }
-];

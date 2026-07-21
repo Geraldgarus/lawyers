@@ -88,6 +88,29 @@ INSERT INTO case_categories (name, code) VALUES
 ON CONFLICT (name) DO NOTHING;
 
 -- ============================================================
+-- CASE STATUSES (editable lookup — not a hardcoded enum)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS case_statuses (
+  id         SERIAL PRIMARY KEY,
+  name       VARCHAR(50)  NOT NULL UNIQUE,   -- slug used as the stored value, e.g. "intake"
+  label      VARCHAR(100) NOT NULL,          -- display text, e.g. "Intake"
+  is_closed  BOOLEAN      NOT NULL DEFAULT FALSE,
+  sort_order INT          NOT NULL DEFAULT 0,
+  is_active  BOOLEAN      NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO case_statuses (name, label, is_closed, sort_order) VALUES
+  ('intake', 'Intake', FALSE, 1),
+  ('active', 'Active', FALSE, 2),
+  ('filed', 'Filed', FALSE, 3),
+  ('in_hearing', 'In Hearing', FALSE, 4),
+  ('judgment', 'Judgment', FALSE, 5),
+  ('closed_won', 'Closed — Won', TRUE, 6),
+  ('closed_lost', 'Closed — Lost', TRUE, 7),
+  ('closed_settled', 'Closed — Settled', TRUE, 8)
+ON CONFLICT (name) DO NOTHING;
+
+-- ============================================================
 -- CASE NUMBER COUNTERS (atomic per type+year sequence)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS case_number_counters (
@@ -106,9 +129,7 @@ CREATE TABLE IF NOT EXISTS cases (
   client_id       INT NOT NULL REFERENCES clients(id) ON DELETE RESTRICT,
   case_title      VARCHAR(255) NOT NULL,
   case_type_id    INT NOT NULL REFERENCES case_categories(id) ON DELETE RESTRICT,
-  status          VARCHAR(30) NOT NULL DEFAULT 'intake'
-                  CHECK (status IN ('intake','active','filed','in_hearing','judgment',
-                                     'closed_won','closed_lost','closed_settled')),
+  status          VARCHAR(50) NOT NULL DEFAULT 'intake' REFERENCES case_statuses(name),
   description     TEXT,
   assigned_lawyer INT REFERENCES users(id) ON DELETE SET NULL,
   opposing_party  VARCHAR(255),
@@ -203,14 +224,32 @@ CREATE TRIGGER trg_tasks_updated_at BEFORE UPDATE ON tasks
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================================
+-- EXPENSE CATEGORIES (editable lookup — not a hardcoded enum)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS expense_categories (
+  id         SERIAL PRIMARY KEY,
+  name       VARCHAR(50)  NOT NULL UNIQUE,   -- slug used as the stored value, e.g. "filing_fees"
+  label      VARCHAR(100) NOT NULL,          -- display text, e.g. "Filing Fees"
+  is_active  BOOLEAN      NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO expense_categories (name, label) VALUES
+  ('filing_fees', 'Filing Fees'),
+  ('transport', 'Transport'),
+  ('photocopying', 'Photocopying'),
+  ('court_fees', 'Court Fees'),
+  ('accommodation', 'Accommodation'),
+  ('other', 'Other')
+ON CONFLICT (name) DO NOTHING;
+
+-- ============================================================
 -- EXPENSES (money OUT)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS expenses (
   id           SERIAL PRIMARY KEY,
   case_id      INT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
   description  VARCHAR(255) NOT NULL,
-  category     VARCHAR(30) NOT NULL DEFAULT 'other'
-               CHECK (category IN ('filing_fees','transport','photocopying','court_fees','accommodation','other')),
+  category     VARCHAR(50) NOT NULL DEFAULT 'other' REFERENCES expense_categories(name),
   amount       NUMERIC(12,2) NOT NULL,
   expense_date DATE NOT NULL DEFAULT CURRENT_DATE,
   created_by   INT REFERENCES users(id) ON DELETE SET NULL,

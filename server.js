@@ -473,6 +473,130 @@ app.delete('/api/case-categories/:id', requireRole('lawyer'), async (req, res) =
 });
 
 // ════════════════════════════════════════════════════════════════════════════
+//  CASE STATUSES
+// ════════════════════════════════════════════════════════════════════════════
+
+function slugify(label) {
+  return String(label).toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
+
+app.get('/api/case-statuses', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM case_statuses WHERE is_active = TRUE ORDER BY sort_order, id');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/case-statuses', requireRole('lawyer'), async (req, res) => {
+  const { label, isClosed } = req.body;
+  if (!label) return res.status(400).json({ error: 'label is required' });
+  const name = slugify(label);
+  if (!name) return res.status(400).json({ error: 'label must contain at least one letter or number' });
+  try {
+    const { rows: maxRows } = await pool.query('SELECT COALESCE(MAX(sort_order), 0) + 1 AS next FROM case_statuses');
+    const { rows } = await pool.query(
+      'INSERT INTO case_statuses (name, label, is_closed, sort_order) VALUES ($1, $2, $3, $4) RETURNING *',
+      [name, label, !!isClosed, maxRows[0].next]
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ error: 'A status with that name already exists' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/case-statuses/:id', requireRole('lawyer'), async (req, res) => {
+  const { label, isClosed, isActive } = req.body;
+  try {
+    const { rows } = await pool.query(
+      `UPDATE case_statuses SET
+        label = COALESCE($1, label), is_closed = COALESCE($2, is_closed), is_active = COALESCE($3, is_active)
+       WHERE id = $4 RETURNING *`,
+      [label, isClosed, isActive, req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Status not found' });
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/case-statuses/:id', requireRole('lawyer'), async (req, res) => {
+  try {
+    const { rowCount } = await pool.query('DELETE FROM case_statuses WHERE id = $1', [req.params.id]);
+    if (!rowCount) return res.status(404).json({ error: 'Status not found' });
+    res.json({ success: true });
+  } catch (err) {
+    if (err.code === '23503') {
+      await pool.query('UPDATE case_statuses SET is_active = FALSE WHERE id = $1', [req.params.id]);
+      return res.json({ success: true, message: 'Status is in use by existing cases — deactivated instead of deleted.' });
+    }
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+//  EXPENSE CATEGORIES
+// ════════════════════════════════════════════════════════════════════════════
+
+app.get('/api/expense-categories', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM expense_categories WHERE is_active = TRUE ORDER BY label');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/expense-categories', requireRole('lawyer'), async (req, res) => {
+  const { label } = req.body;
+  if (!label) return res.status(400).json({ error: 'label is required' });
+  const name = slugify(label);
+  if (!name) return res.status(400).json({ error: 'label must contain at least one letter or number' });
+  try {
+    const { rows } = await pool.query(
+      'INSERT INTO expense_categories (name, label) VALUES ($1, $2) RETURNING *',
+      [name, label]
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ error: 'A category with that name already exists' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/expense-categories/:id', requireRole('lawyer'), async (req, res) => {
+  const { label, isActive } = req.body;
+  try {
+    const { rows } = await pool.query(
+      `UPDATE expense_categories SET label = COALESCE($1, label), is_active = COALESCE($2, is_active)
+       WHERE id = $3 RETURNING *`,
+      [label, isActive, req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Category not found' });
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/expense-categories/:id', requireRole('lawyer'), async (req, res) => {
+  try {
+    const { rowCount } = await pool.query('DELETE FROM expense_categories WHERE id = $1', [req.params.id]);
+    if (!rowCount) return res.status(404).json({ error: 'Category not found' });
+    res.json({ success: true });
+  } catch (err) {
+    if (err.code === '23503') {
+      await pool.query('UPDATE expense_categories SET is_active = FALSE WHERE id = $1', [req.params.id]);
+      return res.json({ success: true, message: 'Category is in use by existing expenses — deactivated instead of deleted.' });
+    }
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
 //  CASES (the hub)
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -602,6 +726,7 @@ app.put('/api/cases/:id', requireRole('lawyer', 'secretary'), async (req, res) =
     await logActivity(req.user.id, req.user.email, 'UPDATE', 'case', req.params.id, before[0], rows[0], req);
     res.json(rows[0]);
   } catch (err) {
+    if (err.code === '23503') return res.status(400).json({ error: 'Invalid status' });
     res.status(500).json({ error: err.message });
   }
 });
@@ -1065,6 +1190,7 @@ app.post('/api/cases/:id/expenses', requireRole('lawyer', 'secretary'), async (r
     );
     res.status(201).json(rows[0]);
   } catch (err) {
+    if (err.code === '23503') return res.status(400).json({ error: 'Invalid category' });
     res.status(500).json({ error: err.message });
   }
 });
@@ -1084,6 +1210,7 @@ app.put('/api/expenses/:id', requireRole('lawyer', 'secretary'), async (req, res
     if (!rows.length) return res.status(404).json({ error: 'Expense not found' });
     res.json(rows[0]);
   } catch (err) {
+    if (err.code === '23503') return res.status(400).json({ error: 'Invalid category' });
     res.status(500).json({ error: err.message });
   }
 });
@@ -1326,7 +1453,14 @@ app.get('/api/dashboard/summary', async (req, res) => {
       ORDER BY t.due_date LIMIT 15
     `);
     const { rows: caseStatusCounts } = await pool.query(`
-      SELECT status, COUNT(*)::int AS count FROM cases GROUP BY status
+      SELECT c.status, COUNT(*)::int AS count, cs.is_closed
+      FROM cases c LEFT JOIN case_statuses cs ON cs.name = c.status
+      GROUP BY c.status, cs.is_closed
+    `);
+    const { rows: activeCountRows } = await pool.query(`
+      SELECT COUNT(*)::int AS count
+      FROM cases c JOIN case_statuses cs ON cs.name = c.status
+      WHERE cs.is_closed = FALSE
     `);
     const { rows: recentActivity } = await pool.query(`
       SELECT * FROM activity_logs ORDER BY created_at DESC LIMIT 15
@@ -1337,6 +1471,7 @@ app.get('/api/dashboard/summary', async (req, res) => {
       upcomingAppointments,
       overdueTasks,
       caseStatusCounts,
+      activeCaseCount: activeCountRows[0].count,
       recentActivity
     };
 
@@ -1399,7 +1534,9 @@ app.get('/api/reports/case-load', requireRole('lawyer'), async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT u.id, u.full_name, COUNT(c.id)::int AS open_cases
-      FROM users u LEFT JOIN cases c ON c.assigned_lawyer = u.id AND c.status NOT LIKE 'closed%'
+      FROM users u
+      LEFT JOIN cases c ON c.assigned_lawyer = u.id
+        AND c.status IN (SELECT name FROM case_statuses WHERE is_closed = FALSE)
       WHERE u.role = 'lawyer'
       GROUP BY u.id, u.full_name
     `);

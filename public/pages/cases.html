@@ -146,13 +146,14 @@ let casesData = [];
 let clientsList = [];
 let categoriesList = [];
 let usersList = [];
+let statusesList = [];
 
 async function loadLookups() {
-  [clientsList, categoriesList] = await Promise.all([apiGet('/clients'), apiGet('/case-categories')]);
+  [clientsList, categoriesList, statusesList] = await Promise.all([apiGet('/clients'), apiGet('/case-categories'), apiGet('/case-statuses')]);
   try { usersList = await apiGet('/users'); } catch (e) { usersList = []; }
 
   const statusSel = document.getElementById('filter-status');
-  statusSel.innerHTML = '<option value="">All Statuses</option>' + CASE_STATUSES.map(s => `<option value="${s.value}">${s.label}</option>`).join('');
+  statusSel.innerHTML = '<option value="">All Statuses</option>' + statusesList.map(s => `<option value="${s.name}">${escapeHtml(s.label)}</option>`).join('');
 
   const typeSel = document.getElementById('filter-type');
   typeSel.innerHTML = '<option value="">All Types</option>' + categoriesList.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');

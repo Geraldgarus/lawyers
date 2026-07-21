@@ -96,6 +96,32 @@
   </div>
 
   <div class="card">
+    <div class="card-header">
+      <h3><i class="fas fa-list-ol"></i> Case Statuses</h3>
+      <button class="btn-primary btn-sm" onclick="openStatusModal()"><i class="fas fa-plus"></i> Add Status</button>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Label</th><th>Counts As</th><th>Status</th><th></th></tr></thead>
+        <tbody id="statuses-body"><tr><td colspan="4" class="empty-state">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fas fa-receipt"></i> Expense Categories</h3>
+      <button class="btn-primary btn-sm" onclick="openExpenseCategoryModal()"><i class="fas fa-plus"></i> Add Category</button>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Label</th><th>Status</th><th></th></tr></thead>
+        <tbody id="expense-categories-body"><tr><td colspan="3" class="empty-state">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="card-header"><h3><i class="fas fa-shield-halved"></i> Security</h3></div>
     <div class="card-body">
       <div class="form-group"><label>Max Login Attempts Before Lockout</label><input type="number" class="form-control" id="max_login_attempts"></div>
@@ -114,6 +140,31 @@
       <div class="form-group"><label>Code (used in case numbers, e.g. "IMM") *</label><input class="form-control" id="category-code" maxlength="5"></div>
     </div>
     <div class="modal-footer"><button class="btn-outline" onclick="closeModal('category-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveCategory()">Save</button></div>
+  </div>
+</div>
+
+<!-- Case Status Modal -->
+<div class="modal-overlay" id="status-modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="fas fa-list-ol"></i> Add Case Status</h3><button onclick="closeModal('status-modal-overlay')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Status Label *</label><input class="form-control" id="status-label" placeholder="e.g. Under Appeal"></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
+        <input type="checkbox" id="status-is-closed"> This status means the case is finished (won't count as active)
+      </label>
+    </div>
+    <div class="modal-footer"><button class="btn-outline" onclick="closeModal('status-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveStatus()">Save</button></div>
+  </div>
+</div>
+
+<!-- Expense Category Modal -->
+<div class="modal-overlay" id="expense-category-modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="fas fa-receipt"></i> Add Expense Category</h3><button onclick="closeModal('expense-category-modal-overlay')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Category Label *</label><input class="form-control" id="expense-category-label" placeholder="e.g. Translation Fees"></div>
+    </div>
+    <div class="modal-footer"><button class="btn-outline" onclick="closeModal('expense-category-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveExpenseCategory()">Save</button></div>
   </div>
 </div>
 
@@ -177,6 +228,76 @@ async function deleteCategory(id) {
   catch (err) { showToast(err.message, 'error'); }
 }
 
+async function loadStatuses() {
+  setLoading('statuses-body');
+  try {
+    const statuses = await apiGet('/case-statuses');
+    const tbody = document.getElementById('statuses-body');
+    tbody.innerHTML = statuses.map(s => `
+      <tr>
+        <td>${escapeHtml(s.label)}</td>
+        <td><span class="badge ${s.is_closed ? 'neutral' : 'info'}">${s.is_closed ? 'Closed' : 'Active/Open'}</span></td>
+        <td><span class="badge ${s.is_active ? 'success' : 'danger'}">${s.is_active ? 'Active' : 'Inactive'}</span></td>
+        <td><button class="btn-icon danger" onclick="deleteStatus(${s.id})" title="Deactivate"><i class="fas fa-ban"></i></button></td>
+      </tr>
+    `).join('');
+  } catch (err) { showToast(err.message, 'error'); }
+}
+function openStatusModal() {
+  document.getElementById('status-label').value = '';
+  document.getElementById('status-is-closed').checked = false;
+  document.getElementById('status-modal-overlay').classList.add('show');
+}
+async function saveStatus() {
+  const label = document.getElementById('status-label').value.trim();
+  if (!label) { showToast('Status label is required', 'error'); return; }
+  try {
+    await apiPost('/case-statuses', { label, isClosed: document.getElementById('status-is-closed').checked });
+    closeModal('status-modal-overlay');
+    showToast('Status added');
+    loadStatuses();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+async function deleteStatus(id) {
+  if (!confirm('Deactivate this status? It will no longer be selectable on cases.')) return;
+  try { const r = await apiDelete(`/case-statuses/${id}`); showToast(r.message || 'Status removed'); loadStatuses(); }
+  catch (err) { showToast(err.message, 'error'); }
+}
+
+async function loadExpenseCategories() {
+  setLoading('expense-categories-body');
+  try {
+    const cats = await apiGet('/expense-categories');
+    const tbody = document.getElementById('expense-categories-body');
+    tbody.innerHTML = cats.map(c => `
+      <tr>
+        <td>${escapeHtml(c.label)}</td>
+        <td><span class="badge ${c.is_active ? 'success' : 'danger'}">${c.is_active ? 'Active' : 'Inactive'}</span></td>
+        <td><button class="btn-icon danger" onclick="deleteExpenseCategory(${c.id})" title="Deactivate"><i class="fas fa-ban"></i></button></td>
+      </tr>
+    `).join('');
+  } catch (err) { showToast(err.message, 'error'); }
+}
+function openExpenseCategoryModal() {
+  document.getElementById('expense-category-label').value = '';
+  document.getElementById('expense-category-modal-overlay').classList.add('show');
+}
+async function saveExpenseCategory() {
+  const label = document.getElementById('expense-category-label').value.trim();
+  if (!label) { showToast('Category label is required', 'error'); return; }
+  try {
+    await apiPost('/expense-categories', { label });
+    closeModal('expense-category-modal-overlay');
+    showToast('Category added');
+    loadExpenseCategories();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+async function deleteExpenseCategory(id) {
+  if (!confirm('Deactivate this category? It will no longer appear when logging expenses.')) return;
+  try { const r = await apiDelete(`/expense-categories/${id}`); showToast(r.message || 'Category removed'); loadExpenseCategories(); }
+  catch (err) { showToast(err.message, 'error'); }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const user = initPageChrome();
   if (user && user.role !== 'lawyer') {
@@ -185,6 +306,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   loadSettings();
   loadCategories();
+  loadStatuses();
+  loadExpenseCategories();
 });
 </script>
 </body>
