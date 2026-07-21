@@ -60,7 +60,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 function protectAPI(req, res, next) {
-  if (req.path === '/auth/login' || req.path === '/health') return next();
+  if (req.path === '/auth/login' || req.path === '/auth/register' || req.path === '/health') return next();
 
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -188,6 +188,33 @@ app.post('/api/auth/login', async (req, res) => {
       fullName: user.full_name
     });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Public self-registration. Always creates an 'assistant' role account —
+// the lowest-privilege tier — regardless of what the client sends. A lawyer
+// can promote the account later via User Management if needed.
+app.post('/api/auth/register', async (req, res) => {
+  const { username, email, password, fullName } = req.body;
+  if (!username || !email || !password || !fullName) {
+    return res.status(400).json({ error: 'username, email, password, and fullName are required' });
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  }
+  try {
+    const hash = await bcrypt.hash(password, 10);
+    const { rows } = await pool.query(
+      `INSERT INTO users (username, email, password_hash, role, full_name)
+       VALUES ($1, $2, $3, 'assistant', $4)
+       RETURNING id, username, email, role, full_name`,
+      [username, email, hash, fullName]
+    );
+    await logActivity(rows[0].id, rows[0].username, 'CREATE', 'user', rows[0].id, null, rows[0], req);
+    res.status(201).json({ success: true, message: 'Account created. You can now log in.' });
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ error: 'Username or email already exists' });
     res.status(500).json({ error: err.message });
   }
 });

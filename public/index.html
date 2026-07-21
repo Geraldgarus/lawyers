@@ -49,6 +49,9 @@
     .btn-login:hover { background: #a17e4c; transform: translateY(-1px); }
     .btn-login:disabled { opacity: 0.6; cursor: default; transform: none; }
     .error-message { color: #ef4444; font-size: 12px; text-align: center; margin-top: 12px; min-height: 14px; }
+    .register-link { text-align: center; margin-top: 20px; font-size: 13px; color: #94A3B8; }
+    .register-link a { color: var(--gold); text-decoration: none; font-weight: 600; }
+    .register-link a:hover { text-decoration: underline; }
     @media (max-width: 768px) {
       .login-card { flex-direction: column; }
       .brand-side { padding: 32px 24px; }
@@ -70,20 +73,53 @@
         </div>
       </div>
       <div class="form-side">
-        <h2>Welcome Back</h2>
-        <p class="subtitle">Sign in to access your dashboard</p>
-        <form id="loginForm">
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" id="loginEmail" placeholder="you@example.com" required>
-          </div>
-          <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="loginPassword" placeholder="Enter your password" required>
-          </div>
-          <button type="submit" class="btn-login" id="submitLogin">Sign In →</button>
-          <div class="error-message" id="loginError"></div>
-        </form>
+        <div id="loginView">
+          <h2>Welcome Back</h2>
+          <p class="subtitle">Sign in to access your dashboard</p>
+          <form id="loginForm">
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="loginEmail" placeholder="you@example.com" required>
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" id="loginPassword" placeholder="Enter your password" required>
+            </div>
+            <button type="submit" class="btn-login" id="submitLogin">Sign In →</button>
+            <div class="error-message" id="loginError"></div>
+          </form>
+          <div class="register-link">Don't have an account? <a href="#" id="showRegisterLink">Register</a></div>
+        </div>
+
+        <div id="registerView" style="display:none;">
+          <h2>Create Account</h2>
+          <p class="subtitle">Register to get started</p>
+          <form id="registerForm">
+            <div class="form-group">
+              <label>Full Name</label>
+              <input type="text" id="regFullName" placeholder="Jane Doe" required>
+            </div>
+            <div class="form-group">
+              <label>Username</label>
+              <input type="text" id="regUsername" placeholder="janedoe" required>
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="regEmail" placeholder="you@example.com" required>
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" id="regPassword" placeholder="At least 6 characters" required>
+            </div>
+            <div class="form-group">
+              <label>Confirm Password</label>
+              <input type="password" id="regConfirmPassword" placeholder="Re-enter password" required>
+            </div>
+            <button type="submit" class="btn-login" id="submitRegister">Create Account →</button>
+            <div class="error-message" id="registerError"></div>
+          </form>
+          <div class="register-link">Already have an account? <a href="#" id="showLoginLink">Sign In</a></div>
+        </div>
       </div>
     </div>
   </div>
@@ -118,9 +154,66 @@
         }));
         window.location.href = '/dashboard';
       } catch (err) {
+        loginError.style.color = '#ef4444';
         loginError.innerText = err.message;
         submitBtn.disabled = false;
         submitBtn.textContent = 'Sign In →';
+      }
+    });
+
+    const loginView = document.getElementById('loginView');
+    const registerView = document.getElementById('registerView');
+
+    document.getElementById('showRegisterLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      loginView.style.display = 'none';
+      registerView.style.display = 'block';
+    });
+    document.getElementById('showLoginLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      registerView.style.display = 'none';
+      loginView.style.display = 'block';
+    });
+
+    const registerForm = document.getElementById('registerForm');
+    const registerError = document.getElementById('registerError');
+
+    registerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fullName = document.getElementById('regFullName').value.trim();
+      const username = document.getElementById('regUsername').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const password = document.getElementById('regPassword').value;
+      const confirmPassword = document.getElementById('regConfirmPassword').value;
+      const submitBtn = document.getElementById('submitRegister');
+
+      registerError.innerText = '';
+      if (password !== confirmPassword) { registerError.innerText = 'Passwords do not match'; return; }
+      if (password.length < 6) { registerError.innerText = 'Password must be at least 6 characters'; return; }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating account...';
+
+      try {
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fullName, username, email, password })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Registration failed');
+
+        registerForm.reset();
+        document.getElementById('loginEmail').value = email;
+        registerView.style.display = 'none';
+        loginView.style.display = 'block';
+        loginError.style.color = '#34D399';
+        loginError.innerText = 'Account created — sign in below.';
+      } catch (err) {
+        registerError.innerText = err.message;
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create Account →';
       }
     });
   </script>
