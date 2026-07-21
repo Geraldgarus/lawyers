@@ -103,6 +103,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
   <div class="stats-row" id="stats-row">
     <div class="stat-card"><div class="stat-label">Active Cases</div><div class="stat-value" id="stat-active">—</div></div>
     <div class="stat-card"><div class="stat-label">Today's Hearings</div><div class="stat-value" id="stat-hearings">—</div></div>
+    <div class="stat-card"><div class="stat-label">Upcoming Appointments</div><div class="stat-value" id="stat-appointments">—</div></div>
     <div class="stat-card"><div class="stat-label">Overdue Tasks</div><div class="stat-value" id="stat-overdue" style="color:var(--danger);">—</div></div>
     <div class="stat-card" id="stat-outstanding-card" style="display:none;"><div class="stat-label">Outstanding Invoices</div><div class="stat-value" id="stat-outstanding" style="color:var(--danger);">—</div></div>
   </div>
@@ -144,6 +145,7 @@ async function loadDashboard() {
     const data = await apiGet('/dashboard/summary');
 
     document.getElementById('stat-hearings').innerText = data.todayHearings.length;
+    document.getElementById('stat-appointments').innerText = data.upcomingAppointments.length;
     document.getElementById('stat-overdue').innerText = data.overdueTasks.length;
     document.getElementById('stat-active').innerText = data.activeCaseCount;
 

@@ -195,21 +195,26 @@ app.post('/api/auth/login', async (req, res) => {
 // Public self-registration. Always creates an 'assistant' role account —
 // the lowest-privilege tier — regardless of what the client sends. A lawyer
 // can promote the account later via User Management if needed.
+// Roles selectable on public self-registration. 'secretary' is intentionally
+// excluded — only these two, and only these two, ever come from this route.
+const SELF_REGISTER_ROLES = ['lawyer', 'assistant'];
+
 app.post('/api/auth/register', async (req, res) => {
-  const { username, email, password, fullName } = req.body;
+  const { username, email, password, fullName, role } = req.body;
   if (!username || !email || !password || !fullName) {
     return res.status(400).json({ error: 'username, email, password, and fullName are required' });
   }
   if (password.length < 6) {
     return res.status(400).json({ error: 'Password must be at least 6 characters' });
   }
+  const finalRole = SELF_REGISTER_ROLES.includes(role) ? role : 'assistant';
   try {
     const hash = await bcrypt.hash(password, 10);
     const { rows } = await pool.query(
       `INSERT INTO users (username, email, password_hash, role, full_name)
-       VALUES ($1, $2, $3, 'assistant', $4)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING id, username, email, role, full_name`,
-      [username, email, hash, fullName]
+      [username, email, hash, finalRole, fullName]
     );
     await logActivity(rows[0].id, rows[0].username, 'CREATE', 'user', rows[0].id, null, rows[0], req);
     res.status(201).json({ success: true, message: 'Account created. You can now log in.' });
