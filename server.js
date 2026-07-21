@@ -295,35 +295,56 @@ app.post('/api/users', requireRole('lawyer'), async (req, res) => {
 });
 
 app.put('/api/users/:id', requireRole('lawyer'), async (req, res) => {
-  const { fullName, phone, role, isActive } = req.body;
+  const { fullName, username, email, phone, role, isActive } = req.body;
   try {
     const { rows } = await pool.query(
       `UPDATE users SET
         full_name = COALESCE($1, full_name),
-        phone     = COALESCE($2, phone),
-        role      = COALESCE($3, role),
-        is_active = COALESCE($4, is_active)
-       WHERE id = $5
+        username  = COALESCE($2, username),
+        email     = COALESCE($3, email),
+        phone     = COALESCE($4, phone),
+        role      = COALESCE($5, role),
+        is_active = COALESCE($6, is_active)
+       WHERE id = $7
        RETURNING id, username, email, role, full_name, phone, is_active`,
-      [fullName, phone, role, isActive, req.params.id]
+      [fullName, username, email, phone, role, isActive, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'User not found' });
     await logActivity(req.user.id, req.user.email, 'UPDATE', 'user', req.params.id, null, rows[0], req);
     res.json(rows[0]);
   } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ error: 'Username or email already in use' });
     res.status(500).json({ error: err.message });
   }
 });
 
+// Hard delete. Guards against removing your own account (would lock you out
+// mid-session) and against removing the last active lawyer account (would
+// lock everyone out of admin functions). All references from other tables
+// (created_by, assigned_to, etc.) are ON DELETE SET NULL, so case/client
+// history is preserved even after the user record itself is gone.
 app.delete('/api/users/:id', requireRole('lawyer'), async (req, res) => {
+  const targetId = parseInt(req.params.id, 10);
+  if (targetId === req.user.id) {
+    return res.status(400).json({ error: 'You cannot delete your own account while logged in.' });
+  }
   try {
-    const { rows } = await pool.query(
-      `UPDATE users SET is_active = FALSE WHERE id = $1 RETURNING id`,
-      [req.params.id]
-    );
-    if (!rows.length) return res.status(404).json({ error: 'User not found' });
-    await logActivity(req.user.id, req.user.email, 'DELETE', 'user', req.params.id, null, null, req);
-    res.json({ success: true, message: 'User deactivated' });
+    const { rows: target } = await pool.query('SELECT role FROM users WHERE id = $1', [targetId]);
+    if (!target.length) return res.status(404).json({ error: 'User not found' });
+
+    if (target[0].role === 'lawyer') {
+      const { rows: lawyerCount } = await pool.query(
+        `SELECT COUNT(*)::int AS count FROM users WHERE role = 'lawyer' AND is_active = TRUE AND id != $1`,
+        [targetId]
+      );
+      if (lawyerCount[0].count === 0) {
+        return res.status(400).json({ error: 'Cannot delete the last remaining lawyer account.' });
+      }
+    }
+
+    await pool.query('DELETE FROM users WHERE id = $1', [targetId]);
+    await logActivity(req.user.id, req.user.email, 'DELETE', 'user', targetId, target[0], null, req);
+    res.json({ success: true, message: 'User deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1478,6 +1499,12 @@ app.get('/api/dashboard/summary', async (req, res) => {
       WHERE a.appointment_date::date >= CURRENT_DATE AND a.appointment_date::date <= CURRENT_DATE + INTERVAL '7 days'
       ORDER BY a.appointment_date LIMIT 10
     `);
+    const { rows: upcomingHearings } = await pool.query(`
+      SELECT h.*, c.case_number, c.case_title, cl.full_name AS client_name
+      FROM hearings h JOIN cases c ON c.id = h.case_id JOIN clients cl ON cl.id = c.client_id
+      WHERE h.hearing_date::date > CURRENT_DATE AND h.hearing_date::date <= CURRENT_DATE + INTERVAL '7 days'
+      ORDER BY h.hearing_date LIMIT 10
+    `);
     const { rows: overdueTasks } = await pool.query(`
       SELECT t.*, c.case_number, c.case_title
       FROM tasks t JOIN cases c ON c.id = t.case_id
@@ -1500,6 +1527,7 @@ app.get('/api/dashboard/summary', async (req, res) => {
 
     const summary = {
       todayHearings,
+      upcomingHearings,
       upcomingAppointments,
       overdueTasks,
       caseStatusCounts,

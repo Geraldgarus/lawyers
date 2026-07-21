@@ -153,7 +153,10 @@ function renderUsers() {
         <button class="btn-icon" onclick="openUserModal(${u.id})" title="Edit"><i class="fas fa-pen"></i></button>
         <button class="btn-icon" onclick="openResetModal(${u.id})" title="Reset Password"><i class="fas fa-key"></i></button>
         ${u.locked_until ? `<button class="btn-icon" onclick="unlockUser(${u.id})" title="Unlock"><i class="fas fa-lock-open"></i></button>` : ''}
-        ${u.is_active ? `<button class="btn-icon danger" onclick="deactivateUser(${u.id})" title="Deactivate"><i class="fas fa-user-slash"></i></button>` : ''}
+        ${u.is_active
+          ? `<button class="btn-icon danger" onclick="deactivateUser(${u.id})" title="Deactivate"><i class="fas fa-user-slash"></i></button>`
+          : `<button class="btn-icon" onclick="activateUser(${u.id})" title="Activate"><i class="fas fa-user-check"></i></button>`}
+        <button class="btn-icon danger" onclick="deleteUser(${u.id})" title="Delete permanently"><i class="fas fa-trash"></i></button>
       </td>
     </tr>
   `).join('');
@@ -170,14 +173,10 @@ function openUserModal(id) {
     document.getElementById('user-email').value = u.email;
     document.getElementById('user-role').value = u.role;
     document.getElementById('user-phone').value = u.phone || '';
-    document.getElementById('user-username').disabled = true;
-    document.getElementById('user-email').disabled = true;
   } else {
     document.getElementById('user-modal-title').innerHTML = '<i class="fas fa-user-plus"></i> Add User';
     ['user-fullname','user-username','user-email','user-phone','user-password'].forEach(i => document.getElementById(i).value = '');
     document.getElementById('user-role').value = 'assistant';
-    document.getElementById('user-username').disabled = false;
-    document.getElementById('user-email').disabled = false;
   }
   document.getElementById('user-modal-overlay').classList.add('show');
 }
@@ -188,6 +187,8 @@ async function saveUser() {
     if (id) {
       await apiPut(`/users/${id}`, {
         fullName: document.getElementById('user-fullname').value.trim(),
+        username: document.getElementById('user-username').value.trim(),
+        email: document.getElementById('user-email').value.trim(),
         role: document.getElementById('user-role').value,
         phone: document.getElementById('user-phone').value.trim()
       });
@@ -232,8 +233,19 @@ async function unlockUser(id) {
 }
 
 async function deactivateUser(id) {
-  if (!confirm('Deactivate this user? They will no longer be able to log in.')) return;
-  try { await apiDelete(`/users/${id}`); showToast('User deactivated'); loadUsers(); }
+  if (!confirm('Deactivate this user? They will no longer be able to log in, but their account and history stay intact.')) return;
+  try { await apiPut(`/users/${id}`, { isActive: false }); showToast('User deactivated'); loadUsers(); }
+  catch (err) { showToast(err.message, 'error'); }
+}
+
+async function activateUser(id) {
+  try { await apiPut(`/users/${id}`, { isActive: true }); showToast('User activated'); loadUsers(); }
+  catch (err) { showToast(err.message, 'error'); }
+}
+
+async function deleteUser(id) {
+  if (!confirm('Permanently delete this user? This cannot be undone — if you just want to revoke their access, use Deactivate instead.')) return;
+  try { await apiDelete(`/users/${id}`); showToast('User deleted'); loadUsers(); }
   catch (err) { showToast(err.message, 'error'); }
 }
 

@@ -103,6 +103,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
   <div class="stats-row" id="stats-row">
     <div class="stat-card"><div class="stat-label">Active Cases</div><div class="stat-value" id="stat-active">—</div></div>
     <div class="stat-card"><div class="stat-label">Today's Hearings</div><div class="stat-value" id="stat-hearings">—</div></div>
+    <div class="stat-card"><div class="stat-label">Upcoming Hearings</div><div class="stat-value" id="stat-upcoming-hearings">—</div></div>
     <div class="stat-card"><div class="stat-label">Upcoming Appointments</div><div class="stat-value" id="stat-appointments">—</div></div>
     <div class="stat-card"><div class="stat-label">Overdue Tasks</div><div class="stat-value" id="stat-overdue" style="color:var(--danger);">—</div></div>
     <div class="stat-card" id="stat-outstanding-card" style="display:none;"><div class="stat-label">Outstanding Invoices</div><div class="stat-value" id="stat-outstanding" style="color:var(--danger);">—</div></div>
@@ -114,20 +115,25 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
       <div class="card-body" id="today-hearings"><div class="empty-state">Loading...</div></div>
     </div>
     <div class="card">
-      <div class="card-header"><h3><i class="fas fa-user-clock"></i> Upcoming Appointments</h3></div>
-      <div class="card-body" id="upcoming-appointments"><div class="empty-state">Loading...</div></div>
+      <div class="card-header"><h3><i class="fas fa-calendar-check"></i> Upcoming Hearings</h3></div>
+      <div class="card-body" id="upcoming-hearings"><div class="empty-state">Loading...</div></div>
     </div>
   </div>
 
   <div class="dash-grid">
     <div class="card">
+      <div class="card-header"><h3><i class="fas fa-user-clock"></i> Upcoming Appointments</h3></div>
+      <div class="card-body" id="upcoming-appointments"><div class="empty-state">Loading...</div></div>
+    </div>
+    <div class="card">
       <div class="card-header"><h3><i class="fas fa-triangle-exclamation"></i> Overdue Tasks</h3></div>
       <div class="card-body" id="overdue-tasks"><div class="empty-state">Loading...</div></div>
     </div>
-    <div class="card">
-      <div class="card-header"><h3><i class="fas fa-chart-pie"></i> Case Status</h3></div>
-      <div class="card-body" id="case-status"><div class="empty-state">Loading...</div></div>
-    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3><i class="fas fa-chart-pie"></i> Case Status</h3></div>
+    <div class="card-body" id="case-status"><div class="empty-state">Loading...</div></div>
   </div>
 
   <div class="card">
@@ -145,6 +151,7 @@ async function loadDashboard() {
     const data = await apiGet('/dashboard/summary');
 
     document.getElementById('stat-hearings').innerText = data.todayHearings.length;
+    document.getElementById('stat-upcoming-hearings').innerText = data.upcomingHearings.length;
     document.getElementById('stat-appointments').innerText = data.upcomingAppointments.length;
     document.getElementById('stat-overdue').innerText = data.overdueTasks.length;
     document.getElementById('stat-active').innerText = data.activeCaseCount;
@@ -161,6 +168,14 @@ async function loadDashboard() {
           <span>${new Date(h.hearing_date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span>
         </div>`).join('')
       : '<div class="empty-state">No hearings today</div>';
+
+    document.getElementById('upcoming-hearings').innerHTML = data.upcomingHearings.length
+      ? data.upcomingHearings.map(h => `
+        <div class="list-row">
+          <span><a href="/case-detail?id=${h.case_id}" style="color:var(--accent-gold);font-weight:600;">${escapeHtml(h.case_number)}</a> — ${escapeHtml(h.client_name)}</span>
+          <span>${fmtDateShort(h.hearing_date)}, ${new Date(h.hearing_date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span>
+        </div>`).join('')
+      : '<div class="empty-state">No hearings in the next 7 days</div>';
 
     document.getElementById('upcoming-appointments').innerHTML = data.upcomingAppointments.length
       ? data.upcomingAppointments.map(a => `
