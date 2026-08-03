@@ -1,8 +1,8 @@
 :root {
-  --sidebar-bg: #4A1D2E;
-  --sidebar-text: #F5F0E8;
-  --sidebar-text-muted: rgba(245,240,232,0.62);
-  --sidebar-border: rgba(245,240,232,0.12);
+  --sidebar-bg: #1E293B;
+  --sidebar-text: #F1F5F9;
+  --sidebar-text-muted: rgba(241,245,249,0.58);
+  --sidebar-border: rgba(241,245,249,0.1);
   --accent-gold: #B8935A;
   --bg-main: #F1F5F9;
   --bg-card: #FFFFFF;
@@ -68,7 +68,7 @@ h1, h2, h3, .logo-text, .card-title { font-family: 'Playfair Display', serif; }
   transition: background 0.2s; border: none; background: none; width: 100%; text-align: left; cursor: pointer;
 }
 .nav-item i { width: 16px; text-align: center; }
-.nav-item:hover { background: rgba(245,240,232,0.08); color: var(--sidebar-text); }
+.nav-item:hover { background: rgba(255,255,255,0.06); color: var(--sidebar-text); }
 .nav-item.active { background: var(--accent-gold); color: white; font-weight: 600; }
 .sidebar-footer { padding: 14px 20px; border-top: 1px solid var(--sidebar-border); font-size: 11px; color: var(--sidebar-text-muted); }
 
