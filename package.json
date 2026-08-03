@@ -1,7 +1,7 @@
 {
   "name": "advocate-suite",
   "version": "1.0.0",
-  "description": "Advocate Suite - Private Lawyer Case Management System",
+  "description": "Tanscar Attorneys - Private Lawyer Case Management System",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

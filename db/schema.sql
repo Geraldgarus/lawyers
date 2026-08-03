@@ -1,4 +1,4 @@
--- db/schema.sql — Advocate Suite (Lawyer Case Management System)
+-- db/schema.sql — Tanscar Attorneys (Lawyer Case Management System)
 -- Idempotent: safe to run on every server boot.
 
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -327,7 +327,7 @@ CREATE TABLE IF NOT EXISTS settings (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 INSERT INTO settings (key, value) VALUES
-  ('office_name', 'Advocate Suite'),
+  ('office_name', 'Tanscar Attorneys'),
   ('office_address', ''),
   ('office_phone', ''),
   ('office_email', ''),

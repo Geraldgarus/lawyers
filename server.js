@@ -1,4 +1,4 @@
-// server.js — Advocate Suite API
+// server.js — Tanscar Attorneys API
 require('dotenv').config();
 
 const express = require('express');
@@ -42,12 +42,12 @@ async function seedDefaultAdmin() {
   await pool.query(
     `INSERT INTO users (username, email, password_hash, role, full_name)
      VALUES ($1, $2, $3, 'lawyer', $4)`,
-    ['admin', 'admin@advocatesuite.local', hash, 'System Administrator']
+    ['admin', 'admin@tanscarattorneys.local', hash, 'System Administrator']
   );
   console.log('==============================================');
   console.log('No users found — created a default admin account:');
   console.log('  Username: admin');
-  console.log('  Email:    admin@advocatesuite.local');
+  console.log('  Email:    admin@tanscarattorneys.local');
   console.log(`  Password: ${tempPassword}`);
   console.log('Log in and change this password immediately via User Management.');
   console.log('==============================================');
@@ -1644,7 +1644,7 @@ setupDatabase()
   .then(() => seedDefaultAdmin())
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`Advocate Suite API running on port ${PORT}`);
+      console.log(`Tanscar Attorneys API running on port ${PORT}`);
     });
   })
   .catch(err => {
