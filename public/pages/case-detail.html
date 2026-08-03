@@ -740,8 +740,8 @@ async function loadTimeline() {
   const events = await apiGet(`/cases/${CASE_ID}/timeline`);
   if (!events.length) { body.innerHTML = '<div class="empty-state">No activity recorded yet</div>'; return; }
   body.innerHTML = events.map(e => `
-    <div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.06);">
-      <div style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--accent-gold);">
+    <div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">
+      <div style="width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,0.05);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--accent-gold);">
         <i class="fas ${TIMELINE_ICONS[e.type] || 'fa-circle'}"></i>
       </div>
       <div>
