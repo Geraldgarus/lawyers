@@ -199,15 +199,46 @@ CREATE TRIGGER trg_cases_updated_at BEFORE UPDATE ON cases
 -- HEARINGS (court dates — created only from inside a case)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS hearings (
-  id           SERIAL PRIMARY KEY,
-  case_id      INT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
-  hearing_date TIMESTAMP NOT NULL,
-  court        VARCHAR(255),
-  purpose      VARCHAR(255),
-  outcome      TEXT,
+  id                       SERIAL PRIMARY KEY,
+  case_id                  INT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+  hearing_date             TIMESTAMP NOT NULL,   -- the court date itself
+  court                    VARCHAR(255),
+  purpose                  VARCHAR(255),          -- legacy, superseded by proceeding_type below
+  outcome                  TEXT,                  -- legacy, superseded by court_order_direction below
+  -- ---- Time Chart & Court Records fields, filled fresh at every court date ----
+  presiding_judge          VARCHAR(255),
+  proceeding_type          VARCHAR(50),           -- Mention, 1st PTC, Mediation, Hearing, Final PTC, Judgment, Ruling
+  counsel_plaintiff        VARCHAR(255),
+  counsel_defendant        VARCHAR(255),
+  court_clerk              VARCHAR(255),
+  last_court_order         TEXT,
+  prayer_sought            TEXT,                  -- Current Prayer/Order/Direction Sought
+  court_order_direction    TEXT,
+  court_start_time         TIME,
+  court_end_time           TIME,
+  consultation_start_time  TIME,
+  consultation_end_time    TIME,
+  record_date              DATE,
+  recorded_by              VARCHAR(255),          -- Recorded By / Advocate Signature
   created_by   INT REFERENCES users(id) ON DELETE SET NULL,
   created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+-- Idempotent migration for databases where the hearings table already existed
+-- before the Time Chart & Court Records fields were added.
+ALTER TABLE hearings ADD COLUMN IF NOT EXISTS presiding_judge          VARCHAR(255);
+ALTER TABLE hearings ADD COLUMN IF NOT EXISTS proceeding_type          VARCHAR(50);
+ALTER TABLE hearings ADD COLUMN IF NOT EXISTS counsel_plaintiff        VARCHAR(255);
+ALTER TABLE hearings ADD COLUMN IF NOT EXISTS counsel_defendant        VARCHAR(255);
+ALTER TABLE hearings ADD COLUMN IF NOT EXISTS court_clerk              VARCHAR(255);
+ALTER TABLE hearings ADD COLUMN IF NOT EXISTS last_court_order         TEXT;
+ALTER TABLE hearings ADD COLUMN IF NOT EXISTS prayer_sought            TEXT;
+ALTER TABLE hearings ADD COLUMN IF NOT EXISTS court_order_direction    TEXT;
+ALTER TABLE hearings ADD COLUMN IF NOT EXISTS court_start_time         TIME;
+ALTER TABLE hearings ADD COLUMN IF NOT EXISTS court_end_time           TIME;
+ALTER TABLE hearings ADD COLUMN IF NOT EXISTS consultation_start_time  TIME;
+ALTER TABLE hearings ADD COLUMN IF NOT EXISTS consultation_end_time    TIME;
+ALTER TABLE hearings ADD COLUMN IF NOT EXISTS record_date              DATE;
+ALTER TABLE hearings ADD COLUMN IF NOT EXISTS recorded_by              VARCHAR(255);
 CREATE INDEX IF NOT EXISTS idx_hearings_case ON hearings(case_id);
 CREATE INDEX IF NOT EXISTS idx_hearings_date ON hearings(hearing_date);
 

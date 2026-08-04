@@ -82,7 +82,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 
   <div class="tabs-bar" id="tabs-bar" style="display:none;">
     <button class="tab-btn active" data-tab="overview">Overview</button>
-    <button class="tab-btn" data-tab="hearings">Hearings</button>
+    <button class="tab-btn" data-tab="hearings">Court Dates</button>
     <button class="tab-btn" data-tab="documents">Documents</button>
     <button class="tab-btn" data-tab="tasks">Tasks</button>
     <button class="tab-btn" data-tab="expenses" id="tab-btn-expenses">Expenses</button>
@@ -96,12 +96,12 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
     <div class="card"><div class="card-body" id="overview-body"></div></div>
   </div>
 
-  <!-- HEARINGS -->
+  <!-- COURT DATES -->
   <div class="tab-panel" id="panel-hearings">
     <div class="card">
-      <div class="card-header"><h3><i class="fas fa-gavel"></i> Hearings</h3><button class="btn-primary btn-sm" onclick="openHearingModal()"><i class="fas fa-plus"></i> Add Hearing</button></div>
+      <div class="card-header"><h3><i class="fas fa-gavel"></i> Court Dates</h3><button class="btn-primary btn-sm" onclick="openHearingModal()"><i class="fas fa-plus"></i> Add Court Date</button></div>
       <div class="table-wrap"><table class="data-table">
-        <thead><tr><th>Date</th><th>Court</th><th>Purpose</th><th>Outcome</th><th></th></tr></thead>
+        <thead><tr><th>Court Date</th><th>Proceeding Type</th><th>Presiding Judge</th><th>Court Order/Direction</th><th></th></tr></thead>
         <tbody id="hearings-body"><tr><td colspan="5" class="empty-state">Loading...</td></tr></tbody>
       </table></div>
     </div>
@@ -174,28 +174,54 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
   </div>
 </main>
 
-<!-- Hearing Modal -->
+<!-- Court Date Modal (Add / Edit) — the Time Chart & Court Records form, filled fresh at every court date -->
 <div class="modal-overlay" id="hearing-modal-overlay">
   <div class="modal">
-    <div class="modal-header"><h3><i class="fas fa-gavel"></i> Add Hearing</h3><button onclick="closeModal('hearing-modal-overlay')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-header"><h3><i class="fas fa-gavel"></i> <span id="hearing-modal-title">Add Court Date</span></h3><button onclick="closeModal('hearing-modal-overlay')"><i class="fas fa-times"></i></button></div>
     <div class="modal-body">
-      <div class="form-group"><label>Hearing Date &amp; Time *</label><input type="datetime-local" class="form-control" id="hearing-date"></div>
-      <div class="form-group"><label>Court</label><input class="form-control" id="hearing-court"></div>
-      <div class="form-group"><label>Purpose</label><input class="form-control" id="hearing-purpose"></div>
+      <input type="hidden" id="hearing-id">
+      <div class="form-row">
+        <div class="form-group"><label>Court Date *</label><input type="date" class="form-control" id="hearing-date"></div>
+        <div class="form-group"><label>Court Name</label><input class="form-control" id="hearing-court"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Court Proceeding Type</label>
+          <select class="form-control" id="hearing-proceeding-type">
+            <option value="">— Select —</option>
+            <option>Mention</option><option>1st PTC</option><option>Mediation</option>
+            <option>Hearing</option><option>Final PTC</option><option>Judgment</option><option>Ruling</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Presiding Judge/Magistrate</label><input class="form-control" id="hearing-presiding-judge"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Court Start Time</label><input type="time" class="form-control" id="hearing-court-start"></div>
+        <div class="form-group"><label>Court End Time</label><input type="time" class="form-control" id="hearing-court-end"></div>
+      </div>
+
+      <div class="tc-section-label"><i class="fas fa-users"></i> Counsel &amp; Clerk</div>
+      <div class="form-row">
+        <div class="form-group"><label>Counsel for Plaintiff/Applicant/Petitioner/Objector</label><input class="form-control" id="hearing-counsel-plaintiff"></div>
+        <div class="form-group"><label>Counsel for Defendant/Respondent</label><input class="form-control" id="hearing-counsel-defendant"></div>
+      </div>
+      <div class="form-group"><label>Court Clerk</label><input class="form-control" id="hearing-court-clerk"></div>
+
+      <div class="tc-section-label"><i class="fas fa-scroll"></i> Orders &amp; Directions</div>
+      <div class="form-group"><label>Last Court Order</label><textarea class="form-control" id="hearing-last-order" rows="2"></textarea></div>
+      <div class="form-group"><label>Current Prayer/Order/Direction Sought</label><textarea class="form-control" id="hearing-prayer" rows="2"></textarea></div>
+      <div class="form-group"><label>Court Order/Direction</label><textarea class="form-control" id="hearing-order-direction" rows="2" placeholder="e.g. Case adjourned to 15 Aug"></textarea></div>
+
+      <div class="tc-section-label"><i class="fas fa-clock"></i> Consultation &amp; Record</div>
+      <div class="form-row">
+        <div class="form-group"><label>Consultation Start Time</label><input type="time" class="form-control" id="hearing-consult-start"></div>
+        <div class="form-group"><label>Consultation End Time</label><input type="time" class="form-control" id="hearing-consult-end"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Record Date</label><input type="date" class="form-control" id="hearing-record-date"></div>
+        <div class="form-group"><label>Recorded By / Advocate Signature</label><input class="form-control" id="hearing-recorded-by"></div>
+      </div>
     </div>
     <div class="modal-footer"><button class="btn-outline" onclick="closeModal('hearing-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveHearing()">Save</button></div>
-  </div>
-</div>
-
-<!-- Hearing Outcome Modal -->
-<div class="modal-overlay" id="outcome-modal-overlay">
-  <div class="modal">
-    <div class="modal-header"><h3><i class="fas fa-clipboard-check"></i> Record Outcome</h3><button onclick="closeModal('outcome-modal-overlay')"><i class="fas fa-times"></i></button></div>
-    <div class="modal-body">
-      <input type="hidden" id="outcome-hearing-id">
-      <div class="form-group"><label>Outcome</label><textarea class="form-control" id="outcome-text" rows="3" placeholder="e.g. Case adjourned to 15 Aug"></textarea></div>
-    </div>
-    <div class="modal-footer"><button class="btn-outline" onclick="closeModal('outcome-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveOutcome()">Save</button></div>
   </div>
 </div>
 
@@ -300,53 +326,15 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
     <div class="modal-header"><h3><i class="fas fa-pen"></i> Edit Case</h3><button onclick="closeModal('edit-case-modal-overlay')"><i class="fas fa-times"></i></button></div>
     <div class="modal-body">
       <div class="form-group"><label>Status</label><select class="form-control" id="edit-case-status"></select></div>
-
-      <div class="tc-section-label"><i class="fas fa-gavel"></i> Court &amp; Proceeding</div>
       <div class="form-row">
-        <div class="form-group"><label>Court Name</label><input class="form-control" id="edit-case-court"></div>
         <div class="form-group"><label>Case Year</label><input type="number" class="form-control" id="edit-case-year"></div>
+        <div class="form-group"><label>Claim Amount</label><input type="number" min="0" step="0.01" class="form-control" id="edit-case-claim-amount"></div>
       </div>
-      <div class="form-row">
-        <div class="form-group"><label>Presiding Judge/Magistrate</label><input class="form-control" id="edit-case-presiding-judge"></div>
-        <div class="form-group"><label>Court Proceeding Type</label>
-          <select class="form-control" id="edit-case-proceeding-type">
-            <option value="">— Select —</option>
-            <option>Mention</option><option>1st PTC</option><option>Mediation</option>
-            <option>Hearing</option><option>Final PTC</option><option>Judgment</option><option>Ruling</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Proceeding Date</label><input type="date" class="form-control" id="edit-case-proceeding-date"></div>
-        <div class="form-group"><label>Court Clerk</label><input class="form-control" id="edit-case-court-clerk"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Court Start Time</label><input type="time" class="form-control" id="edit-case-court-start"></div>
-        <div class="form-group"><label>Court End Time</label><input type="time" class="form-control" id="edit-case-court-end"></div>
-      </div>
+      <div class="form-group"><label>Court / Jurisdiction</label><input class="form-control" id="edit-case-court"></div>
 
-      <div class="tc-section-label"><i class="fas fa-users"></i> Parties &amp; Counsel</div>
+      <div class="tc-section-label"><i class="fas fa-users"></i> Parties</div>
       <div class="form-group"><label>Parties</label><input class="form-control" id="edit-case-parties"></div>
       <div class="form-group"><label>Versus (Opponent)</label><input class="form-control" id="edit-case-opposing"></div>
-      <div class="form-row">
-        <div class="form-group"><label>Counsel for Plaintiff/Applicant/Petitioner/Objector</label><input class="form-control" id="edit-case-counsel-plaintiff"></div>
-        <div class="form-group"><label>Counsel for Defendant/Respondent</label><input class="form-control" id="edit-case-counsel-defendant"></div>
-      </div>
-
-      <div class="tc-section-label"><i class="fas fa-scroll"></i> Orders &amp; Directions</div>
-      <div class="form-group"><label>Last Court Order</label><textarea class="form-control" id="edit-case-last-order" rows="2"></textarea></div>
-      <div class="form-group"><label>Current Prayer/Order/Direction Sought</label><textarea class="form-control" id="edit-case-prayer" rows="2"></textarea></div>
-      <div class="form-group"><label>Court Order/Direction</label><textarea class="form-control" id="edit-case-order-direction" rows="2"></textarea></div>
-
-      <div class="tc-section-label"><i class="fas fa-clock"></i> Consultation &amp; Record</div>
-      <div class="form-row">
-        <div class="form-group"><label>Consultation Start Time</label><input type="time" class="form-control" id="edit-case-consult-start"></div>
-        <div class="form-group"><label>Consultation End Time</label><input type="time" class="form-control" id="edit-case-consult-end"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Record Date</label><input type="date" class="form-control" id="edit-case-record-date"></div>
-        <div class="form-group"><label>Recorded By / Advocate Signature</label><input class="form-control" id="edit-case-recorded-by"></div>
-      </div>
 
       <div class="tc-section-label"><i class="fas fa-file-lines"></i> Summary &amp; Remarks</div>
       <div class="form-group"><label>Summary / Description</label><textarea class="form-control" id="edit-case-description" rows="3"></textarea></div>
@@ -379,6 +367,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     loadTabData(btn.dataset.tab);
   });
 });
+function switchTab(tab) { document.querySelector(`.tab-btn[data-tab="${tab}"]`)?.click(); }
 
 async function loadTabData(tab) {
   try {
@@ -424,11 +413,28 @@ function renderCaseHeader() {
 
 async function renderOverview() {
   const c = currentCase;
-  let nextHearingHtml = '<span style="color:#94a3b8;">None scheduled</span>';
+  let nextCourtDateHtml = '<span style="color:#94a3b8;">None scheduled</span>';
+  let lastAppearanceHtml = '<div class="empty-state" style="padding:16px;">No court dates recorded yet</div>';
   try {
     const hearings = await apiGet(`/cases/${CASE_ID}/hearings`);
-    const upcoming = hearings.filter(h => new Date(h.hearing_date) >= new Date()).sort((a,b) => new Date(a.hearing_date) - new Date(b.hearing_date));
-    if (upcoming.length) nextHearingHtml = fmtDateTime(upcoming[0].hearing_date) + (upcoming[0].court ? ' — ' + escapeHtml(upcoming[0].court) : '');
+    const now = new Date();
+    const upcoming = hearings.filter(h => new Date(h.hearing_date) >= now).sort((a,b) => new Date(a.hearing_date) - new Date(b.hearing_date));
+    if (upcoming.length) nextCourtDateHtml = fmtDate(upcoming[0].hearing_date) + (upcoming[0].court ? ' — ' + escapeHtml(upcoming[0].court) : '');
+
+    // "Last Court Appearance" — the Time Chart now lives per court date
+    // (Court Dates tab), so Overview only summarizes the most recent one.
+    const past = hearings.filter(h => new Date(h.hearing_date) <= now).sort((a,b) => new Date(b.hearing_date) - new Date(a.hearing_date));
+    if (past.length) {
+      const h = past[0];
+      const tc = (label, value) => `<div><div class="m-label">${label}</div><div class="m-value">${value ? escapeHtml(String(value)) : '—'}</div></div>`;
+      lastAppearanceHtml = `
+        <div class="case-meta-grid">
+          ${tc('Court Date', fmtDate(h.hearing_date))}
+          ${tc('Court Proceeding Type', h.proceeding_type)}
+          ${tc('Presiding Judge/Magistrate', h.presiding_judge)}
+          ${tc('Court Order/Direction', h.court_order_direction)}
+        </div>`;
+    }
   } catch (e) {}
 
   let balanceHtml = '';
@@ -440,65 +446,35 @@ async function renderOverview() {
     } catch (e) {}
   }
 
-  const tc = (label, value) => `<div><div class="m-label">${label}</div><div class="m-value">${value ? escapeHtml(String(value)) : '—'}</div></div>`;
-
   document.getElementById('overview-body').innerHTML = `
     <div class="case-meta-grid">
       <div><div class="m-label">Client</div><div class="m-value"><a href="/clients" style="color:inherit;">${escapeHtml(c.client_name)}</a></div></div>
       <div><div class="m-label">Client Phone</div><div class="m-value">${escapeHtml(c.client_phone) || '—'}</div></div>
       <div><div class="m-label">Case Type</div><div class="m-value">${escapeHtml(c.case_type_name)}</div></div>
       <div><div class="m-label">Assigned Lawyer</div><div class="m-value">${escapeHtml(c.assigned_lawyer_name) || 'Unassigned'}</div></div>
+      <div><div class="m-label">Parties</div><div class="m-value">${escapeHtml(c.parties) || '—'}</div></div>
       <div><div class="m-label">Opposing Party</div><div class="m-value">${escapeHtml(c.opposing_party) || '—'}</div></div>
       <div><div class="m-label">Court / Jurisdiction</div><div class="m-value">${escapeHtml(c.court) || '—'}</div></div>
-      <div><div class="m-label">Next Hearing</div><div class="m-value">${nextHearingHtml}</div></div>
+      <div><div class="m-label">Case Year</div><div class="m-value">${escapeHtml(c.case_year) || '—'}</div></div>
+      <div><div class="m-label">Claim Amount</div><div class="m-value">${c.claim_amount != null ? fmtCurrency(c.claim_amount) : '—'}</div></div>
+      <div><div class="m-label">Next Court Date</div><div class="m-value">${nextCourtDateHtml}</div></div>
       <div><div class="m-label">Case Opened</div><div class="m-value">${fmtDate(c.created_at)}</div></div>
       ${balanceHtml}
     </div>
     ${c.description ? `<hr style="margin:18px 0;border:none;border-top:1px solid var(--border);"><div class="m-label">Summary</div><div style="margin-top:6px;font-size:13.5px;">${escapeHtml(c.description)}</div>` : ''}
-
-    <div class="tc-section-label" style="margin-top:22px;"><i class="fas fa-gavel"></i> Time Chart &amp; Court Records</div>
-    <div class="case-meta-grid">
-      ${tc('Case Year', c.case_year)}
-      ${tc('Presiding Judge/Magistrate', c.presiding_judge)}
-      ${tc('Court Proceeding Type', c.proceeding_type)}
-      ${tc('Proceeding Date', c.proceeding_date ? fmtDate(c.proceeding_date) : '')}
-      ${tc('Court Start Time', c.court_start_time)}
-      ${tc('Court End Time', c.court_end_time)}
-      ${tc('Court Clerk', c.court_clerk)}
-      ${tc('Parties', c.parties)}
-      ${tc('Counsel for Plaintiff/Applicant', c.counsel_plaintiff)}
-      ${tc('Counsel for Defendant/Respondent', c.counsel_defendant)}
-      ${tc('Consultation Start Time', c.consultation_start_time)}
-      ${tc('Consultation End Time', c.consultation_end_time)}
-      ${tc('Record Date', c.record_date ? fmtDate(c.record_date) : '')}
-      ${tc('Recorded By / Advocate Signature', c.recorded_by)}
-    </div>
-    ${c.last_court_order ? `<div style="margin-top:14px;"><div class="m-label">Last Court Order</div><div style="margin-top:6px;font-size:13.5px;">${escapeHtml(c.last_court_order)}</div></div>` : ''}
-    ${c.prayer_sought ? `<div style="margin-top:14px;"><div class="m-label">Current Prayer/Order/Direction Sought</div><div style="margin-top:6px;font-size:13.5px;">${escapeHtml(c.prayer_sought)}</div></div>` : ''}
-    ${c.court_order_direction ? `<div style="margin-top:14px;"><div class="m-label">Court Order/Direction</div><div style="margin-top:6px;font-size:13.5px;">${escapeHtml(c.court_order_direction)}</div></div>` : ''}
     ${c.remarks ? `<div style="margin-top:14px;"><div class="m-label">Remarks</div><div style="margin-top:6px;font-size:13.5px;">${escapeHtml(c.remarks)}</div></div>` : ''}
+
+    <div class="tc-section-label" style="margin-top:22px;"><i class="fas fa-gavel"></i> Last Court Appearance</div>
+    ${lastAppearanceHtml}
+    <div style="margin-top:10px;"><button class="btn-outline btn-sm" onclick="switchTab('hearings')"><i class="fas fa-list"></i> View all Court Dates</button></div>
   `;
 }
 
-// Time Chart & Court Records fields — [dbColumn, payloadKey, editElementId, type]
+// Case-level fields (not per-court-date) — [dbColumn, payloadKey, editElementId, type]
 const TIME_CHART_EDIT_FIELDS = [
   ['case_year', 'caseYear', 'edit-case-year', 'text'],
   ['parties', 'parties', 'edit-case-parties', 'text'],
-  ['presiding_judge', 'presidingJudge', 'edit-case-presiding-judge', 'text'],
-  ['proceeding_type', 'proceedingType', 'edit-case-proceeding-type', 'text'],
-  ['proceeding_date', 'proceedingDate', 'edit-case-proceeding-date', 'date'],
-  ['counsel_plaintiff', 'counselPlaintiff', 'edit-case-counsel-plaintiff', 'text'],
-  ['counsel_defendant', 'counselDefendant', 'edit-case-counsel-defendant', 'text'],
-  ['court_clerk', 'courtClerk', 'edit-case-court-clerk', 'text'],
-  ['last_court_order', 'lastCourtOrder', 'edit-case-last-order', 'text'],
-  ['prayer_sought', 'prayerSought', 'edit-case-prayer', 'text'],
-  ['court_order_direction', 'courtOrderDirection', 'edit-case-order-direction', 'text'],
-  ['court_start_time', 'courtStartTime', 'edit-case-court-start', 'time'],
-  ['court_end_time', 'courtEndTime', 'edit-case-court-end', 'time'],
-  ['consultation_start_time', 'consultationStartTime', 'edit-case-consult-start', 'time'],
-  ['consultation_end_time', 'consultationEndTime', 'edit-case-consult-end', 'time'],
-  ['record_date', 'recordDate', 'edit-case-record-date', 'date'],
-  ['recorded_by', 'recordedBy', 'edit-case-recorded-by', 'text'],
+  ['claim_amount', 'claimAmount', 'edit-case-claim-amount', 'text'],
   ['remarks', 'remarks', 'edit-case-remarks', 'text'],
 ];
 function dateInputVal(d) { return d ? isoDate(d) : ''; }
@@ -543,63 +519,91 @@ async function saveEditCase() {
   } catch (err) { showToast(err.message, 'error'); }
 }
 
-// ---------- HEARINGS ----------
+// ---------- COURT DATES (Time Chart & Court Records, one entry per court date) ----------
+let hearingsCache = [];
+
+// [dbColumn, payloadKey, elementId, type]
+const HEARING_FIELDS = [
+  ['court', 'court', 'hearing-court', 'text'],
+  ['proceeding_type', 'proceedingType', 'hearing-proceeding-type', 'text'],
+  ['presiding_judge', 'presidingJudge', 'hearing-presiding-judge', 'text'],
+  ['court_start_time', 'courtStartTime', 'hearing-court-start', 'time'],
+  ['court_end_time', 'courtEndTime', 'hearing-court-end', 'time'],
+  ['counsel_plaintiff', 'counselPlaintiff', 'hearing-counsel-plaintiff', 'text'],
+  ['counsel_defendant', 'counselDefendant', 'hearing-counsel-defendant', 'text'],
+  ['court_clerk', 'courtClerk', 'hearing-court-clerk', 'text'],
+  ['last_court_order', 'lastCourtOrder', 'hearing-last-order', 'text'],
+  ['prayer_sought', 'prayerSought', 'hearing-prayer', 'text'],
+  ['court_order_direction', 'courtOrderDirection', 'hearing-order-direction', 'text'],
+  ['consultation_start_time', 'consultationStartTime', 'hearing-consult-start', 'time'],
+  ['consultation_end_time', 'consultationEndTime', 'hearing-consult-end', 'time'],
+  ['record_date', 'recordDate', 'hearing-record-date', 'date'],
+  ['recorded_by', 'recordedBy', 'hearing-recorded-by', 'text'],
+];
+
 async function loadHearings() {
   setLoading('hearings-body');
-  const hearings = await apiGet(`/cases/${CASE_ID}/hearings`);
+  hearingsCache = await apiGet(`/cases/${CASE_ID}/hearings`);
   const tbody = document.getElementById('hearings-body');
-  if (!hearings.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No hearings recorded</td></tr>'; return; }
-  tbody.innerHTML = hearings.map(h => `
-    <tr>
-      <td>${fmtDateTime(h.hearing_date)}</td>
-      <td>${escapeHtml(h.court) || '—'}</td>
-      <td>${escapeHtml(h.purpose) || '—'}</td>
-      <td>${escapeHtml(h.outcome) || '<span style="color:#94a3b8;">Pending</span>'}</td>
-      <td style="white-space:nowrap;">
-        <button class="btn-icon" onclick="openOutcomeModal(${h.id}, '${(h.outcome||'').replace(/'/g,"\\'")}')" title="Record Outcome"><i class="fas fa-clipboard-check"></i></button>
+  if (!hearingsCache.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No court dates recorded</td></tr>'; return; }
+  tbody.innerHTML = hearingsCache.map(h => `
+    <tr style="cursor:pointer;" onclick="openHearingModal(${h.id})">
+      <td>${fmtDate(h.hearing_date)}</td>
+      <td>${escapeHtml(h.proceeding_type) || '—'}</td>
+      <td>${escapeHtml(h.presiding_judge) || '—'}</td>
+      <td>${escapeHtml(h.court_order_direction) || '<span style="color:#94a3b8;">Pending</span>'}</td>
+      <td style="white-space:nowrap;" onclick="event.stopPropagation()">
+        <button class="btn-icon" onclick="openHearingModal(${h.id})" title="Edit"><i class="fas fa-pen"></i></button>
         <button class="btn-icon danger" onclick="deleteHearing(${h.id})" title="Delete"><i class="fas fa-trash"></i></button>
       </td>
     </tr>
   `).join('');
 }
-function openHearingModal() {
-  document.getElementById('hearing-date').value = '';
-  document.getElementById('hearing-court').value = '';
-  document.getElementById('hearing-purpose').value = '';
+
+function openHearingModal(id) {
+  const h = id ? hearingsCache.find(x => x.id === id) : null;
+  document.getElementById('hearing-id').value = id || '';
+  document.getElementById('hearing-modal-title').textContent = h ? 'Edit Court Date' : 'Add Court Date';
+  document.getElementById('hearing-date').value = h ? dateInputVal(h.hearing_date) : '';
+  HEARING_FIELDS.forEach(([col, , elId, type]) => {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const raw = h ? h[col] : null;
+    if (type === 'date') el.value = dateInputVal(raw);
+    else if (type === 'time') el.value = timeInputVal(raw);
+    else el.value = raw || '';
+  });
   document.getElementById('hearing-modal-overlay').classList.add('show');
 }
+
 async function saveHearing() {
+  const id = document.getElementById('hearing-id').value;
   const hearingDate = document.getElementById('hearing-date').value;
-  if (!hearingDate) { showToast('Hearing date is required', 'error'); return; }
+  if (!hearingDate) { showToast('Court date is required', 'error'); return; }
+  const payload = { hearingDate };
+  HEARING_FIELDS.forEach(([, key, elId]) => {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const v = typeof el.value === 'string' ? el.value.trim() : el.value;
+    payload[key] = v === '' ? null : v;
+  });
   try {
-    await apiPost(`/cases/${CASE_ID}/hearings`, {
-      hearingDate,
-      court: document.getElementById('hearing-court').value.trim(),
-      purpose: document.getElementById('hearing-purpose').value.trim()
-    });
+    if (id) {
+      await apiPut(`/hearings/${id}`, payload);
+      showToast('Court date updated');
+    } else {
+      await apiPost(`/cases/${CASE_ID}/hearings`, payload);
+      showToast('Court date added');
+    }
     closeModal('hearing-modal-overlay');
-    showToast('Hearing added');
     loadHearings();
     renderOverview();
   } catch (err) { showToast(err.message, 'error'); }
 }
-function openOutcomeModal(id, existing) {
-  document.getElementById('outcome-hearing-id').value = id;
-  document.getElementById('outcome-text').value = existing || '';
-  document.getElementById('outcome-modal-overlay').classList.add('show');
-}
-async function saveOutcome() {
-  const id = document.getElementById('outcome-hearing-id').value;
-  try {
-    await apiPut(`/hearings/${id}`, { outcome: document.getElementById('outcome-text').value.trim() });
-    closeModal('outcome-modal-overlay');
-    showToast('Outcome saved');
-    loadHearings();
-  } catch (err) { showToast(err.message, 'error'); }
-}
+
 async function deleteHearing(id) {
-  if (!confirm('Delete this hearing?')) return;
-  try { await apiDelete(`/hearings/${id}`); showToast('Hearing deleted'); loadHearings(); renderOverview(); }
+  if (!confirm('Delete this court date?')) return;
+  try { await apiDelete(`/hearings/${id}`); showToast('Court date deleted'); loadHearings(); renderOverview(); }
   catch (err) { showToast(err.message, 'error'); }
 }
 

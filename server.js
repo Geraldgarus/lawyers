@@ -728,9 +728,7 @@ async function findOrCreateCaseCategory(dbClient, typeName) {
 app.post('/api/cases', requireRole('lawyer', 'secretary'), async (req, res) => {
   const {
     clientId, newClient, caseNumber, caseType, description, opposingParty, court,
-    caseYear, parties, presidingJudge, proceedingType, proceedingDate, counselPlaintiff, counselDefendant,
-    courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTime, courtEndTime,
-    consultationStartTime, consultationEndTime, recordDate, recordedBy, remarks, claimAmount
+    caseYear, parties, remarks, claimAmount
   } = req.body;
   if (!caseNumber || !caseType) {
     return res.status(400).json({ error: 'caseNumber and caseType are required' });
@@ -765,19 +763,13 @@ app.post('/api/cases', requireRole('lawyer', 'secretary'), async (req, res) => {
     const { rows } = await dbClient.query(
       `INSERT INTO cases (
          case_number, client_id, case_title, case_type_id, description, opposing_party, court,
-         case_year, parties, presiding_judge, proceeding_type, proceeding_date, counsel_plaintiff, counsel_defendant,
-         court_clerk, last_court_order, prayer_sought, court_order_direction, court_start_time, court_end_time,
-         consultation_start_time, consultation_end_time, record_date, recorded_by, remarks, claim_amount, created_by
+         case_year, parties, remarks, claim_amount, created_by
        )
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
        RETURNING *`,
       [caseNumber.trim(), finalClientId, finalCaseTitle, caseTypeId, description || null,
        opposingParty || null, court || null,
-       caseYear || null, parties || null, presidingJudge || null, proceedingType || null, proceedingDate || null,
-       counselPlaintiff || null, counselDefendant || null, courtClerk || null, lastCourtOrder || null,
-       prayerSought || null, courtOrderDirection || null, courtStartTime || null, courtEndTime || null,
-       consultationStartTime || null, consultationEndTime || null, recordDate || null, recordedBy || null,
-       remarks || null, claimAmount || null, req.user.id]
+       caseYear || null, parties || null, remarks || null, claimAmount || null, req.user.id]
     );
 
     await dbClient.query('COMMIT');
@@ -797,23 +789,12 @@ app.post('/api/cases', requireRole('lawyer', 'secretary'), async (req, res) => {
 app.put('/api/cases/:id', requireRole('lawyer', 'secretary'), async (req, res) => {
   const {
     caseTitle, status, description, assignedLawyer, opposingParty, court,
-    caseYear, parties, presidingJudge, proceedingType, proceedingDate, counselPlaintiff, counselDefendant,
-    courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTime, courtEndTime,
-    consultationStartTime, consultationEndTime, recordDate, recordedBy, billingAmount, paymentStatus,
-    amountPaid, remarks, claimAmount
+    caseYear, parties, remarks, claimAmount
   } = req.body;
-  // DATE/TIME/NUMERIC columns reject '' outright, so an empty (but present)
-  // form field must become null to fall through the COALESCE below and
-  // leave the existing value untouched — the same as if it weren't sent.
+  // NUMERIC columns reject '' outright, so an empty (but present) form
+  // field must become null to fall through the COALESCE below and leave
+  // the existing value untouched — the same as if it weren't sent.
   const caseYearN = caseYear || null;
-  const proceedingDateN = proceedingDate || null;
-  const courtStartTimeN = courtStartTime || null;
-  const courtEndTimeN = courtEndTime || null;
-  const consultationStartTimeN = consultationStartTime || null;
-  const consultationEndTimeN = consultationEndTime || null;
-  const recordDateN = recordDate || null;
-  const billingAmountN = (billingAmount === '' || billingAmount === undefined) ? null : billingAmount;
-  const amountPaidN = (amountPaid === '' || amountPaid === undefined) ? null : amountPaid;
   const claimAmountN = (claimAmount === '' || claimAmount === undefined) ? null : claimAmount;
   try {
     const { rows: before } = await pool.query('SELECT * FROM cases WHERE id = $1', [req.params.id]);
@@ -829,32 +810,11 @@ app.put('/api/cases/:id', requireRole('lawyer', 'secretary'), async (req, res) =
         court                   = COALESCE($6, court),
         case_year               = COALESCE($7, case_year),
         parties                 = COALESCE($8, parties),
-        presiding_judge         = COALESCE($9, presiding_judge),
-        proceeding_type         = COALESCE($10, proceeding_type),
-        proceeding_date         = COALESCE($11, proceeding_date),
-        counsel_plaintiff       = COALESCE($12, counsel_plaintiff),
-        counsel_defendant       = COALESCE($13, counsel_defendant),
-        court_clerk             = COALESCE($14, court_clerk),
-        last_court_order        = COALESCE($15, last_court_order),
-        prayer_sought           = COALESCE($16, prayer_sought),
-        court_order_direction   = COALESCE($17, court_order_direction),
-        court_start_time        = COALESCE($18, court_start_time),
-        court_end_time          = COALESCE($19, court_end_time),
-        consultation_start_time = COALESCE($20, consultation_start_time),
-        consultation_end_time   = COALESCE($21, consultation_end_time),
-        record_date             = COALESCE($22, record_date),
-        recorded_by             = COALESCE($23, recorded_by),
-        billing_amount          = COALESCE($24, billing_amount),
-        payment_status          = COALESCE($25, payment_status),
-        amount_paid             = COALESCE($26, amount_paid),
-        remarks                 = COALESCE($27, remarks),
-        claim_amount            = COALESCE($28, claim_amount)
-       WHERE id = $29 RETURNING *`,
+        remarks                 = COALESCE($9, remarks),
+        claim_amount            = COALESCE($10, claim_amount)
+       WHERE id = $11 RETURNING *`,
       [caseTitle, status, description, assignedLawyer, opposingParty, court,
-       caseYearN, parties, presidingJudge, proceedingType, proceedingDateN, counselPlaintiff, counselDefendant,
-       courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTimeN, courtEndTimeN,
-       consultationStartTimeN, consultationEndTimeN, recordDateN, recordedBy, billingAmountN, paymentStatus,
-       amountPaidN, remarks, claimAmountN, req.params.id]
+       caseYearN, parties, remarks, claimAmountN, req.params.id]
     );
     await logActivity(req.user.id, req.user.email, 'UPDATE', 'case', req.params.id, before[0], rows[0], req);
     res.json(rows[0]);
@@ -893,7 +853,7 @@ app.get('/api/cases/:id/timeline', async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT hearing_date AS date, 'hearing' AS type,
-             ('Hearing: ' || COALESCE(purpose, 'Court date') || COALESCE(' — Outcome: ' || outcome, '')) AS description
+             ('Court Date: ' || COALESCE(proceeding_type, 'Court date') || COALESCE(' — ' || court_order_direction, '')) AS description
         FROM hearings WHERE case_id = $1
       UNION ALL
       SELECT uploaded_at AS date, 'document' AS type, ('Document uploaded: ' || filename) AS description
@@ -956,13 +916,26 @@ app.get('/api/cases/:id/hearings', async (req, res) => {
 });
 
 app.post('/api/cases/:id/hearings', async (req, res) => {
-  const { hearingDate, court, purpose } = req.body;
-  if (!hearingDate) return res.status(400).json({ error: 'hearingDate is required' });
+  const {
+    hearingDate, court, presidingJudge, proceedingType, counselPlaintiff, counselDefendant,
+    courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTime, courtEndTime,
+    consultationStartTime, consultationEndTime, recordDate, recordedBy
+  } = req.body;
+  if (!hearingDate) return res.status(400).json({ error: 'hearingDate (Court Date) is required' });
   try {
     const { rows } = await pool.query(
-      `INSERT INTO hearings (case_id, hearing_date, court, purpose, created_by)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [req.params.id, hearingDate, court || null, purpose || null, req.user.id]
+      `INSERT INTO hearings (
+         case_id, hearing_date, court, presiding_judge, proceeding_type, counsel_plaintiff, counsel_defendant,
+         court_clerk, last_court_order, prayer_sought, court_order_direction, court_start_time, court_end_time,
+         consultation_start_time, consultation_end_time, record_date, recorded_by, created_by
+       )
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+       RETURNING *`,
+      [req.params.id, hearingDate, court || null, presidingJudge || null, proceedingType || null,
+       counselPlaintiff || null, counselDefendant || null, courtClerk || null, lastCourtOrder || null,
+       prayerSought || null, courtOrderDirection || null, courtStartTime || null, courtEndTime || null,
+       consultationStartTime || null, consultationEndTime || null, recordDate || null, recordedBy || null,
+       req.user.id]
     );
     await logActivity(req.user.id, req.user.email, 'CREATE', 'hearing', rows[0].id, null, rows[0], req);
     res.status(201).json(rows[0]);
@@ -972,16 +945,41 @@ app.post('/api/cases/:id/hearings', async (req, res) => {
 });
 
 app.put('/api/hearings/:id', async (req, res) => {
-  const { hearingDate, court, purpose, outcome } = req.body;
+  const {
+    hearingDate, court, presidingJudge, proceedingType, counselPlaintiff, counselDefendant,
+    courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTime, courtEndTime,
+    consultationStartTime, consultationEndTime, recordDate, recordedBy
+  } = req.body;
+  // TIME/DATE columns reject '' — an empty (but present) form field must
+  // become null so it falls through COALESCE instead of erroring.
+  const courtStartTimeN = courtStartTime || null;
+  const courtEndTimeN = courtEndTime || null;
+  const consultationStartTimeN = consultationStartTime || null;
+  const consultationEndTimeN = consultationEndTime || null;
+  const recordDateN = recordDate || null;
   try {
     const { rows } = await pool.query(
       `UPDATE hearings SET
-        hearing_date = COALESCE($1, hearing_date),
-        court        = COALESCE($2, court),
-        purpose      = COALESCE($3, purpose),
-        outcome      = COALESCE($4, outcome)
-       WHERE id = $5 RETURNING *`,
-      [hearingDate, court, purpose, outcome, req.params.id]
+        hearing_date             = COALESCE($1, hearing_date),
+        court                    = COALESCE($2, court),
+        presiding_judge          = COALESCE($3, presiding_judge),
+        proceeding_type          = COALESCE($4, proceeding_type),
+        counsel_plaintiff        = COALESCE($5, counsel_plaintiff),
+        counsel_defendant        = COALESCE($6, counsel_defendant),
+        court_clerk              = COALESCE($7, court_clerk),
+        last_court_order         = COALESCE($8, last_court_order),
+        prayer_sought            = COALESCE($9, prayer_sought),
+        court_order_direction    = COALESCE($10, court_order_direction),
+        court_start_time         = COALESCE($11, court_start_time),
+        court_end_time           = COALESCE($12, court_end_time),
+        consultation_start_time  = COALESCE($13, consultation_start_time),
+        consultation_end_time    = COALESCE($14, consultation_end_time),
+        record_date              = COALESCE($15, record_date),
+        recorded_by              = COALESCE($16, recorded_by)
+       WHERE id = $17 RETURNING *`,
+      [hearingDate, court, presidingJudge, proceedingType, counselPlaintiff, counselDefendant,
+       courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTimeN, courtEndTimeN,
+       consultationStartTimeN, consultationEndTimeN, recordDateN, recordedBy, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Hearing not found' });
     res.json(rows[0]);
@@ -1094,7 +1092,7 @@ app.get('/api/calendar', async (req, res) => {
     const aWhere = aConditions.length ? 'WHERE ' + aConditions.join(' AND ') : '';
 
     const { rows: hearings } = await pool.query(`
-      SELECT h.id, h.hearing_date AS date, 'hearing' AS type, h.court, h.purpose,
+      SELECT h.id, h.hearing_date AS date, 'hearing' AS type, h.court, h.proceeding_type AS purpose,
              c.id AS case_id, c.case_number, c.case_title, cl.full_name AS client_name
       FROM hearings h
       JOIN cases c ON c.id = h.case_id

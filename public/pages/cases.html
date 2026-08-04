@@ -128,53 +128,15 @@
           <datalist id="case-type-list"></datalist>
         </div>
       </div>
-
-      <div class="tc-section-label"><i class="fas fa-gavel"></i> Court &amp; Proceeding</div>
       <div class="form-row">
-        <div class="form-group"><label>Court Name</label><input class="form-control" id="case-court"></div>
         <div class="form-group"><label>Case Year</label><input type="number" class="form-control" id="case-year" placeholder="e.g. 2026"></div>
+        <div class="form-group"><label>Claim Amount</label><input type="number" min="0" step="0.01" class="form-control" id="case-claim-amount"></div>
       </div>
-      <div class="form-row">
-        <div class="form-group"><label>Presiding Judge/Magistrate</label><input class="form-control" id="case-presiding-judge"></div>
-        <div class="form-group"><label>Court Proceeding Type</label>
-          <select class="form-control" id="case-proceeding-type">
-            <option value="">— Select —</option>
-            <option>Mention</option><option>1st PTC</option><option>Mediation</option>
-            <option>Hearing</option><option>Final PTC</option><option>Judgment</option><option>Ruling</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Proceeding Date</label><input type="date" class="form-control" id="case-proceeding-date"></div>
-        <div class="form-group"><label>Court Clerk</label><input class="form-control" id="case-court-clerk"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Court Start Time</label><input type="time" class="form-control" id="case-court-start"></div>
-        <div class="form-group"><label>Court End Time</label><input type="time" class="form-control" id="case-court-end"></div>
-      </div>
+      <div class="form-group"><label>Court / Jurisdiction</label><input class="form-control" id="case-court"></div>
 
-      <div class="tc-section-label"><i class="fas fa-users"></i> Parties &amp; Counsel</div>
+      <div class="tc-section-label"><i class="fas fa-users"></i> Parties</div>
       <div class="form-group"><label>Parties</label><input class="form-control" id="case-parties" placeholder="Names of all parties involved"></div>
       <div class="form-group"><label>Versus (Opponent)</label><input class="form-control" id="case-opposing"></div>
-      <div class="form-row">
-        <div class="form-group"><label>Counsel for Plaintiff/Applicant/Petitioner/Objector</label><input class="form-control" id="case-counsel-plaintiff"></div>
-        <div class="form-group"><label>Counsel for Defendant/Respondent</label><input class="form-control" id="case-counsel-defendant"></div>
-      </div>
-
-      <div class="tc-section-label"><i class="fas fa-scroll"></i> Orders &amp; Directions</div>
-      <div class="form-group"><label>Last Court Order</label><textarea class="form-control" id="case-last-order" rows="2"></textarea></div>
-      <div class="form-group"><label>Current Prayer/Order/Direction Sought</label><textarea class="form-control" id="case-prayer" rows="2"></textarea></div>
-      <div class="form-group"><label>Court Order/Direction</label><textarea class="form-control" id="case-order-direction" rows="2"></textarea></div>
-
-      <div class="tc-section-label"><i class="fas fa-clock"></i> Consultation &amp; Record</div>
-      <div class="form-row">
-        <div class="form-group"><label>Consultation Start Time</label><input type="time" class="form-control" id="case-consult-start"></div>
-        <div class="form-group"><label>Consultation End Time</label><input type="time" class="form-control" id="case-consult-end"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Record Date</label><input type="date" class="form-control" id="case-record-date"></div>
-        <div class="form-group"><label>Recorded By / Advocate Signature</label><input class="form-control" id="case-recorded-by"></div>
-      </div>
 
       <div class="tc-section-label"><i class="fas fa-file-lines"></i> Summary &amp; Remarks</div>
       <div class="form-group"><label>Summary / Description</label><textarea class="form-control" id="case-description" rows="3" placeholder="A narrative summary of the matter — what happened, what is being claimed, and against whom"></textarea></div>
@@ -239,7 +201,7 @@ function nextActionBadge(c) {
   }
   if (c.next_hearing_date) {
     const days = Math.ceil((new Date(c.next_hearing_date) - new Date()) / 86400000);
-    return `<span style="color:var(--info);font-size:12px;"><i class="fas fa-gavel"></i> Hearing in ${days}d</span>`;
+    return `<span style="color:var(--info);font-size:12px;"><i class="fas fa-gavel"></i> Court date in ${days}d</span>`;
   }
   return '<span style="color:#94a3b8;font-size:12px;">—</span>';
 }
@@ -281,16 +243,10 @@ function toggleNewClient() {
   btn.innerHTML = showing ? '<i class="fas fa-user-plus"></i> Add New Client Instead' : '<i class="fas fa-arrow-left"></i> Use Existing Client Instead';
 }
 
-// Time Chart & Court Records fields — shared between reset-on-open and the save payload.
+// Case-level fields (not per-court-date) — shared between reset-on-open and the save payload.
 const TIME_CHART_FIELDS = [
-  ['case-year', 'caseYear'], ['case-parties', 'parties'], ['case-presiding-judge', 'presidingJudge'],
-  ['case-proceeding-type', 'proceedingType'], ['case-proceeding-date', 'proceedingDate'],
-  ['case-counsel-plaintiff', 'counselPlaintiff'], ['case-counsel-defendant', 'counselDefendant'],
-  ['case-court-clerk', 'courtClerk'], ['case-last-order', 'lastCourtOrder'], ['case-prayer', 'prayerSought'],
-  ['case-order-direction', 'courtOrderDirection'], ['case-court-start', 'courtStartTime'],
-  ['case-court-end', 'courtEndTime'], ['case-consult-start', 'consultationStartTime'],
-  ['case-consult-end', 'consultationEndTime'], ['case-record-date', 'recordDate'],
-  ['case-recorded-by', 'recordedBy'], ['case-remarks', 'remarks'],
+  ['case-year', 'caseYear'], ['case-parties', 'parties'], ['case-claim-amount', 'claimAmount'],
+  ['case-remarks', 'remarks'],
 ];
 
 function openCaseModal() {
