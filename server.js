@@ -687,11 +687,12 @@ app.get('/api/cases/:id', async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT c.*, cl.full_name AS client_name, cl.phone AS client_phone, cl.email AS client_email,
-        cc.name AS case_type_name, u.full_name AS assigned_lawyer_name
+        cc.name AS case_type_name, u.full_name AS assigned_lawyer_name, cb.full_name AS created_by_name
       FROM cases c
       JOIN clients cl ON cl.id = c.client_id
       JOIN case_categories cc ON cc.id = c.case_type_id
       LEFT JOIN users u ON u.id = c.assigned_lawyer
+      LEFT JOIN users cb ON cb.id = c.created_by
       WHERE c.id = $1
     `, [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Case not found' });

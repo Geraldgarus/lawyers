@@ -225,6 +225,18 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
   </div>
 </div>
 
+<!-- View Court Date Modal — full Time Chart & Court Records detail, read-only -->
+<div class="modal-overlay" id="view-hearing-modal-overlay">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-header"><h3><i class="fas fa-file-lines"></i> Time Chart and Court Records</h3><button onclick="closeModal('view-hearing-modal-overlay')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body" id="view-hearing-body"></div>
+    <div class="modal-footer">
+      <button class="btn-outline" onclick="closeModal('view-hearing-modal-overlay')">Close</button>
+      <button class="btn-primary" id="view-hearing-print-btn"><i class="fas fa-print"></i> Print</button>
+    </div>
+  </div>
+</div>
+
 <!-- Document Modal -->
 <div class="modal-overlay" id="doc-modal-overlay">
   <div class="modal">
@@ -553,6 +565,8 @@ async function loadHearings() {
       <td>${escapeHtml(h.presiding_judge) || '—'}</td>
       <td>${escapeHtml(h.court_order_direction) || '<span style="color:#94a3b8;">Pending</span>'}</td>
       <td style="white-space:nowrap;" onclick="event.stopPropagation()">
+        <button class="btn-icon" onclick="viewHearing(${h.id})" title="View"><i class="fas fa-eye"></i></button>
+        <button class="btn-icon" onclick="printHearing(${h.id})" title="Print"><i class="fas fa-print"></i></button>
         <button class="btn-icon" onclick="openHearingModal(${h.id})" title="Edit"><i class="fas fa-pen"></i></button>
         <button class="btn-icon danger" onclick="deleteHearing(${h.id})" title="Delete"><i class="fas fa-trash"></i></button>
       </td>
@@ -605,6 +619,133 @@ async function deleteHearing(id) {
   if (!confirm('Delete this court date?')) return;
   try { await apiDelete(`/hearings/${id}`); showToast('Court date deleted'); loadHearings(); renderOverview(); }
   catch (err) { showToast(err.message, 'error'); }
+}
+
+// ---------- VIEW / PRINT — Time Chart and Court Records, full detail ----------
+function fmtTimeStr(t) {
+  if (!t) return '—';
+  const [h, m] = String(t).split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}
+
+// Exact field names from the firm's Time Chart and Court Records sheet —
+// case-level fields come from currentCase, per-visit fields from the
+// selected court date (hearing) record.
+function buildTimeChartFields(h) {
+  const c = currentCase;
+  return [
+    ['Court Name', h.court],
+    ['Case Type', c.case_type_name],
+    ['Case Number', c.case_number],
+    ['Case Year', c.case_year],
+    ['Parties', c.parties],
+    ['Versus (Opponent)', c.opposing_party],
+    ['Presiding Judge/Magistrate', h.presiding_judge],
+    ['Court Proceeding Type', h.proceeding_type],
+    ['Proceeding Date', h.hearing_date ? fmtDate(h.hearing_date) : null],
+    ['Counsel for Plaintiff/Applicant/Petitioner/Objector', h.counsel_plaintiff],
+    ['Counsel for Defendant/Respondent', h.counsel_defendant],
+    ['Court Clerk', h.court_clerk],
+    ['Last Court Order', h.last_court_order],
+    ['Current Prayer/Order/Direction Sought', h.prayer_sought],
+    ['Court Order/Direction', h.court_order_direction],
+    ['Court Start Time', h.court_start_time ? fmtTimeStr(h.court_start_time) : null],
+    ['Court End Time', h.court_end_time ? fmtTimeStr(h.court_end_time) : null],
+    ['Consultation Start Time', h.consultation_start_time ? fmtTimeStr(h.consultation_start_time) : null],
+    ['Consultation End Time', h.consultation_end_time ? fmtTimeStr(h.consultation_end_time) : null],
+    ['Record Date', h.record_date ? fmtDate(h.record_date) : null],
+    ['Recorded By / Advocate Signature', h.recorded_by],
+    ['Case Status', c.status ? statusLabel(c.status) : null],
+    ['Remarks', c.remarks],
+    ['Created By', c.created_by_name],
+    ['Created Date', c.created_at ? fmtDate(c.created_at) : null],
+    ['Last Updated', c.updated_at ? fmtDate(c.updated_at) : null],
+  ];
+}
+
+function viewHearing(id) {
+  const h = hearingsCache.find(x => x.id === id);
+  if (!h) return;
+  const fields = buildTimeChartFields(h);
+  document.getElementById('view-hearing-body').innerHTML = fields.map(([label, value]) => `
+    <div style="display:flex;justify-content:space-between;gap:16px;padding:9px 0;border-bottom:1px solid var(--border);">
+      <div style="color:var(--text-muted);font-size:12.5px;">${escapeHtml(label)}</div>
+      <div style="font-weight:600;font-size:13.5px;text-align:right;">${value ? escapeHtml(String(value)) : '—'}</div>
+    </div>
+  `).join('');
+  document.getElementById('view-hearing-print-btn').onclick = () => printHearing(id);
+  document.getElementById('view-hearing-modal-overlay').classList.add('show');
+}
+
+function printHearing(id) {
+  const h = hearingsCache.find(x => x.id === id);
+  if (!h) return;
+  const fields = buildTimeChartFields(h);
+  const win = window.open('', '_blank', 'width=850,height=1000');
+  if (!win) { showToast('Please allow popups to print', 'error'); return; }
+
+  const rows = fields.map(([label, value]) => `
+    <tr><td class="tc-label">${escapeHtml(label)}</td><td class="tc-value">${value ? escapeHtml(String(value)) : ''}</td></tr>
+  `).join('');
+
+  win.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Time Chart and Court Records — ${escapeHtml(currentCase.case_number)}</title>
+      <style>
+        @page { size: A4; margin: 16mm 18mm; }
+        * { box-sizing: border-box; }
+        body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; padding: 0; }
+        .letterhead { text-align: center; border-bottom: 2px solid #1a1a1a; padding-bottom: 10px; margin-bottom: 18px; }
+        .letterhead .swash { font-size: 11px; letter-spacing: 3px; color: #444; }
+        .letterhead h1 { font-family: 'Playfair Display', Georgia, serif; font-size: 34px; font-weight: 700; margin: 4px 0 2px; letter-spacing: 0.5px; }
+        .letterhead .tagline { font-size: 13px; font-style: italic; margin-bottom: 10px; }
+        .letterhead .addr { font-size: 11.5px; line-height: 1.5; }
+        .letterhead .addr a { color: #1a1a1a; text-decoration: underline; }
+        h2.doc-title { font-size: 16px; text-decoration: underline; margin: 18px 0 14px; }
+        table.tc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        table.tc-table td { padding: 7px 4px; border-bottom: 1px solid #ddd; vertical-align: top; }
+        td.tc-label { width: 46%; color: #333; }
+        td.tc-value { width: 54%; font-weight: 600; }
+        .sig-row { display: flex; justify-content: space-between; margin-top: 50px; }
+        .sig-box { width: 45%; border-top: 1px solid #1a1a1a; padding-top: 6px; font-size: 12px; text-align: center; }
+        @media print { body { -webkit-print-color-adjust: exact; } }
+      </style>
+    </head>
+    <body>
+      <div class="letterhead">
+        <div class="swash">~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</div>
+        <h1>Tanscar Attorneys</h1>
+        <div class="tagline">Commissioners for Oaths and Notaries Public</div>
+        <div class="addr">
+          Tanscar House, Plot no. 502, Block 42.<br>
+          Bwawani/Mkandu Street,<br>
+          Kinondoni District.<br>
+          P.O.Box 72144,<br>
+          Dar-Es-Salaam, Tanzania<br>
+          Telephone: +255-222-922207 &nbsp; Fax: +255-222-922207<br>
+          Email: info@tanscarattorneys.co.tz &nbsp; Website: http://www.tanscarattorneys.co.tz/
+        </div>
+      </div>
+
+      <h2 class="doc-title">TIME CHART AND COURT RECORDS</h2>
+
+      <table class="tc-table">${rows}</table>
+
+      <div class="sig-row">
+        <div class="sig-box">Advocate Signature</div>
+        <div class="sig-box">Date</div>
+      </div>
+
+      <script>window.onload = function() { setTimeout(function(){ window.print(); }, 300); };<\/script>
+    </body>
+    </html>
+  `);
+  win.document.close();
 }
 
 // ---------- DOCUMENTS ----------
