@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cases - Tanscar Attorneys</title>
+<title>Time Chart and Court Records - Tanscar Attorneys</title>
 <link rel="stylesheet" href="../css/style.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,7 +27,7 @@
     <a href="/dashboard" class="nav-item" data-page="dashboard"><i class="fas fa-table-columns"></i> Dashboard</a>
     <div class="nav-section-label">Practice</div>
     <a href="/clients" class="nav-item" data-page="clients"><i class="fas fa-address-book"></i> Clients</a>
-    <a href="/cases" class="nav-item" data-page="cases"><i class="fas fa-suitcase"></i> Cases</a>
+    <a href="/cases" class="nav-item" data-page="cases"><i class="fas fa-suitcase"></i> Time Chart and Court Records</a>
     <a href="/calendar" class="nav-item" data-page="calendar"><i class="fas fa-calendar-days"></i> Calendar</a>
     <a href="/documents" class="nav-item" data-page="documents"><i class="fas fa-folder-open"></i> Documents</a>
     <a href="/tasks" class="nav-item" data-page="tasks"><i class="fas fa-list-check"></i> Tasks</a>
@@ -50,7 +50,7 @@
 <nav class="navbar">
   <div class="navbar-left">
     <button class="hamburger" id="hamburger-btn"><span class="hb-bar"></span><span class="hb-bar"></span><span class="hb-bar"></span></button>
-    <div><div class="page-title">Cases</div><div class="page-subtitle">All legal matters</div></div>
+    <div><div class="page-title">Time Chart and Court Records</div><div class="page-subtitle">All legal matters</div></div>
   </div>
   <div class="navbar-right">
     <div class="user-dropdown">
@@ -127,17 +127,61 @@
           <input class="form-control" id="case-type" placeholder="e.g. Civil, Criminal, Land...">
         </div>
       </div>
-      <div class="form-row">
-        <div class="form-group"><label>Case Year</label><input type="number" class="form-control" id="case-year" placeholder="e.g. 2026"></div>
-        <div class="form-group"><label>Claim Amount</label><input type="number" min="0" step="0.01" class="form-control" id="case-claim-amount"></div>
-      </div>
-      <div class="form-group"><label>Court / Jurisdiction</label><input class="form-control" id="case-court"></div>
+      <div class="form-group"><label>Case Status</label><select class="form-control" id="case-status"></select></div>
 
-      <div class="tc-section-label"><i class="fas fa-users"></i> Parties</div>
+      <div class="tc-section-label"><i class="fas fa-gavel"></i> Court &amp; Proceeding</div>
+      <div class="form-row">
+        <div class="form-group"><label>Court Name</label><input class="form-control" id="case-court"></div>
+        <div class="form-group"><label>Case Year</label><input type="number" class="form-control" id="case-year" placeholder="e.g. 2026"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Presiding Judge/Magistrate</label><input class="form-control" id="case-presiding-judge"></div>
+        <div class="form-group"><label>Court Proceeding Type</label>
+          <select class="form-control" id="case-proceeding-type">
+            <option value="">— Select —</option>
+            <option>Mention</option><option>1st PTC</option><option>Mediation</option>
+            <option>Hearing</option><option>Final PTC</option><option>Judgment</option><option>Ruling</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Proceeding Date</label><input type="date" class="form-control" id="case-proceeding-date"></div>
+        <div class="form-group"><label>Court Clerk</label><input class="form-control" id="case-court-clerk"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Court Start Time</label><input type="time" class="form-control" id="case-court-start"></div>
+        <div class="form-group"><label>Court End Time</label><input type="time" class="form-control" id="case-court-end"></div>
+      </div>
+
+      <div class="tc-section-label"><i class="fas fa-users"></i> Parties &amp; Counsel</div>
       <div class="form-group"><label>Parties</label><input class="form-control" id="case-parties" placeholder="Names of all parties involved"></div>
       <div class="form-group"><label>Versus (Opponent)</label><input class="form-control" id="case-opposing"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Counsel for Plaintiff/Applicant/Petitioner/Objector</label><input class="form-control" id="case-counsel-plaintiff"></div>
+        <div class="form-group"><label>Counsel for Defendant/Respondent</label><input class="form-control" id="case-counsel-defendant"></div>
+      </div>
+
+      <div class="tc-section-label"><i class="fas fa-scroll"></i> Orders &amp; Directions</div>
+      <div class="form-group"><label>Last Court Order</label><textarea class="form-control" id="case-last-order" rows="2"></textarea></div>
+      <div class="form-group"><label>Current Prayer/Order/Direction Sought</label><textarea class="form-control" id="case-prayer" rows="2"></textarea></div>
+      <div class="form-group"><label>Court Order/Direction</label><textarea class="form-control" id="case-order-direction" rows="2"></textarea></div>
+      <div class="form-group">
+        <label><i class="fas fa-calendar-check" style="color:var(--accent-gold);"></i> Next Court Date</label>
+        <input type="date" class="form-control" id="case-next-court-date">
+      </div>
+
+      <div class="tc-section-label"><i class="fas fa-clock"></i> Consultation &amp; Record</div>
+      <div class="form-row">
+        <div class="form-group"><label>Consultation Start Time</label><input type="time" class="form-control" id="case-consult-start"></div>
+        <div class="form-group"><label>Consultation End Time</label><input type="time" class="form-control" id="case-consult-end"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Record Date</label><input type="date" class="form-control" id="case-record-date"></div>
+        <div class="form-group"><label>Recorded By / Advocate Signature</label><input class="form-control" id="case-recorded-by"></div>
+      </div>
 
       <div class="tc-section-label"><i class="fas fa-file-lines"></i> Summary &amp; Remarks</div>
+      <div class="form-group"><label>Claim Amount</label><input type="number" min="0" step="0.01" class="form-control" id="case-claim-amount"></div>
       <div class="form-group"><label>Summary / Description</label><textarea class="form-control" id="case-description" rows="3" placeholder="A narrative summary of the matter — what happened, what is being claimed, and against whom"></textarea></div>
       <div class="form-group"><label>Remarks</label><textarea class="form-control" id="case-remarks" rows="2" placeholder="Additional comments or observations"></textarea></div>
     </div>
@@ -165,6 +209,9 @@ async function loadLookups() {
 
   const typeSel = document.getElementById('filter-type');
   typeSel.innerHTML = '<option value="">All Types</option>' + categoriesList.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+
+  const caseStatusSel = document.getElementById('case-status');
+  caseStatusSel.innerHTML = statusesList.map(s => `<option value="${s.name}">${escapeHtml(s.label)}</option>`).join('');
 
   const clientSel = document.getElementById('case-client-select');
   clientSel.innerHTML = '<option value="">— Select existing client —</option>' +
@@ -240,10 +287,21 @@ function toggleNewClient() {
   btn.innerHTML = showing ? '<i class="fas fa-user-plus"></i> Add New Client Instead' : '<i class="fas fa-arrow-left"></i> Use Existing Client Instead';
 }
 
-// Case-level fields (not per-court-date) — shared between reset-on-open and the save payload.
+// Every Time Chart & Court Records field on the New Case form — this first
+// pass also becomes the case's first Court Date entry (see server.js), so
+// it mirrors HEARING_FIELDS on case-detail.html plus the case-only fields
+// (Case Year, Parties, Claim Amount, Remarks).
 const TIME_CHART_FIELDS = [
   ['case-year', 'caseYear'], ['case-parties', 'parties'], ['case-claim-amount', 'claimAmount'],
   ['case-remarks', 'remarks'],
+  ['case-presiding-judge', 'presidingJudge'], ['case-proceeding-type', 'proceedingType'],
+  ['case-proceeding-date', 'proceedingDate'], ['case-court-clerk', 'courtClerk'],
+  ['case-court-start', 'courtStartTime'], ['case-court-end', 'courtEndTime'],
+  ['case-counsel-plaintiff', 'counselPlaintiff'], ['case-counsel-defendant', 'counselDefendant'],
+  ['case-last-order', 'lastCourtOrder'], ['case-prayer', 'prayerSought'],
+  ['case-order-direction', 'courtOrderDirection'], ['case-next-court-date', 'nextCourtDate'],
+  ['case-consult-start', 'consultationStartTime'], ['case-consult-end', 'consultationEndTime'],
+  ['case-record-date', 'recordDate'], ['case-recorded-by', 'recordedBy'],
 ];
 
 function openCaseModal() {
@@ -251,6 +309,7 @@ function openCaseModal() {
   document.getElementById('case-client-select').disabled = false;
   document.getElementById('toggle-new-client-btn').innerHTML = '<i class="fas fa-user-plus"></i> Add New Client Instead';
   ['case-client-select','case-number','case-type','case-opposing','case-court','case-description','new-client-name','new-client-phone','new-client-email'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('case-status').value = 'intake';
   TIME_CHART_FIELDS.forEach(([id]) => { const el = document.getElementById(id); if (el) el.value = ''; });
   document.getElementById('case-modal-overlay').classList.add('show');
 }
@@ -264,6 +323,7 @@ async function saveCase() {
   const payload = {
     caseNumber: document.getElementById('case-number').value.trim(),
     caseType: document.getElementById('case-type').value.trim(),
+    status: document.getElementById('case-status').value,
     opposingParty: document.getElementById('case-opposing').value.trim(),
     court: document.getElementById('case-court').value.trim(),
     description: document.getElementById('case-description').value.trim()

@@ -733,7 +733,14 @@ async function findOrCreateCaseCategory(dbClient, typeName) {
 app.post('/api/cases', requireRole('lawyer', 'secretary'), async (req, res) => {
   const {
     clientId, newClient, caseNumber, caseType, description, opposingParty, court,
-    caseYear, parties, remarks, claimAmount
+    caseYear, parties, remarks, claimAmount, status,
+    // Time Chart & Court Records fields — the New Case form is the sheet
+    // itself, so this first entry becomes the case's first Court Date row
+    // (see the hearings INSERT below), exactly like every subsequent visit
+    // recorded from the Court Dates tab.
+    presidingJudge, proceedingType, proceedingDate, counselPlaintiff, counselDefendant,
+    courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTime, courtEndTime,
+    consultationStartTime, consultationEndTime, recordDate, recordedBy, nextCourtDate
   } = req.body;
   if (!caseNumber || !caseType) {
     return res.status(400).json({ error: 'caseNumber and caseType are required' });
@@ -767,18 +774,38 @@ app.post('/api/cases', requireRole('lawyer', 'secretary'), async (req, res) => {
     const { rows } = await dbClient.query(
       `INSERT INTO cases (
          case_number, client_id, case_title, case_type_id, description, opposing_party, court,
-         case_year, parties, remarks, claim_amount, created_by
+         case_year, parties, remarks, claim_amount, status, created_by
        )
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,COALESCE($12, 'intake'),$13)
        RETURNING *`,
       [caseNumber.trim(), finalClientId, finalCaseTitle, caseTypeId, description || null,
        opposingParty || null, court || null,
-       caseYear || null, parties || null, remarks || null, claimAmount || null, req.user.id]
+       caseYear || null, parties || null, remarks || null, claimAmount || null, status || null, req.user.id]
+    );
+    const newCase = rows[0];
+
+    // The Time Chart is filled out fresh every time the matter is in
+    // court — this first pass (taken at intake) becomes hearing #1, using
+    // the same Court Date form fields as every later visit. Proceeding
+    // Date falls back to today if left blank, since hearing_date can't be
+    // null.
+    await dbClient.query(
+      `INSERT INTO hearings (
+         case_id, hearing_date, court, presiding_judge, proceeding_type, counsel_plaintiff, counsel_defendant,
+         court_clerk, last_court_order, prayer_sought, court_order_direction, court_start_time, court_end_time,
+         consultation_start_time, consultation_end_time, record_date, recorded_by, next_court_date, created_by
+       )
+       VALUES ($1,COALESCE($2, CURRENT_DATE),$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
+      [newCase.id, proceedingDate || null, court || null, presidingJudge || null, proceedingType || null,
+       counselPlaintiff || null, counselDefendant || null, courtClerk || null, lastCourtOrder || null,
+       prayerSought || null, courtOrderDirection || null, courtStartTime || null, courtEndTime || null,
+       consultationStartTime || null, consultationEndTime || null, recordDate || null, recordedBy || null,
+       nextCourtDate || null, req.user.id]
     );
 
     await dbClient.query('COMMIT');
-    await logActivity(req.user.id, req.user.email, 'CREATE', 'case', rows[0].id, null, rows[0], req);
-    res.status(201).json(rows[0]);
+    await logActivity(req.user.id, req.user.email, 'CREATE', 'case', newCase.id, null, newCase, req);
+    res.status(201).json(newCase);
   } catch (err) {
     await dbClient.query('ROLLBACK');
     if (err.code === '23505' && err.constraint && err.constraint.includes('case_number')) {
