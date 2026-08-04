@@ -36,6 +36,7 @@
     <a href="/expenses" class="nav-item" data-page="expenses"><i class="fas fa-money-bill-wave"></i> Expenses</a>
     <div class="nav-section-label">Reports</div>
     <a href="/reports" class="nav-item" data-page="reports"><i class="fas fa-square-poll-vertical"></i> Reports</a>
+    <a href="/case-status-report" class="nav-item" data-page="case-status-report"><i class="fas fa-list-check"></i> Case Status Report</a>
     <div class="nav-section-label">Admin</div>
     <a href="/settings" class="nav-item" data-page="settings"><i class="fas fa-gear"></i> Settings</a>
     <a href="/users" class="nav-item" data-page="users"><i class="fas fa-user-shield"></i> User Management</a>
@@ -125,11 +126,70 @@
         <div class="form-group"><label>Case Type *</label><select class="form-control" id="case-type"></select></div>
         <div class="form-group"><label>Assigned Lawyer</label><select class="form-control" id="case-lawyer"><option value="">Unassigned</option></select></div>
       </div>
+
+      <div class="tc-section-label"><i class="fas fa-gavel"></i> Court &amp; Proceeding</div>
       <div class="form-row">
-        <div class="form-group"><label>Opposing Party</label><input class="form-control" id="case-opposing"></div>
-        <div class="form-group"><label>Court / Jurisdiction</label><input class="form-control" id="case-court"></div>
+        <div class="form-group"><label>Court Name</label><input class="form-control" id="case-court"></div>
+        <div class="form-group"><label>Case Year</label><input type="number" class="form-control" id="case-year" placeholder="e.g. 2026"></div>
       </div>
-      <div class="form-group"><label>Description</label><textarea class="form-control" id="case-description" rows="3"></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label>Presiding Judge/Magistrate</label><input class="form-control" id="case-presiding-judge"></div>
+        <div class="form-group"><label>Court Proceeding Type</label>
+          <select class="form-control" id="case-proceeding-type">
+            <option value="">— Select —</option>
+            <option>Mention</option><option>1st PTC</option><option>Mediation</option>
+            <option>Hearing</option><option>Final PTC</option><option>Judgment</option><option>Ruling</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Proceeding Date</label><input type="date" class="form-control" id="case-proceeding-date"></div>
+        <div class="form-group"><label>Court Clerk</label><input class="form-control" id="case-court-clerk"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Court Start Time</label><input type="time" class="form-control" id="case-court-start"></div>
+        <div class="form-group"><label>Court End Time</label><input type="time" class="form-control" id="case-court-end"></div>
+      </div>
+
+      <div class="tc-section-label"><i class="fas fa-users"></i> Parties &amp; Counsel</div>
+      <div class="form-group"><label>Parties</label><input class="form-control" id="case-parties" placeholder="Names of all parties involved"></div>
+      <div class="form-group"><label>Versus (Opponent)</label><input class="form-control" id="case-opposing"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Counsel for Plaintiff/Applicant/Petitioner/Objector</label><input class="form-control" id="case-counsel-plaintiff"></div>
+        <div class="form-group"><label>Counsel for Defendant/Respondent</label><input class="form-control" id="case-counsel-defendant"></div>
+      </div>
+
+      <div class="tc-section-label"><i class="fas fa-scroll"></i> Orders &amp; Directions</div>
+      <div class="form-group"><label>Last Court Order</label><textarea class="form-control" id="case-last-order" rows="2"></textarea></div>
+      <div class="form-group"><label>Current Prayer/Order/Direction Sought</label><textarea class="form-control" id="case-prayer" rows="2"></textarea></div>
+      <div class="form-group"><label>Court Order/Direction</label><textarea class="form-control" id="case-order-direction" rows="2"></textarea></div>
+
+      <div class="tc-section-label"><i class="fas fa-clock"></i> Consultation &amp; Record</div>
+      <div class="form-row">
+        <div class="form-group"><label>Consultation Start Time</label><input type="time" class="form-control" id="case-consult-start"></div>
+        <div class="form-group"><label>Consultation End Time</label><input type="time" class="form-control" id="case-consult-end"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Record Date</label><input type="date" class="form-control" id="case-record-date"></div>
+        <div class="form-group"><label>Recorded By / Advocate Signature</label><input class="form-control" id="case-recorded-by"></div>
+      </div>
+
+      <div class="tc-section-label"><i class="fas fa-money-bill-wave"></i> Billing</div>
+      <div class="form-row">
+        <div class="form-group"><label>Billing Amount</label><input type="number" min="0" step="0.01" class="form-control" id="case-billing-amount" value="0"></div>
+        <div class="form-group"><label>Payment Status</label>
+          <select class="form-control" id="case-payment-status">
+            <option value="unpaid">Unpaid</option>
+            <option value="partial">Partially Paid</option>
+            <option value="paid">Paid</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label>Amount Paid</label><input type="number" min="0" step="0.01" class="form-control" id="case-amount-paid" value="0"></div>
+
+      <div class="tc-section-label"><i class="fas fa-file-lines"></i> Summary &amp; Remarks</div>
+      <div class="form-group"><label>Summary / Description</label><textarea class="form-control" id="case-description" rows="3" placeholder="A narrative summary of the matter — what happened, what is being claimed, and against whom"></textarea></div>
+      <div class="form-group"><label>Remarks</label><textarea class="form-control" id="case-remarks" rows="2" placeholder="Additional comments or observations"></textarea></div>
     </div>
     <div class="modal-footer">
       <button class="btn-outline" onclick="closeCaseModal()">Cancel</button>
@@ -236,12 +296,26 @@ function toggleNewClient() {
   btn.innerHTML = showing ? '<i class="fas fa-user-plus"></i> Add New Client Instead' : '<i class="fas fa-arrow-left"></i> Use Existing Client Instead';
 }
 
+// Time Chart & Court Records fields — shared between reset-on-open and the save payload.
+const TIME_CHART_FIELDS = [
+  ['case-year', 'caseYear'], ['case-parties', 'parties'], ['case-presiding-judge', 'presidingJudge'],
+  ['case-proceeding-type', 'proceedingType'], ['case-proceeding-date', 'proceedingDate'],
+  ['case-counsel-plaintiff', 'counselPlaintiff'], ['case-counsel-defendant', 'counselDefendant'],
+  ['case-court-clerk', 'courtClerk'], ['case-last-order', 'lastCourtOrder'], ['case-prayer', 'prayerSought'],
+  ['case-order-direction', 'courtOrderDirection'], ['case-court-start', 'courtStartTime'],
+  ['case-court-end', 'courtEndTime'], ['case-consult-start', 'consultationStartTime'],
+  ['case-consult-end', 'consultationEndTime'], ['case-record-date', 'recordDate'],
+  ['case-recorded-by', 'recordedBy'], ['case-billing-amount', 'billingAmount'],
+  ['case-payment-status', 'paymentStatus'], ['case-amount-paid', 'amountPaid'], ['case-remarks', 'remarks'],
+];
+
 function openCaseModal() {
   document.getElementById('new-client-fields').style.display = 'none';
   document.getElementById('case-client-select').disabled = false;
   document.getElementById('toggle-new-client-btn').innerHTML = '<i class="fas fa-user-plus"></i> Add New Client Instead';
   ['case-client-select','case-title','case-opposing','case-court','case-description','new-client-name','new-client-phone','new-client-email'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('case-lawyer').value = '';
+  TIME_CHART_FIELDS.forEach(([id]) => { const el = document.getElementById(id); if (el) el.value = id === 'case-billing-amount' || id === 'case-amount-paid' ? '0' : (id === 'case-payment-status' ? 'unpaid' : ''); });
   document.getElementById('case-modal-overlay').classList.add('show');
 }
 function closeCaseModal() { document.getElementById('case-modal-overlay').classList.remove('show'); }
@@ -259,6 +333,12 @@ async function saveCase() {
     court: document.getElementById('case-court').value.trim(),
     description: document.getElementById('case-description').value.trim()
   };
+  TIME_CHART_FIELDS.forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const v = el.value.trim ? el.value.trim() : el.value;
+    payload[key] = v === '' ? null : v;
+  });
 
   if (usingNewClient) {
     if (!newClientName) { showToast('New client full name is required', 'error'); return; }

@@ -108,7 +108,7 @@ async function logActivity(userId, username, action, entityType, entityId, oldDa
 // ============================================================
 const pages = [
   'dashboard', 'clients', 'cases', 'case-detail', 'calendar', 'documents',
-  'tasks', 'billing', 'expenses', 'reports', 'settings', 'users',
+  'tasks', 'billing', 'expenses', 'reports', 'case-status-report', 'settings', 'users',
   'permissions', 'user-guide'
 ];
 pages.forEach(page => {
@@ -702,7 +702,13 @@ app.get('/api/cases/:id', async (req, res) => {
 });
 
 app.post('/api/cases', requireRole('lawyer', 'secretary'), async (req, res) => {
-  const { clientId, newClient, caseTitle, caseTypeId, description, assignedLawyer, opposingParty, court } = req.body;
+  const {
+    clientId, newClient, caseTitle, caseTypeId, description, assignedLawyer, opposingParty, court,
+    caseYear, parties, presidingJudge, proceedingType, proceedingDate, counselPlaintiff, counselDefendant,
+    courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTime, courtEndTime,
+    consultationStartTime, consultationEndTime, recordDate, recordedBy, billingAmount, paymentStatus,
+    amountPaid, remarks, claimAmount
+  } = req.body;
   if (!caseTitle || !caseTypeId) {
     return res.status(400).json({ error: 'caseTitle and caseTypeId are required' });
   }
@@ -742,10 +748,23 @@ app.post('/api/cases', requireRole('lawyer', 'secretary'), async (req, res) => {
     const caseNumber = `${code}-${year}-${String(counterRows[0].last_seq).padStart(3, '0')}`;
 
     const { rows } = await dbClient.query(
-      `INSERT INTO cases (case_number, client_id, case_title, case_type_id, description, assigned_lawyer, opposing_party, court, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      `INSERT INTO cases (
+         case_number, client_id, case_title, case_type_id, description, assigned_lawyer, opposing_party, court,
+         case_year, parties, presiding_judge, proceeding_type, proceeding_date, counsel_plaintiff, counsel_defendant,
+         court_clerk, last_court_order, prayer_sought, court_order_direction, court_start_time, court_end_time,
+         consultation_start_time, consultation_end_time, record_date, recorded_by, billing_amount, payment_status,
+         amount_paid, remarks, claim_amount, created_by
+       )
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31)
+       RETURNING *`,
       [caseNumber, finalClientId, caseTitle, caseTypeId, description || null,
-       assignedLawyer || null, opposingParty || null, court || null, req.user.id]
+       assignedLawyer || null, opposingParty || null, court || null,
+       caseYear || null, parties || null, presidingJudge || null, proceedingType || null, proceedingDate || null,
+       counselPlaintiff || null, counselDefendant || null, courtClerk || null, lastCourtOrder || null,
+       prayerSought || null, courtOrderDirection || null, courtStartTime || null, courtEndTime || null,
+       consultationStartTime || null, consultationEndTime || null, recordDate || null, recordedBy || null,
+       billingAmount || 0, paymentStatus || 'unpaid', amountPaid || 0, remarks || null, claimAmount || null,
+       req.user.id]
     );
 
     await dbClient.query('COMMIT');
@@ -760,21 +779,66 @@ app.post('/api/cases', requireRole('lawyer', 'secretary'), async (req, res) => {
 });
 
 app.put('/api/cases/:id', requireRole('lawyer', 'secretary'), async (req, res) => {
-  const { caseTitle, status, description, assignedLawyer, opposingParty, court } = req.body;
+  const {
+    caseTitle, status, description, assignedLawyer, opposingParty, court,
+    caseYear, parties, presidingJudge, proceedingType, proceedingDate, counselPlaintiff, counselDefendant,
+    courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTime, courtEndTime,
+    consultationStartTime, consultationEndTime, recordDate, recordedBy, billingAmount, paymentStatus,
+    amountPaid, remarks, claimAmount
+  } = req.body;
+  // DATE/TIME/NUMERIC columns reject '' outright, so an empty (but present)
+  // form field must become null to fall through the COALESCE below and
+  // leave the existing value untouched — the same as if it weren't sent.
+  const caseYearN = caseYear || null;
+  const proceedingDateN = proceedingDate || null;
+  const courtStartTimeN = courtStartTime || null;
+  const courtEndTimeN = courtEndTime || null;
+  const consultationStartTimeN = consultationStartTime || null;
+  const consultationEndTimeN = consultationEndTime || null;
+  const recordDateN = recordDate || null;
+  const billingAmountN = (billingAmount === '' || billingAmount === undefined) ? null : billingAmount;
+  const amountPaidN = (amountPaid === '' || amountPaid === undefined) ? null : amountPaid;
+  const claimAmountN = (claimAmount === '' || claimAmount === undefined) ? null : claimAmount;
   try {
     const { rows: before } = await pool.query('SELECT * FROM cases WHERE id = $1', [req.params.id]);
     if (!before.length) return res.status(404).json({ error: 'Case not found' });
 
     const { rows } = await pool.query(
       `UPDATE cases SET
-        case_title     = COALESCE($1, case_title),
-        status         = COALESCE($2, status),
-        description    = COALESCE($3, description),
-        assigned_lawyer= COALESCE($4, assigned_lawyer),
-        opposing_party = COALESCE($5, opposing_party),
-        court          = COALESCE($6, court)
-       WHERE id = $7 RETURNING *`,
-      [caseTitle, status, description, assignedLawyer, opposingParty, court, req.params.id]
+        case_title              = COALESCE($1, case_title),
+        status                  = COALESCE($2, status),
+        description             = COALESCE($3, description),
+        assigned_lawyer         = COALESCE($4, assigned_lawyer),
+        opposing_party          = COALESCE($5, opposing_party),
+        court                   = COALESCE($6, court),
+        case_year               = COALESCE($7, case_year),
+        parties                 = COALESCE($8, parties),
+        presiding_judge         = COALESCE($9, presiding_judge),
+        proceeding_type         = COALESCE($10, proceeding_type),
+        proceeding_date         = COALESCE($11, proceeding_date),
+        counsel_plaintiff       = COALESCE($12, counsel_plaintiff),
+        counsel_defendant       = COALESCE($13, counsel_defendant),
+        court_clerk             = COALESCE($14, court_clerk),
+        last_court_order        = COALESCE($15, last_court_order),
+        prayer_sought           = COALESCE($16, prayer_sought),
+        court_order_direction   = COALESCE($17, court_order_direction),
+        court_start_time        = COALESCE($18, court_start_time),
+        court_end_time          = COALESCE($19, court_end_time),
+        consultation_start_time = COALESCE($20, consultation_start_time),
+        consultation_end_time   = COALESCE($21, consultation_end_time),
+        record_date             = COALESCE($22, record_date),
+        recorded_by             = COALESCE($23, recorded_by),
+        billing_amount          = COALESCE($24, billing_amount),
+        payment_status          = COALESCE($25, payment_status),
+        amount_paid             = COALESCE($26, amount_paid),
+        remarks                 = COALESCE($27, remarks),
+        claim_amount            = COALESCE($28, claim_amount)
+       WHERE id = $29 RETURNING *`,
+      [caseTitle, status, description, assignedLawyer, opposingParty, court,
+       caseYearN, parties, presidingJudge, proceedingType, proceedingDateN, counselPlaintiff, counselDefendant,
+       courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTimeN, courtEndTimeN,
+       consultationStartTimeN, consultationEndTimeN, recordDateN, recordedBy, billingAmountN, paymentStatus,
+       amountPaidN, remarks, claimAmountN, req.params.id]
     );
     await logActivity(req.user.id, req.user.email, 'UPDATE', 'case', req.params.id, before[0], rows[0], req);
     res.json(rows[0]);

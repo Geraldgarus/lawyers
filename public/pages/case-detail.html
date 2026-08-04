@@ -45,6 +45,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
     <a href="/expenses" class="nav-item" data-page="expenses"><i class="fas fa-money-bill-wave"></i> Expenses</a>
     <div class="nav-section-label">Reports</div>
     <a href="/reports" class="nav-item" data-page="reports"><i class="fas fa-square-poll-vertical"></i> Reports</a>
+    <a href="/case-status-report" class="nav-item" data-page="case-status-report"><i class="fas fa-list-check"></i> Case Status Report</a>
     <div class="nav-section-label">Admin</div>
     <a href="/settings" class="nav-item" data-page="settings"><i class="fas fa-gear"></i> Settings</a>
     <a href="/users" class="nav-item" data-page="users"><i class="fas fa-user-shield"></i> User Management</a>
@@ -303,11 +304,70 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
         <div class="form-group"><label>Status</label><select class="form-control" id="edit-case-status"></select></div>
         <div class="form-group"><label>Assigned Lawyer</label><select class="form-control" id="edit-case-lawyer"><option value="">Unassigned</option></select></div>
       </div>
+
+      <div class="tc-section-label"><i class="fas fa-gavel"></i> Court &amp; Proceeding</div>
       <div class="form-row">
-        <div class="form-group"><label>Opposing Party</label><input class="form-control" id="edit-case-opposing"></div>
-        <div class="form-group"><label>Court / Jurisdiction</label><input class="form-control" id="edit-case-court"></div>
+        <div class="form-group"><label>Court Name</label><input class="form-control" id="edit-case-court"></div>
+        <div class="form-group"><label>Case Year</label><input type="number" class="form-control" id="edit-case-year"></div>
       </div>
-      <div class="form-group"><label>Description</label><textarea class="form-control" id="edit-case-description" rows="3"></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label>Presiding Judge/Magistrate</label><input class="form-control" id="edit-case-presiding-judge"></div>
+        <div class="form-group"><label>Court Proceeding Type</label>
+          <select class="form-control" id="edit-case-proceeding-type">
+            <option value="">— Select —</option>
+            <option>Mention</option><option>1st PTC</option><option>Mediation</option>
+            <option>Hearing</option><option>Final PTC</option><option>Judgment</option><option>Ruling</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Proceeding Date</label><input type="date" class="form-control" id="edit-case-proceeding-date"></div>
+        <div class="form-group"><label>Court Clerk</label><input class="form-control" id="edit-case-court-clerk"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Court Start Time</label><input type="time" class="form-control" id="edit-case-court-start"></div>
+        <div class="form-group"><label>Court End Time</label><input type="time" class="form-control" id="edit-case-court-end"></div>
+      </div>
+
+      <div class="tc-section-label"><i class="fas fa-users"></i> Parties &amp; Counsel</div>
+      <div class="form-group"><label>Parties</label><input class="form-control" id="edit-case-parties"></div>
+      <div class="form-group"><label>Versus (Opponent)</label><input class="form-control" id="edit-case-opposing"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Counsel for Plaintiff/Applicant/Petitioner/Objector</label><input class="form-control" id="edit-case-counsel-plaintiff"></div>
+        <div class="form-group"><label>Counsel for Defendant/Respondent</label><input class="form-control" id="edit-case-counsel-defendant"></div>
+      </div>
+
+      <div class="tc-section-label"><i class="fas fa-scroll"></i> Orders &amp; Directions</div>
+      <div class="form-group"><label>Last Court Order</label><textarea class="form-control" id="edit-case-last-order" rows="2"></textarea></div>
+      <div class="form-group"><label>Current Prayer/Order/Direction Sought</label><textarea class="form-control" id="edit-case-prayer" rows="2"></textarea></div>
+      <div class="form-group"><label>Court Order/Direction</label><textarea class="form-control" id="edit-case-order-direction" rows="2"></textarea></div>
+
+      <div class="tc-section-label"><i class="fas fa-clock"></i> Consultation &amp; Record</div>
+      <div class="form-row">
+        <div class="form-group"><label>Consultation Start Time</label><input type="time" class="form-control" id="edit-case-consult-start"></div>
+        <div class="form-group"><label>Consultation End Time</label><input type="time" class="form-control" id="edit-case-consult-end"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Record Date</label><input type="date" class="form-control" id="edit-case-record-date"></div>
+        <div class="form-group"><label>Recorded By / Advocate Signature</label><input class="form-control" id="edit-case-recorded-by"></div>
+      </div>
+
+      <div class="tc-section-label"><i class="fas fa-money-bill-wave"></i> Billing</div>
+      <div class="form-row">
+        <div class="form-group"><label>Billing Amount</label><input type="number" min="0" step="0.01" class="form-control" id="edit-case-billing-amount"></div>
+        <div class="form-group"><label>Payment Status</label>
+          <select class="form-control" id="edit-case-payment-status">
+            <option value="unpaid">Unpaid</option>
+            <option value="partial">Partially Paid</option>
+            <option value="paid">Paid</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label>Amount Paid</label><input type="number" min="0" step="0.01" class="form-control" id="edit-case-amount-paid"></div>
+
+      <div class="tc-section-label"><i class="fas fa-file-lines"></i> Summary &amp; Remarks</div>
+      <div class="form-group"><label>Summary / Description</label><textarea class="form-control" id="edit-case-description" rows="3"></textarea></div>
+      <div class="form-group"><label>Remarks</label><textarea class="form-control" id="edit-case-remarks" rows="2"></textarea></div>
     </div>
     <div class="modal-footer"><button class="btn-outline" onclick="closeModal('edit-case-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveEditCase()">Save Changes</button></div>
   </div>
@@ -397,6 +457,8 @@ async function renderOverview() {
     } catch (e) {}
   }
 
+  const tc = (label, value) => `<div><div class="m-label">${label}</div><div class="m-value">${value ? escapeHtml(String(value)) : '—'}</div></div>`;
+
   document.getElementById('overview-body').innerHTML = `
     <div class="case-meta-grid">
       <div><div class="m-label">Client</div><div class="m-value"><a href="/clients" style="color:inherit;">${escapeHtml(c.client_name)}</a></div></div>
@@ -409,9 +471,62 @@ async function renderOverview() {
       <div><div class="m-label">Case Opened</div><div class="m-value">${fmtDate(c.created_at)}</div></div>
       ${balanceHtml}
     </div>
-    ${c.description ? `<hr style="margin:18px 0;border:none;border-top:1px solid var(--border);"><div class="m-label">Description</div><div style="margin-top:6px;font-size:13.5px;">${escapeHtml(c.description)}</div>` : ''}
+    ${c.description ? `<hr style="margin:18px 0;border:none;border-top:1px solid var(--border);"><div class="m-label">Summary</div><div style="margin-top:6px;font-size:13.5px;">${escapeHtml(c.description)}</div>` : ''}
+
+    <div class="tc-section-label" style="margin-top:22px;"><i class="fas fa-gavel"></i> Time Chart &amp; Court Records</div>
+    <div class="case-meta-grid">
+      ${tc('Case Year', c.case_year)}
+      ${tc('Presiding Judge/Magistrate', c.presiding_judge)}
+      ${tc('Court Proceeding Type', c.proceeding_type)}
+      ${tc('Proceeding Date', c.proceeding_date ? fmtDate(c.proceeding_date) : '')}
+      ${tc('Court Start Time', c.court_start_time)}
+      ${tc('Court End Time', c.court_end_time)}
+      ${tc('Court Clerk', c.court_clerk)}
+      ${tc('Parties', c.parties)}
+      ${tc('Counsel for Plaintiff/Applicant', c.counsel_plaintiff)}
+      ${tc('Counsel for Defendant/Respondent', c.counsel_defendant)}
+      ${tc('Consultation Start Time', c.consultation_start_time)}
+      ${tc('Consultation End Time', c.consultation_end_time)}
+      ${tc('Record Date', c.record_date ? fmtDate(c.record_date) : '')}
+      ${tc('Recorded By / Advocate Signature', c.recorded_by)}
+      ${tc('Billing Amount', c.billing_amount != null ? fmtCurrency(c.billing_amount) : '')}
+      ${tc('Payment Status', c.payment_status ? c.payment_status.charAt(0).toUpperCase() + c.payment_status.slice(1) : '')}
+      ${tc('Amount Paid', c.amount_paid != null ? fmtCurrency(c.amount_paid) : '')}
+      ${tc('Outstanding Balance', (c.billing_amount != null && c.amount_paid != null) ? fmtCurrency(c.billing_amount - c.amount_paid) : '')}
+    </div>
+    ${c.last_court_order ? `<div style="margin-top:14px;"><div class="m-label">Last Court Order</div><div style="margin-top:6px;font-size:13.5px;">${escapeHtml(c.last_court_order)}</div></div>` : ''}
+    ${c.prayer_sought ? `<div style="margin-top:14px;"><div class="m-label">Current Prayer/Order/Direction Sought</div><div style="margin-top:6px;font-size:13.5px;">${escapeHtml(c.prayer_sought)}</div></div>` : ''}
+    ${c.court_order_direction ? `<div style="margin-top:14px;"><div class="m-label">Court Order/Direction</div><div style="margin-top:6px;font-size:13.5px;">${escapeHtml(c.court_order_direction)}</div></div>` : ''}
+    ${c.remarks ? `<div style="margin-top:14px;"><div class="m-label">Remarks</div><div style="margin-top:6px;font-size:13.5px;">${escapeHtml(c.remarks)}</div></div>` : ''}
   `;
 }
+
+// Time Chart & Court Records fields — [dbColumn, payloadKey, editElementId, type]
+const TIME_CHART_EDIT_FIELDS = [
+  ['case_year', 'caseYear', 'edit-case-year', 'text'],
+  ['parties', 'parties', 'edit-case-parties', 'text'],
+  ['presiding_judge', 'presidingJudge', 'edit-case-presiding-judge', 'text'],
+  ['proceeding_type', 'proceedingType', 'edit-case-proceeding-type', 'text'],
+  ['proceeding_date', 'proceedingDate', 'edit-case-proceeding-date', 'date'],
+  ['counsel_plaintiff', 'counselPlaintiff', 'edit-case-counsel-plaintiff', 'text'],
+  ['counsel_defendant', 'counselDefendant', 'edit-case-counsel-defendant', 'text'],
+  ['court_clerk', 'courtClerk', 'edit-case-court-clerk', 'text'],
+  ['last_court_order', 'lastCourtOrder', 'edit-case-last-order', 'text'],
+  ['prayer_sought', 'prayerSought', 'edit-case-prayer', 'text'],
+  ['court_order_direction', 'courtOrderDirection', 'edit-case-order-direction', 'text'],
+  ['court_start_time', 'courtStartTime', 'edit-case-court-start', 'time'],
+  ['court_end_time', 'courtEndTime', 'edit-case-court-end', 'time'],
+  ['consultation_start_time', 'consultationStartTime', 'edit-case-consult-start', 'time'],
+  ['consultation_end_time', 'consultationEndTime', 'edit-case-consult-end', 'time'],
+  ['record_date', 'recordDate', 'edit-case-record-date', 'date'],
+  ['recorded_by', 'recordedBy', 'edit-case-recorded-by', 'text'],
+  ['billing_amount', 'billingAmount', 'edit-case-billing-amount', 'text'],
+  ['payment_status', 'paymentStatus', 'edit-case-payment-status', 'text'],
+  ['amount_paid', 'amountPaid', 'edit-case-amount-paid', 'text'],
+  ['remarks', 'remarks', 'edit-case-remarks', 'text'],
+];
+function dateInputVal(d) { return d ? isoDate(d) : ''; }
+function timeInputVal(t) { return t ? String(t).slice(0, 5) : ''; }
 
 function openEditCaseModal() {
   const sel = document.getElementById('edit-case-status');
@@ -423,6 +538,14 @@ function openEditCaseModal() {
   document.getElementById('edit-case-opposing').value = currentCase.opposing_party || '';
   document.getElementById('edit-case-court').value = currentCase.court || '';
   document.getElementById('edit-case-description').value = currentCase.description || '';
+  TIME_CHART_EDIT_FIELDS.forEach(([col, , id, type]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const raw = currentCase[col];
+    if (type === 'date') el.value = dateInputVal(raw);
+    else if (type === 'time') el.value = timeInputVal(raw);
+    else el.value = (raw === null || raw === undefined) ? (id === 'edit-case-payment-status' ? 'unpaid' : '') : raw;
+  });
   document.getElementById('edit-case-modal-overlay').classList.add('show');
 }
 
@@ -435,6 +558,12 @@ async function saveEditCase() {
     court: document.getElementById('edit-case-court').value.trim(),
     description: document.getElementById('edit-case-description').value.trim()
   };
+  TIME_CHART_EDIT_FIELDS.forEach(([, key, id]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const v = typeof el.value === 'string' ? el.value.trim() : el.value;
+    payload[key] = v === '' ? null : v;
+  });
   try {
     currentCase = await apiPut(`/cases/${CASE_ID}`, payload);
     closeModal('edit-case-modal-overlay');

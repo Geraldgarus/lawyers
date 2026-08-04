@@ -163,6 +163,12 @@ h1, h2, h3, .logo-text, .card-title { font-family: 'Playfair Display', serif; }
 .form-control { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: var(--bg-input); color: var(--text-dark); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 @media (max-width: 640px) { .form-row { grid-template-columns: 1fr; } }
+.tc-section-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+  color: var(--accent-gold); margin: 20px 0 10px; padding-top: 14px; border-top: 1px solid var(--border);
+  display: flex; align-items: center; gap: 7px;
+}
+.tc-section-label:first-child { margin-top: 0; padding-top: 0; border-top: none; }
 
 /* ---- MODAL ---- */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 2000; align-items: center; justify-content: center; padding: 20px; }

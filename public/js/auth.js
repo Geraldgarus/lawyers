@@ -21,7 +21,7 @@ async function logout() {
 // Nav items whose href matches one of these page names are hidden for anyone
 // who isn't a lawyer — purely a UX nicety, every one of these is independently
 // enforced server-side via requireRole() so this is not the real security boundary.
-const LAWYER_ONLY_PAGES = ['billing', 'reports', 'users', 'permissions'];
+const LAWYER_ONLY_PAGES = ['billing', 'reports', 'case-status-report', 'users', 'permissions'];
 
 function initPageChrome() {
   const user = requireAuth();

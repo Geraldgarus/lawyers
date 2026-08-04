@@ -3,12 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Documents - Tanscar Attorneys</title>
+<title>Case Status Report - Tanscar Attorneys</title>
 <link rel="stylesheet" href="../css/style.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<style>body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}</style>
+<style>body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
+.csr-table td { vertical-align: top; }
+.csr-summary { max-width: 260px; font-size: 12.5px; color: var(--text-muted); }
+.print-header { display: none; }
+@media print {
+  .print-header { display: block !important; text-align: center; margin-bottom: 18px; }
+  .print-header h1 { font-size: 20px; margin-bottom: 2px; }
+  .print-header p { font-size: 12px; color: #64748b; }
+}
+</style>
 <script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>
 </head>
 <body>
@@ -50,7 +59,7 @@
 <nav class="navbar">
   <div class="navbar-left">
     <button class="hamburger" id="hamburger-btn"><span class="hb-bar"></span><span class="hb-bar"></span><span class="hb-bar"></span></button>
-    <div><div class="page-title">Documents</div><div class="page-subtitle">Browse documents across all cases</div></div>
+    <div><div class="page-title">Case Status Report</div><div class="page-subtitle">Running summary of every case handled by the firm</div></div>
   </div>
   <div class="navbar-right">
     <div class="user-dropdown">
@@ -66,32 +75,31 @@
   </div>
 </nav>
 
-<main class="main-content">
+<main class="main-content" id="main-content">
+  <div class="print-header">
+    <h1>Tanscar Attorneys</h1>
+    <p>Status of Cases Handled &middot; Generated <span id="print-date"></span></p>
+  </div>
+
   <div class="filter-bar">
-    <div class="filter-group">
-      <label>Case</label>
-      <select id="filter-case"><option value="">All Cases</option></select>
-    </div>
-    <div class="filter-group">
-      <label>Category</label>
-      <select id="filter-category">
-        <option value="">All Categories</option>
-        <option value="contract">Contract</option><option value="court_order">Court Order</option>
-        <option value="evidence">Evidence</option><option value="judgment">Judgment</option>
-        <option value="correspondence">Correspondence</option><option value="other">Other</option>
-      </select>
-    </div>
-    <button class="btn-gold" onclick="loadDocuments()"><i class="fas fa-search"></i> Filter</button>
-    <div style="flex:1;"></div>
-    <span style="font-size:12px;color:var(--text-muted);align-self:center;"><i class="fas fa-circle-info"></i> To upload a document, open the relevant case &rarr; Documents tab</span>
+    <div class="filter-group"><label>Status</label><select id="filter-status"><option value="">All Statuses</option></select></div>
+    <div class="filter-group" style="flex:1;"><label>Search</label><input type="text" id="filter-q" placeholder="Case number, parties, or court..."></div>
+    <button class="btn-gold" onclick="loadCaseStatusReport()"><i class="fas fa-search"></i> Apply</button>
+    <button class="btn-outline" onclick="clearFilters()"><i class="fas fa-times"></i> Clear</button>
+    <button class="btn-outline" onclick="window.print()"><i class="fas fa-print"></i> Print</button>
   </div>
 
   <div class="card">
-    <div class="card-header"><h3><i class="fas fa-folder-open"></i> All Documents</h3></div>
+    <div class="card-header"><h3><i class="fas fa-list-check"></i> Status of Cases Handled</h3></div>
     <div class="table-wrap">
-      <table class="data-table">
-        <thead><tr><th>File</th><th>Category</th><th>Case</th><th>Client</th><th>Uploaded</th><th></th></tr></thead>
-        <tbody id="documents-body"><tr><td colspan="6" class="empty-state">Select a case or search to begin</td></tr></tbody>
+      <table class="data-table csr-table">
+        <thead>
+          <tr>
+            <th>S/No.</th><th>Case No.</th><th>Parties</th><th>Court</th>
+            <th>Summary</th><th>Claim Amount</th><th>Status</th><th>Remarks</th>
+          </tr>
+        </thead>
+        <tbody id="csr-body"><tr><td colspan="8" class="empty-state">Loading...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -101,65 +109,59 @@
 <script src="../js/utils.js"></script>
 <script src="../js/auth.js"></script>
 <script>
-let allCases = [];
-
-async function loadCasesLookup() {
-  allCases = await apiGet('/cases');
-  document.getElementById('filter-case').innerHTML = '<option value="">All Cases</option>' +
-    allCases.map(c => `<option value="${c.id}">${escapeHtml(c.case_number)} — ${escapeHtml(c.case_title)}</option>`).join('');
+function clearFilters() {
+  document.getElementById('filter-status').value = '';
+  document.getElementById('filter-q').value = '';
+  loadCaseStatusReport();
 }
 
-async function loadDocuments() {
-  const caseId = document.getElementById('filter-case').value;
-  const category = document.getElementById('filter-category').value;
-  const tbody = document.getElementById('documents-body');
+async function loadCaseStatusReport() {
+  const tbody = document.getElementById('csr-body');
+  tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Loading...</td></tr>';
 
-  if (!caseId) {
-    // Aggregate across all cases (client-side merge, since documents are scoped per-case server-side)
-    setLoading('documents-body');
-    try {
-      const results = await Promise.all(allCases.map(c =>
-        apiGet(`/cases/${c.id}/documents${category ? '?category=' + category : ''}`).then(docs => docs.map(d => ({ ...d, _case: c })))
-      ));
-      const merged = results.flat().sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at));
-      renderDocuments(merged);
-    } catch (err) {
-      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Failed to load documents</td></tr>';
-      showToast(err.message, 'error');
-    }
-    return;
-  }
+  const status = document.getElementById('filter-status').value;
+  const q = document.getElementById('filter-q').value.trim();
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (q) params.set('q', q);
 
-  setLoading('documents-body');
   try {
-    const c = allCases.find(x => x.id == caseId);
-    const docs = await apiGet(`/cases/${caseId}/documents${category ? '?category=' + category : ''}`);
-    renderDocuments(docs.map(d => ({ ...d, _case: c })));
+    const cases = await apiGet('/cases?' + params.toString());
+    if (!cases.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><i class="fas fa-list-check"></i>No cases found</td></tr>';
+      return;
+    }
+    tbody.innerHTML = cases.map((c, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td><strong>${escapeHtml(c.case_number)}</strong></td>
+        <td>${escapeHtml(c.parties) || '—'}</td>
+        <td>${escapeHtml(c.court) || '—'}</td>
+        <td class="csr-summary">${escapeHtml(c.description) || '—'}</td>
+        <td>${c.claim_amount != null ? fmtCurrency(c.claim_amount) : '—'}</td>
+        <td><span class="badge ${c.status}">${statusLabel(c.status)}</span></td>
+        <td class="csr-summary">${escapeHtml(c.remarks) || '—'}</td>
+      </tr>
+    `).join('');
   } catch (err) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Failed to load documents</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Failed to load</td></tr>';
     showToast(err.message, 'error');
   }
 }
 
-function renderDocuments(docs) {
-  const tbody = document.getElementById('documents-body');
-  if (!docs.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-folder-open"></i>No documents found</td></tr>'; return; }
-  tbody.innerHTML = docs.map(d => `
-    <tr>
-      <td><i class="fas fa-file"></i> ${escapeHtml(d.filename)}</td>
-      <td><span class="badge neutral">${d.category.replace('_',' ')}</span></td>
-      <td><a href="/case-detail?id=${d._case.id}" style="color:var(--accent-gold);">${escapeHtml(d._case.case_number)}</a></td>
-      <td>${escapeHtml(d._case.client_name)}</td>
-      <td>${fmtDate(d.uploaded_at)}</td>
-      <td><a class="btn-icon" href="/api/documents/${d.id}/download" title="Download"><i class="fas fa-download"></i></a></td>
-    </tr>
-  `).join('');
-}
-
 document.addEventListener('DOMContentLoaded', async () => {
-  initPageChrome();
-  await loadCasesLookup();
-  await loadDocuments();
+  const user = initPageChrome();
+  if (user && user.role !== 'lawyer') {
+    document.getElementById('main-content').innerHTML = '<div class="empty-state"><i class="fas fa-lock"></i>You do not have permission to view reports</div>';
+    return;
+  }
+  document.getElementById('print-date').textContent = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
+  try {
+    const statuses = await apiGet('/case-statuses');
+    document.getElementById('filter-status').innerHTML = '<option value="">All Statuses</option>' +
+      statuses.map(s => `<option value="${s.name}">${escapeHtml(s.label)}</option>`).join('');
+  } catch (e) {}
+  loadCaseStatusReport();
 });
 </script>
 </body>

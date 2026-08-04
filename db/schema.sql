@@ -124,20 +124,68 @@ CREATE TABLE IF NOT EXISTS case_number_counters (
 -- CASES (the hub)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS cases (
-  id              SERIAL PRIMARY KEY,
-  case_number     VARCHAR(30)  NOT NULL UNIQUE,      -- e.g. CV-2026-001
-  client_id       INT NOT NULL REFERENCES clients(id) ON DELETE RESTRICT,
-  case_title      VARCHAR(255) NOT NULL,
-  case_type_id    INT NOT NULL REFERENCES case_categories(id) ON DELETE RESTRICT,
-  status          VARCHAR(50) NOT NULL DEFAULT 'intake' REFERENCES case_statuses(name),
-  description     TEXT,
-  assigned_lawyer INT REFERENCES users(id) ON DELETE SET NULL,
-  opposing_party  VARCHAR(255),
-  court           VARCHAR(255),
-  created_by      INT REFERENCES users(id) ON DELETE SET NULL,
-  created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  id                      SERIAL PRIMARY KEY,
+  case_number             VARCHAR(30)  NOT NULL UNIQUE,      -- e.g. CV-2026-001
+  client_id               INT NOT NULL REFERENCES clients(id) ON DELETE RESTRICT,
+  case_title              VARCHAR(255) NOT NULL,
+  case_type_id            INT NOT NULL REFERENCES case_categories(id) ON DELETE RESTRICT,
+  status                  VARCHAR(50) NOT NULL DEFAULT 'intake' REFERENCES case_statuses(name),
+  description             TEXT,                     -- narrative summary of the matter
+  assigned_lawyer         INT REFERENCES users(id) ON DELETE SET NULL,
+  opposing_party          VARCHAR(255),              -- Versus (Opponent)
+  court                   VARCHAR(255),              -- Court Name
+  -- ---- Time Chart & Court Records fields (firm's existing paper tracking sheet) ----
+  case_year               INT,
+  parties                 TEXT,
+  presiding_judge         VARCHAR(255),
+  proceeding_type         VARCHAR(50),               -- Mention, 1st PTC, Mediation, Hearing, Final PTC, Judgment, Ruling
+  proceeding_date         DATE,
+  counsel_plaintiff       VARCHAR(255),
+  counsel_defendant       VARCHAR(255),
+  court_clerk             VARCHAR(255),
+  last_court_order        TEXT,
+  prayer_sought           TEXT,                      -- Current Prayer/Order/Direction Sought
+  court_order_direction   TEXT,
+  court_start_time        TIME,
+  court_end_time          TIME,
+  consultation_start_time TIME,
+  consultation_end_time   TIME,
+  record_date             DATE,
+  recorded_by             VARCHAR(255),              -- Recorded By / Advocate Signature
+  billing_amount          NUMERIC(12,2) NOT NULL DEFAULT 0,
+  payment_status          VARCHAR(20)   NOT NULL DEFAULT 'unpaid'
+                          CHECK (payment_status IN ('unpaid','partial','paid')),
+  amount_paid             NUMERIC(12,2) NOT NULL DEFAULT 0,
+  remarks                 TEXT,                      -- additional comments/observations
+  claim_amount            NUMERIC(12,2),              -- Case Status Report: Claim Amount
+  created_by              INT REFERENCES users(id) ON DELETE SET NULL,
+  created_at              TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at              TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+-- Idempotent migration for the Time Chart & Court Records fields, for
+-- databases where the cases table already existed before they were added.
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS case_year               INT;
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS parties                 TEXT;
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS presiding_judge         VARCHAR(255);
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS proceeding_type         VARCHAR(50);
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS proceeding_date         DATE;
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS counsel_plaintiff       VARCHAR(255);
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS counsel_defendant       VARCHAR(255);
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS court_clerk             VARCHAR(255);
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS last_court_order        TEXT;
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS prayer_sought           TEXT;
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS court_order_direction   TEXT;
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS court_start_time        TIME;
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS court_end_time          TIME;
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS consultation_start_time TIME;
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS consultation_end_time   TIME;
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS record_date             DATE;
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS recorded_by             VARCHAR(255);
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS billing_amount          NUMERIC(12,2) NOT NULL DEFAULT 0;
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS payment_status          VARCHAR(20) NOT NULL DEFAULT 'unpaid';
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS amount_paid             NUMERIC(12,2) NOT NULL DEFAULT 0;
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS remarks                 TEXT;
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS claim_amount            NUMERIC(12,2);
 CREATE INDEX IF NOT EXISTS idx_cases_client     ON cases(client_id);
 CREATE INDEX IF NOT EXISTS idx_cases_status     ON cases(status);
 CREATE INDEX IF NOT EXISTS idx_cases_type       ON cases(case_type_id);
