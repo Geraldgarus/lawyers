@@ -668,10 +668,14 @@ app.get('/api/cases', async (req, res) => {
     const { rows } = await pool.query(`
       SELECT c.*, cl.full_name AS client_name, cc.name AS case_type_name,
         u.full_name AS assigned_lawyer_name,
-        (SELECT MIN(hearing_date) FROM hearings h WHERE h.case_id = c.id AND h.hearing_date >= NOW()) AS next_hearing_date,
+        -- The next court date is recorded on the Court Date form itself
+        -- (filled in after attending court), so it's whatever was noted on
+        -- the most recently attended hearing — not a future hearing_date,
+        -- since hearing_date is always the date of a visit already made.
+        (SELECT h.next_court_date FROM hearings h WHERE h.case_id = c.id ORDER BY h.hearing_date DESC LIMIT 1) AS next_hearing_date,
         (SELECT COUNT(*)::int FROM tasks t WHERE t.case_id = c.id AND t.status = 'pending' AND t.due_date < CURRENT_DATE) AS overdue_task_count
       FROM cases c
-      JOIN clients cl ON cl.id = c.client_id
+      LEFT JOIN clients cl ON cl.id = c.client_id
       JOIN case_categories cc ON cc.id = c.case_type_id
       LEFT JOIN users u ON u.id = c.assigned_lawyer
       ${where}
@@ -689,7 +693,7 @@ app.get('/api/cases/:id', async (req, res) => {
       SELECT c.*, cl.full_name AS client_name, cl.phone AS client_phone, cl.email AS client_email,
         cc.name AS case_type_name, u.full_name AS assigned_lawyer_name, cb.full_name AS created_by_name
       FROM cases c
-      JOIN clients cl ON cl.id = c.client_id
+      LEFT JOIN clients cl ON cl.id = c.client_id
       JOIN case_categories cc ON cc.id = c.case_type_id
       LEFT JOIN users u ON u.id = c.assigned_lawyer
       LEFT JOIN users cb ON cb.id = c.created_by
@@ -734,15 +738,14 @@ app.post('/api/cases', requireRole('lawyer', 'secretary'), async (req, res) => {
   if (!caseNumber || !caseType) {
     return res.status(400).json({ error: 'caseNumber and caseType are required' });
   }
-  if (!clientId && !newClient) {
-    return res.status(400).json({ error: 'clientId or newClient is required' });
-  }
 
   const dbClient = await pool.connect();
   try {
     await dbClient.query('BEGIN');
 
-    let finalClientId = clientId;
+    // Client is optional at intake — a case can be created without one and
+    // have it added later.
+    let finalClientId = clientId || null;
     if (!finalClientId && newClient) {
       if (!newClient.fullName) throw new Error('newClient.fullName is required');
       const { rows: clientRows } = await dbClient.query(
@@ -897,7 +900,7 @@ app.get('/api/hearings', async (req, res) => {
       SELECT h.*, c.case_number, c.case_title, cl.full_name AS client_name
       FROM hearings h
       JOIN cases c ON c.id = h.case_id
-      JOIN clients cl ON cl.id = c.client_id
+      LEFT JOIN clients cl ON cl.id = c.client_id
       ${where}
       ORDER BY h.hearing_date ASC
     `, values);
@@ -920,7 +923,7 @@ app.post('/api/cases/:id/hearings', async (req, res) => {
   const {
     hearingDate, court, presidingJudge, proceedingType, counselPlaintiff, counselDefendant,
     courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTime, courtEndTime,
-    consultationStartTime, consultationEndTime, recordDate, recordedBy
+    consultationStartTime, consultationEndTime, recordDate, recordedBy, nextCourtDate
   } = req.body;
   if (!hearingDate) return res.status(400).json({ error: 'hearingDate (Court Date) is required' });
   try {
@@ -928,15 +931,15 @@ app.post('/api/cases/:id/hearings', async (req, res) => {
       `INSERT INTO hearings (
          case_id, hearing_date, court, presiding_judge, proceeding_type, counsel_plaintiff, counsel_defendant,
          court_clerk, last_court_order, prayer_sought, court_order_direction, court_start_time, court_end_time,
-         consultation_start_time, consultation_end_time, record_date, recorded_by, created_by
+         consultation_start_time, consultation_end_time, record_date, recorded_by, next_court_date, created_by
        )
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
        RETURNING *`,
       [req.params.id, hearingDate, court || null, presidingJudge || null, proceedingType || null,
        counselPlaintiff || null, counselDefendant || null, courtClerk || null, lastCourtOrder || null,
        prayerSought || null, courtOrderDirection || null, courtStartTime || null, courtEndTime || null,
        consultationStartTime || null, consultationEndTime || null, recordDate || null, recordedBy || null,
-       req.user.id]
+       nextCourtDate || null, req.user.id]
     );
     await logActivity(req.user.id, req.user.email, 'CREATE', 'hearing', rows[0].id, null, rows[0], req);
     res.status(201).json(rows[0]);
@@ -949,7 +952,7 @@ app.put('/api/hearings/:id', async (req, res) => {
   const {
     hearingDate, court, presidingJudge, proceedingType, counselPlaintiff, counselDefendant,
     courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTime, courtEndTime,
-    consultationStartTime, consultationEndTime, recordDate, recordedBy
+    consultationStartTime, consultationEndTime, recordDate, recordedBy, nextCourtDate
   } = req.body;
   // TIME/DATE columns reject '' — an empty (but present) form field must
   // become null so it falls through COALESCE instead of erroring.
@@ -958,6 +961,7 @@ app.put('/api/hearings/:id', async (req, res) => {
   const consultationStartTimeN = consultationStartTime || null;
   const consultationEndTimeN = consultationEndTime || null;
   const recordDateN = recordDate || null;
+  const nextCourtDateN = nextCourtDate || null;
   try {
     const { rows } = await pool.query(
       `UPDATE hearings SET
@@ -976,11 +980,12 @@ app.put('/api/hearings/:id', async (req, res) => {
         consultation_start_time  = COALESCE($13, consultation_start_time),
         consultation_end_time    = COALESCE($14, consultation_end_time),
         record_date              = COALESCE($15, record_date),
-        recorded_by              = COALESCE($16, recorded_by)
-       WHERE id = $17 RETURNING *`,
+        recorded_by              = COALESCE($16, recorded_by),
+        next_court_date          = COALESCE($17, next_court_date)
+       WHERE id = $18 RETURNING *`,
       [hearingDate, court, presidingJudge, proceedingType, counselPlaintiff, counselDefendant,
        courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTimeN, courtEndTimeN,
-       consultationStartTimeN, consultationEndTimeN, recordDateN, recordedBy, req.params.id]
+       consultationStartTimeN, consultationEndTimeN, recordDateN, recordedBy, nextCourtDateN, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Hearing not found' });
     res.json(rows[0]);
@@ -1097,7 +1102,7 @@ app.get('/api/calendar', async (req, res) => {
              c.id AS case_id, c.case_number, c.case_title, cl.full_name AS client_name
       FROM hearings h
       JOIN cases c ON c.id = h.case_id
-      JOIN clients cl ON cl.id = c.client_id
+      LEFT JOIN clients cl ON cl.id = c.client_id
       ${hWhere}
     `, values);
 
@@ -1389,7 +1394,7 @@ app.get('/api/invoices', requireRole('lawyer'), async (req, res) => {
         COALESCE((SELECT SUM(amount) FROM payments p WHERE p.invoice_id = i.id), 0) AS amount_paid
       FROM invoices i
       JOIN cases c ON c.id = i.case_id
-      JOIN clients cl ON cl.id = c.client_id
+      LEFT JOIN clients cl ON cl.id = c.client_id
       ${where}
       ORDER BY i.issued_date DESC
     `, values);
@@ -1567,10 +1572,20 @@ app.delete('/api/notes/:id', async (req, res) => {
 
 app.get('/api/dashboard/summary', async (req, res) => {
   try {
+    // Today's/Upcoming "hearings" are driven by next_court_date, not
+    // hearing_date — the Court Date form is filled in after attending
+    // court, so hearing_date is always a date already in the past by the
+    // time it's recorded. next_court_date (noted on that same form) is
+    // what's actually still ahead. Only the most recently recorded court
+    // date per case reflects what's currently expected next.
     const { rows: todayHearings } = await pool.query(`
-      SELECT h.*, c.case_number, c.case_title, cl.full_name AS client_name
-      FROM hearings h JOIN cases c ON c.id = h.case_id JOIN clients cl ON cl.id = c.client_id
-      WHERE h.hearing_date::date = CURRENT_DATE ORDER BY h.hearing_date
+      SELECT * FROM (
+        SELECT DISTINCT ON (h.case_id) h.*, c.case_number, c.case_title, cl.full_name AS client_name
+        FROM hearings h JOIN cases c ON c.id = h.case_id LEFT JOIN clients cl ON cl.id = c.client_id
+        ORDER BY h.case_id, h.hearing_date DESC
+      ) latest
+      WHERE latest.next_court_date = CURRENT_DATE
+      ORDER BY latest.next_court_date
     `);
     const { rows: upcomingAppointments } = await pool.query(`
       SELECT a.*, cl.full_name AS client_name
@@ -1579,10 +1594,13 @@ app.get('/api/dashboard/summary', async (req, res) => {
       ORDER BY a.appointment_date LIMIT 10
     `);
     const { rows: upcomingHearings } = await pool.query(`
-      SELECT h.*, c.case_number, c.case_title, cl.full_name AS client_name
-      FROM hearings h JOIN cases c ON c.id = h.case_id JOIN clients cl ON cl.id = c.client_id
-      WHERE h.hearing_date::date > CURRENT_DATE AND h.hearing_date::date <= CURRENT_DATE + INTERVAL '7 days'
-      ORDER BY h.hearing_date LIMIT 10
+      SELECT * FROM (
+        SELECT DISTINCT ON (h.case_id) h.*, c.case_number, c.case_title, cl.full_name AS client_name
+        FROM hearings h JOIN cases c ON c.id = h.case_id LEFT JOIN clients cl ON cl.id = c.client_id
+        ORDER BY h.case_id, h.hearing_date DESC
+      ) latest
+      WHERE latest.next_court_date > CURRENT_DATE AND latest.next_court_date <= CURRENT_DATE + INTERVAL '7 days'
+      ORDER BY latest.next_court_date LIMIT 10
     `);
     const { rows: overdueTasks } = await pool.query(`
       SELECT t.*, c.case_number, c.case_title

@@ -218,13 +218,14 @@ async function viewProfile(id) {
       </div>
       <h4 style="margin-bottom:10px;font-size:13px;color:var(--text-muted);text-transform:uppercase;">Case History (${c.cases.length})</h4>
       ${c.cases.length ? `<div class="table-wrap"><table class="data-table">
-        <thead><tr><th>Case #</th><th>Title</th><th>Type</th><th>Status</th></tr></thead>
+        <thead><tr><th>Case #</th><th>Title</th><th>Type</th><th>Status</th><th></th></tr></thead>
         <tbody>${c.cases.map(cs => `
           <tr style="cursor:pointer;" onclick="window.location.href='/case-detail?id=${cs.id}'">
             <td><strong>${escapeHtml(cs.case_number)}</strong></td>
             <td>${escapeHtml(cs.case_title)}</td>
             <td>${escapeHtml(cs.case_type)}</td>
             <td><span class="badge ${cs.status}">${statusLabel(cs.status)}</span></td>
+            <td onclick="event.stopPropagation()">${currentUser && currentUser.role === 'lawyer' ? `<button class="btn-icon danger" onclick="deleteCaseFromProfile(${cs.id}, '${escapeHtml(cs.case_number).replace(/'/g, "\\'")}', ${id})" title="Delete"><i class="fas fa-trash"></i></button>` : ''}</td>
           </tr>`).join('')}</tbody>
       </table></div>` : '<div class="empty-state">No cases yet for this client</div>'}
     `;
@@ -233,8 +234,18 @@ async function viewProfile(id) {
 }
 function closeProfileModal() { document.getElementById('profile-modal-overlay').classList.remove('show'); }
 
+async function deleteCaseFromProfile(id, caseNumber, clientId) {
+  if (!confirm(`Delete case ${caseNumber}? This permanently removes the case and everything in it (hearings, documents, tasks, expenses, invoices, notes). This cannot be undone.`)) return;
+  try {
+    await apiDelete(`/cases/${id}`);
+    showToast('Case deleted');
+    viewProfile(clientId);
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+let currentUser = null;
 document.addEventListener('DOMContentLoaded', () => {
-  initPageChrome();
+  currentUser = initPageChrome();
   loadClients();
   document.getElementById('search-input').addEventListener('keydown', e => { if (e.key === 'Enter') loadClients(); });
 });

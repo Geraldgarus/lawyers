@@ -1,8 +1,8 @@
 :root {
-  --sidebar-bg: #1E293B;
-  --sidebar-text: #F1F5F9;
-  --sidebar-text-muted: rgba(241,245,249,0.58);
-  --sidebar-border: rgba(241,245,249,0.1);
+  --sidebar-bg: #FFFFFF;
+  --sidebar-text: #1E293B;
+  --sidebar-text-muted: #64748B;
+  --sidebar-border: #E2E8F0;
   --accent-gold: #B8935A;
   --bg-main: #F1F5F9;
   --bg-card: #FFFFFF;
@@ -39,12 +39,13 @@ h1, h2, h3, .logo-text, .card-title { font-family: 'Playfair Display', serif; }
 
 /* ---- SIDEBAR ---- */
 .sidebar {
-  position: fixed; top: 0; left: 0; width: 270px; height: 100vh;
+  position: fixed; top: 0; left: 0; width: 220px; height: 100vh;
   background: var(--sidebar-bg); color: var(--sidebar-text);
+  border-right: 1px solid var(--sidebar-border);
   display: flex; flex-direction: column; z-index: 1000;
   transition: transform 0.3s ease; transform: translateX(-100%);
   overflow-y: auto;
-  box-shadow: 2px 0 12px rgba(0,0,0,0.15);
+  box-shadow: 2px 0 12px rgba(0,0,0,0.06);
 }
 .sidebar.open { transform: translateX(0); }
 .sidebar-top {
@@ -68,7 +69,7 @@ h1, h2, h3, .logo-text, .card-title { font-family: 'Playfair Display', serif; }
   transition: background 0.2s; border: none; background: none; width: 100%; text-align: left; cursor: pointer;
 }
 .nav-item i { width: 16px; text-align: center; }
-.nav-item:hover { background: rgba(255,255,255,0.06); color: var(--sidebar-text); }
+.nav-item:hover { background: rgba(0,0,0,0.05); color: var(--sidebar-text); }
 .nav-item.active { background: var(--accent-gold); color: white; font-weight: 600; }
 .sidebar-footer { padding: 14px 20px; border-top: 1px solid var(--sidebar-border); font-size: 11px; color: var(--sidebar-text-muted); }
 

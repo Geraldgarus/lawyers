@@ -210,6 +210,10 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
       <div class="form-group"><label>Last Court Order</label><textarea class="form-control" id="hearing-last-order" rows="2"></textarea></div>
       <div class="form-group"><label>Current Prayer/Order/Direction Sought</label><textarea class="form-control" id="hearing-prayer" rows="2"></textarea></div>
       <div class="form-group"><label>Court Order/Direction</label><textarea class="form-control" id="hearing-order-direction" rows="2" placeholder="e.g. Case adjourned to 15 Aug"></textarea></div>
+      <div class="form-group">
+        <label><i class="fas fa-calendar-check" style="color:var(--accent-gold);"></i> Next Court Date</label>
+        <input type="date" class="form-control" id="hearing-next-court-date">
+      </div>
 
       <div class="tc-section-label"><i class="fas fa-clock"></i> Consultation &amp; Record</div>
       <div class="form-row">
@@ -413,7 +417,7 @@ function renderCaseHeader() {
     <div class="case-header-top">
       <div>
         <h2>${escapeHtml(c.case_number)} — ${escapeHtml(c.case_title)}</h2>
-        <div class="case-sub"><i class="fas fa-user"></i> ${escapeHtml(c.client_name)} &middot; ${escapeHtml(c.case_type_name)}</div>
+        <div class="case-sub"><i class="fas fa-user"></i> ${escapeHtml(c.client_name) || 'No client'} &middot; ${escapeHtml(c.case_type_name)}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <span class="badge ${c.status}" style="font-size:12px;padding:5px 14px;">${statusLabel(c.status)}</span>
@@ -428,23 +432,24 @@ async function renderOverview() {
   let nextCourtDateHtml = '<span style="color:#94a3b8;">None scheduled</span>';
   let lastAppearanceHtml = '<div class="empty-state" style="padding:16px;">No court dates recorded yet</div>';
   try {
+    // GET /cases/:id/hearings is already ordered by hearing_date DESC, so
+    // [0] is the most recently attended court date.
     const hearings = await apiGet(`/cases/${CASE_ID}/hearings`);
-    const now = new Date();
-    const upcoming = hearings.filter(h => new Date(h.hearing_date) >= now).sort((a,b) => new Date(a.hearing_date) - new Date(b.hearing_date));
-    if (upcoming.length) nextCourtDateHtml = fmtDate(upcoming[0].hearing_date) + (upcoming[0].court ? ' — ' + escapeHtml(upcoming[0].court) : '');
+    if (hearings.length) {
+      const latest = hearings[0];
+      // Next Court Date is a field on the Court Date form itself (filled
+      // in after attending court, noting when the matter comes back) —
+      // not a future hearing_date, since hearing_date is always a visit
+      // already made by the time it's recorded.
+      if (latest.next_court_date) nextCourtDateHtml = fmtDate(latest.next_court_date);
 
-    // "Last Court Appearance" — the Time Chart now lives per court date
-    // (Court Dates tab), so Overview only summarizes the most recent one.
-    const past = hearings.filter(h => new Date(h.hearing_date) <= now).sort((a,b) => new Date(b.hearing_date) - new Date(a.hearing_date));
-    if (past.length) {
-      const h = past[0];
       const tc = (label, value) => `<div><div class="m-label">${label}</div><div class="m-value">${value ? escapeHtml(String(value)) : '—'}</div></div>`;
       lastAppearanceHtml = `
         <div class="case-meta-grid">
-          ${tc('Court Date', fmtDate(h.hearing_date))}
-          ${tc('Court Proceeding Type', h.proceeding_type)}
-          ${tc('Presiding Judge/Magistrate', h.presiding_judge)}
-          ${tc('Court Order/Direction', h.court_order_direction)}
+          ${tc('Court Date', fmtDate(latest.hearing_date))}
+          ${tc('Court Proceeding Type', latest.proceeding_type)}
+          ${tc('Presiding Judge/Magistrate', latest.presiding_judge)}
+          ${tc('Court Order/Direction', latest.court_order_direction)}
         </div>`;
     }
   } catch (e) {}
@@ -460,7 +465,7 @@ async function renderOverview() {
 
   document.getElementById('overview-body').innerHTML = `
     <div class="case-meta-grid">
-      <div><div class="m-label">Client</div><div class="m-value"><a href="/clients" style="color:inherit;">${escapeHtml(c.client_name)}</a></div></div>
+      <div><div class="m-label">Client</div><div class="m-value">${c.client_name ? `<a href="/clients" style="color:inherit;">${escapeHtml(c.client_name)}</a>` : '—'}</div></div>
       <div><div class="m-label">Client Phone</div><div class="m-value">${escapeHtml(c.client_phone) || '—'}</div></div>
       <div><div class="m-label">Case Type</div><div class="m-value">${escapeHtml(c.case_type_name)}</div></div>
       <div><div class="m-label">Assigned Lawyer</div><div class="m-value">${escapeHtml(c.assigned_lawyer_name) || 'Unassigned'}</div></div>
@@ -547,6 +552,7 @@ const HEARING_FIELDS = [
   ['last_court_order', 'lastCourtOrder', 'hearing-last-order', 'text'],
   ['prayer_sought', 'prayerSought', 'hearing-prayer', 'text'],
   ['court_order_direction', 'courtOrderDirection', 'hearing-order-direction', 'text'],
+  ['next_court_date', 'nextCourtDate', 'hearing-next-court-date', 'date'],
   ['consultation_start_time', 'consultationStartTime', 'hearing-consult-start', 'time'],
   ['consultation_end_time', 'consultationEndTime', 'hearing-consult-end', 'time'],
   ['record_date', 'recordDate', 'hearing-record-date', 'date'],
@@ -651,6 +657,7 @@ function buildTimeChartFields(h) {
     ['Last Court Order', h.last_court_order],
     ['Current Prayer/Order/Direction Sought', h.prayer_sought],
     ['Court Order/Direction', h.court_order_direction],
+    ['Next Court Date', h.next_court_date ? fmtDate(h.next_court_date) : null],
     ['Court Start Time', h.court_start_time ? fmtTimeStr(h.court_start_time) : null],
     ['Court End Time', h.court_end_time ? fmtTimeStr(h.court_end_time) : null],
     ['Consultation Start Time', h.consultation_start_time ? fmtTimeStr(h.consultation_start_time) : null],

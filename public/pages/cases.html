@@ -107,7 +107,7 @@
     </div>
     <div class="modal-body">
       <div class="form-group">
-        <label>Client *</label>
+        <label>Client</label>
         <select class="form-control" id="case-client-select">
           <option value="">— Search or add new below —</option>
         </select>
@@ -124,8 +124,7 @@
       <div class="form-row">
         <div class="form-group"><label>Case Number *</label><input class="form-control" id="case-number" placeholder="e.g. CV-2026-001"></div>
         <div class="form-group"><label>Case Type *</label>
-          <input class="form-control" id="case-type" list="case-type-list" placeholder="e.g. Civil, Criminal, Land...">
-          <datalist id="case-type-list"></datalist>
+          <input class="form-control" id="case-type" placeholder="e.g. Civil, Criminal, Land...">
         </div>
       </div>
       <div class="form-row">
@@ -166,11 +165,6 @@ async function loadLookups() {
 
   const typeSel = document.getElementById('filter-type');
   typeSel.innerHTML = '<option value="">All Types</option>' + categoriesList.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
-
-  // Case Type on the New Case form is free text (not a select), with existing
-  // category names offered as datalist suggestions for convenience only.
-  const caseTypeList = document.getElementById('case-type-list');
-  caseTypeList.innerHTML = categoriesList.map(c => `<option value="${escapeHtml(c.name)}">`).join('');
 
   const clientSel = document.getElementById('case-client-select');
   clientSel.innerHTML = '<option value="">— Select existing client —</option>' +
@@ -215,12 +209,15 @@ function renderCases() {
   tbody.innerHTML = casesData.map(c => `
     <tr style="cursor:pointer;" onclick="window.location.href='/case-detail?id=${c.id}'">
       <td><strong>${escapeHtml(c.case_number)}</strong></td>
-      <td>${escapeHtml(c.client_name)}</td>
+      <td>${escapeHtml(c.client_name) || '—'}</td>
       <td>${escapeHtml(c.parties) || '—'}</td>
       <td>${escapeHtml(c.case_type_name)}</td>
       <td><span class="badge ${c.status}">${statusLabel(c.status)}</span></td>
       <td>${nextActionBadge(c)}</td>
-      <td onclick="event.stopPropagation()"><button class="btn-icon" onclick="window.location.href='/case-detail?id=${c.id}'" title="View"><i class="fas fa-eye"></i></button></td>
+      <td onclick="event.stopPropagation()">
+        <button class="btn-icon" onclick="window.location.href='/case-detail?id=${c.id}'" title="View"><i class="fas fa-eye"></i></button>
+        ${currentUser && currentUser.role === 'lawyer' ? `<button class="btn-icon danger" onclick="deleteCase(${c.id}, '${escapeHtml(c.case_number).replace(/'/g, "\\'")}')" title="Delete"><i class="fas fa-trash"></i></button>` : ''}
+      </td>
     </tr>
   `).join('');
 }
@@ -278,15 +275,17 @@ async function saveCase() {
     payload[key] = v === '' ? null : v;
   });
 
+  // Client is optional — if nothing was selected/typed, the case is just
+  // created without one.
   if (usingNewClient) {
-    if (!newClientName) { showToast('New client full name is required', 'error'); return; }
-    payload.newClient = {
-      fullName: newClientName,
-      phone: document.getElementById('new-client-phone').value.trim(),
-      email: document.getElementById('new-client-email').value.trim()
-    };
-  } else {
-    if (!clientId) { showToast('Select a client or add a new one', 'error'); return; }
+    if (newClientName) {
+      payload.newClient = {
+        fullName: newClientName,
+        phone: document.getElementById('new-client-phone').value.trim(),
+        email: document.getElementById('new-client-email').value.trim()
+      };
+    }
+  } else if (clientId) {
     payload.clientId = clientId;
   }
 
@@ -300,12 +299,22 @@ async function saveCase() {
   } catch (err) { showToast(err.message, 'error'); }
 }
 
+let currentUser = null;
 document.addEventListener('DOMContentLoaded', async () => {
-  const user = initPageChrome();
-  if (user && user.role === 'assistant') document.getElementById('new-case-btn').style.display = 'none';
+  currentUser = initPageChrome();
+  if (currentUser && currentUser.role === 'assistant') document.getElementById('new-case-btn').style.display = 'none';
   await loadLookups();
   await loadCases();
 });
+
+async function deleteCase(id, caseNumber) {
+  if (!confirm(`Delete case ${caseNumber}? This permanently removes the case and everything in it (hearings, documents, tasks, expenses, invoices, notes). This cannot be undone.`)) return;
+  try {
+    await apiDelete(`/cases/${id}`);
+    showToast('Case deleted');
+    loadCases();
+  } catch (err) { showToast(err.message, 'error'); }
+}
 </script>
 </body>
 </html>

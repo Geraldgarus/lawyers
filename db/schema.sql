@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS case_number_counters (
 CREATE TABLE IF NOT EXISTS cases (
   id                      SERIAL PRIMARY KEY,
   case_number             VARCHAR(30)  NOT NULL UNIQUE,      -- e.g. CV-2026-001
-  client_id               INT NOT NULL REFERENCES clients(id) ON DELETE RESTRICT,
+  client_id               INT REFERENCES clients(id) ON DELETE RESTRICT,   -- optional at intake
   case_title              VARCHAR(255) NOT NULL,
   case_type_id            INT NOT NULL REFERENCES case_categories(id) ON DELETE RESTRICT,
   status                  VARCHAR(50) NOT NULL DEFAULT 'intake' REFERENCES case_statuses(name),
@@ -186,6 +186,7 @@ ALTER TABLE cases ADD COLUMN IF NOT EXISTS payment_status          VARCHAR(20) N
 ALTER TABLE cases ADD COLUMN IF NOT EXISTS amount_paid             NUMERIC(12,2) NOT NULL DEFAULT 0;
 ALTER TABLE cases ADD COLUMN IF NOT EXISTS remarks                 TEXT;
 ALTER TABLE cases ADD COLUMN IF NOT EXISTS claim_amount            NUMERIC(12,2);
+ALTER TABLE cases ALTER COLUMN client_id DROP NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_cases_client     ON cases(client_id);
 CREATE INDEX IF NOT EXISTS idx_cases_status     ON cases(status);
 CREATE INDEX IF NOT EXISTS idx_cases_type       ON cases(case_type_id);
@@ -220,6 +221,7 @@ CREATE TABLE IF NOT EXISTS hearings (
   consultation_end_time    TIME,
   record_date              DATE,
   recorded_by              VARCHAR(255),          -- Recorded By / Advocate Signature
+  next_court_date          DATE,                  -- the date this matter was adjourned/scheduled to next
   created_by   INT REFERENCES users(id) ON DELETE SET NULL,
   created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -239,8 +241,10 @@ ALTER TABLE hearings ADD COLUMN IF NOT EXISTS consultation_start_time  TIME;
 ALTER TABLE hearings ADD COLUMN IF NOT EXISTS consultation_end_time    TIME;
 ALTER TABLE hearings ADD COLUMN IF NOT EXISTS record_date              DATE;
 ALTER TABLE hearings ADD COLUMN IF NOT EXISTS recorded_by              VARCHAR(255);
+ALTER TABLE hearings ADD COLUMN IF NOT EXISTS next_court_date          DATE;
 CREATE INDEX IF NOT EXISTS idx_hearings_case ON hearings(case_id);
 CREATE INDEX IF NOT EXISTS idx_hearings_date ON hearings(hearing_date);
+CREATE INDEX IF NOT EXISTS idx_hearings_next_court_date ON hearings(next_court_date);
 
 -- ============================================================
 -- APPOINTMENTS (client meetings — case optional, client required)
