@@ -127,8 +127,6 @@
           <input class="form-control" id="case-type" placeholder="e.g. Civil, Criminal, Land...">
         </div>
       </div>
-      <div class="form-group"><label>Case Status</label><select class="form-control" id="case-status"></select></div>
-
       <div class="tc-section-label"><i class="fas fa-gavel"></i> Court &amp; Proceeding</div>
       <div class="form-row">
         <div class="form-group"><label>Court Name</label><input class="form-control" id="case-court"></div>
@@ -167,7 +165,7 @@
       <div class="form-group"><label>Court Order/Direction</label><textarea class="form-control" id="case-order-direction" rows="2"></textarea></div>
       <div class="form-group">
         <label><i class="fas fa-calendar-check" style="color:var(--accent-gold);"></i> Next Court Date</label>
-        <input type="date" class="form-control" id="case-next-court-date">
+        <input type="datetime-local" class="form-control" id="case-next-court-date">
       </div>
 
       <div class="tc-section-label"><i class="fas fa-clock"></i> Consultation &amp; Record</div>
@@ -209,9 +207,6 @@ async function loadLookups() {
 
   const typeSel = document.getElementById('filter-type');
   typeSel.innerHTML = '<option value="">All Types</option>' + categoriesList.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
-
-  const caseStatusSel = document.getElementById('case-status');
-  caseStatusSel.innerHTML = statusesList.map(s => `<option value="${s.name}">${escapeHtml(s.label)}</option>`).join('');
 
   const clientSel = document.getElementById('case-client-select');
   clientSel.innerHTML = '<option value="">— Select existing client —</option>' +
@@ -309,7 +304,6 @@ function openCaseModal() {
   document.getElementById('case-client-select').disabled = false;
   document.getElementById('toggle-new-client-btn').innerHTML = '<i class="fas fa-user-plus"></i> Add New Client Instead';
   ['case-client-select','case-number','case-type','case-opposing','case-court','case-description','new-client-name','new-client-phone','new-client-email'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('case-status').value = 'intake';
   TIME_CHART_FIELDS.forEach(([id]) => { const el = document.getElementById(id); if (el) el.value = ''; });
   document.getElementById('case-modal-overlay').classList.add('show');
 }
@@ -323,7 +317,6 @@ async function saveCase() {
   const payload = {
     caseNumber: document.getElementById('case-number').value.trim(),
     caseType: document.getElementById('case-type').value.trim(),
-    status: document.getElementById('case-status').value,
     opposingParty: document.getElementById('case-opposing').value.trim(),
     court: document.getElementById('case-court').value.trim(),
     description: document.getElementById('case-description').value.trim()

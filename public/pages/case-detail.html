@@ -212,7 +212,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
       <div class="form-group"><label>Court Order/Direction</label><textarea class="form-control" id="hearing-order-direction" rows="2" placeholder="e.g. Case adjourned to 15 Aug"></textarea></div>
       <div class="form-group">
         <label><i class="fas fa-calendar-check" style="color:var(--accent-gold);"></i> Next Court Date</label>
-        <input type="date" class="form-control" id="hearing-next-court-date">
+        <input type="datetime-local" class="form-control" id="hearing-next-court-date">
       </div>
 
       <div class="tc-section-label"><i class="fas fa-clock"></i> Consultation &amp; Record</div>
@@ -441,7 +441,7 @@ async function renderOverview() {
       // in after attending court, noting when the matter comes back) —
       // not a future hearing_date, since hearing_date is always a visit
       // already made by the time it's recorded.
-      if (latest.next_court_date) nextCourtDateHtml = fmtDate(latest.next_court_date);
+      if (latest.next_court_date) nextCourtDateHtml = fmtDateTime(latest.next_court_date);
 
       const tc = (label, value) => `<div><div class="m-label">${label}</div><div class="m-value">${value ? escapeHtml(String(value)) : '—'}</div></div>`;
       lastAppearanceHtml = `
@@ -496,6 +496,12 @@ const TIME_CHART_EDIT_FIELDS = [
 ];
 function dateInputVal(d) { return d ? isoDate(d) : ''; }
 function timeInputVal(t) { return t ? String(t).slice(0, 5) : ''; }
+function datetimeInputVal(d) {
+  if (!d) return '';
+  const date = new Date(d);
+  const pad = n => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
 
 function openEditCaseModal() {
   const sel = document.getElementById('edit-case-status');
@@ -552,7 +558,7 @@ const HEARING_FIELDS = [
   ['last_court_order', 'lastCourtOrder', 'hearing-last-order', 'text'],
   ['prayer_sought', 'prayerSought', 'hearing-prayer', 'text'],
   ['court_order_direction', 'courtOrderDirection', 'hearing-order-direction', 'text'],
-  ['next_court_date', 'nextCourtDate', 'hearing-next-court-date', 'date'],
+  ['next_court_date', 'nextCourtDate', 'hearing-next-court-date', 'datetime'],
   ['consultation_start_time', 'consultationStartTime', 'hearing-consult-start', 'time'],
   ['consultation_end_time', 'consultationEndTime', 'hearing-consult-end', 'time'],
   ['record_date', 'recordDate', 'hearing-record-date', 'date'],
@@ -591,6 +597,7 @@ function openHearingModal(id) {
     const raw = h ? h[col] : null;
     if (type === 'date') el.value = dateInputVal(raw);
     else if (type === 'time') el.value = timeInputVal(raw);
+    else if (type === 'datetime') el.value = datetimeInputVal(raw);
     else el.value = raw || '';
   });
   document.getElementById('hearing-modal-overlay').classList.add('show');
@@ -657,7 +664,7 @@ function buildTimeChartFields(h) {
     ['Last Court Order', h.last_court_order],
     ['Current Prayer/Order/Direction Sought', h.prayer_sought],
     ['Court Order/Direction', h.court_order_direction],
-    ['Next Court Date', h.next_court_date ? fmtDate(h.next_court_date) : null],
+    ['Next Court Date', h.next_court_date ? fmtDateTime(h.next_court_date) : null],
     ['Court Start Time', h.court_start_time ? fmtTimeStr(h.court_start_time) : null],
     ['Court End Time', h.court_end_time ? fmtTimeStr(h.court_end_time) : null],
     ['Consultation Start Time', h.consultation_start_time ? fmtTimeStr(h.consultation_start_time) : null],

@@ -672,7 +672,7 @@ app.get('/api/cases', async (req, res) => {
         -- (filled in after attending court), so it's whatever was noted on
         -- the most recently attended hearing — not a future hearing_date,
         -- since hearing_date is always the date of a visit already made.
-        (SELECT h.next_court_date FROM hearings h WHERE h.case_id = c.id ORDER BY h.hearing_date DESC LIMIT 1) AS next_hearing_date,
+        (SELECT h.next_court_date FROM hearings h WHERE h.case_id = c.id ORDER BY h.hearing_date DESC, h.id DESC LIMIT 1) AS next_hearing_date,
         (SELECT COUNT(*)::int FROM tasks t WHERE t.case_id = c.id AND t.status = 'pending' AND t.due_date < CURRENT_DATE) AS overdue_task_count
       FROM cases c
       LEFT JOIN clients cl ON cl.id = c.client_id
@@ -939,7 +939,7 @@ app.get('/api/hearings', async (req, res) => {
 
 app.get('/api/cases/:id/hearings', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM hearings WHERE case_id = $1 ORDER BY hearing_date DESC', [req.params.id]);
+    const { rows } = await pool.query('SELECT * FROM hearings WHERE case_id = $1 ORDER BY hearing_date DESC, id DESC', [req.params.id]);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1609,9 +1609,9 @@ app.get('/api/dashboard/summary', async (req, res) => {
       SELECT * FROM (
         SELECT DISTINCT ON (h.case_id) h.*, c.case_number, c.case_title, cl.full_name AS client_name
         FROM hearings h JOIN cases c ON c.id = h.case_id LEFT JOIN clients cl ON cl.id = c.client_id
-        ORDER BY h.case_id, h.hearing_date DESC
+        ORDER BY h.case_id, h.hearing_date DESC, h.id DESC
       ) latest
-      WHERE latest.next_court_date = CURRENT_DATE
+      WHERE latest.next_court_date::date = CURRENT_DATE
       ORDER BY latest.next_court_date
     `);
     const { rows: upcomingAppointments } = await pool.query(`
@@ -1624,9 +1624,9 @@ app.get('/api/dashboard/summary', async (req, res) => {
       SELECT * FROM (
         SELECT DISTINCT ON (h.case_id) h.*, c.case_number, c.case_title, cl.full_name AS client_name
         FROM hearings h JOIN cases c ON c.id = h.case_id LEFT JOIN clients cl ON cl.id = c.client_id
-        ORDER BY h.case_id, h.hearing_date DESC
+        ORDER BY h.case_id, h.hearing_date DESC, h.id DESC
       ) latest
-      WHERE latest.next_court_date > CURRENT_DATE AND latest.next_court_date <= CURRENT_DATE + INTERVAL '7 days'
+      WHERE latest.next_court_date::date > CURRENT_DATE AND latest.next_court_date::date <= CURRENT_DATE + INTERVAL '7 days'
       ORDER BY latest.next_court_date LIMIT 10
     `);
     const { rows: overdueTasks } = await pool.query(`

@@ -221,7 +221,7 @@ CREATE TABLE IF NOT EXISTS hearings (
   consultation_end_time    TIME,
   record_date              DATE,
   recorded_by              VARCHAR(255),          -- Recorded By / Advocate Signature
-  next_court_date          DATE,                  -- the date this matter was adjourned/scheduled to next
+  next_court_date          TIMESTAMP,             -- date+time this matter was adjourned/scheduled to next
   created_by   INT REFERENCES users(id) ON DELETE SET NULL,
   created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -241,7 +241,8 @@ ALTER TABLE hearings ADD COLUMN IF NOT EXISTS consultation_start_time  TIME;
 ALTER TABLE hearings ADD COLUMN IF NOT EXISTS consultation_end_time    TIME;
 ALTER TABLE hearings ADD COLUMN IF NOT EXISTS record_date              DATE;
 ALTER TABLE hearings ADD COLUMN IF NOT EXISTS recorded_by              VARCHAR(255);
-ALTER TABLE hearings ADD COLUMN IF NOT EXISTS next_court_date          DATE;
+ALTER TABLE hearings ADD COLUMN IF NOT EXISTS next_court_date          TIMESTAMP;
+ALTER TABLE hearings ALTER COLUMN next_court_date TYPE TIMESTAMP;
 CREATE INDEX IF NOT EXISTS idx_hearings_case ON hearings(case_id);
 CREATE INDEX IF NOT EXISTS idx_hearings_date ON hearings(hearing_date);
 CREATE INDEX IF NOT EXISTS idx_hearings_next_court_date ON hearings(next_court_date);

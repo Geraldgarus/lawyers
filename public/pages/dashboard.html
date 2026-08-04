@@ -166,7 +166,7 @@ async function loadDashboard() {
       ? data.todayHearings.map(h => `
         <div class="list-row">
           <span><a href="/case-detail?id=${h.case_id}" style="color:var(--accent-gold);font-weight:600;">${escapeHtml(h.case_number)}</a> — ${escapeHtml(h.client_name)}</span>
-          <span>${h.court ? escapeHtml(h.court) : 'Today'}</span>
+          <span>${h.next_court_date ? new Date(h.next_court_date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : 'Today'}</span>
         </div>`).join('')
       : '<div class="empty-state">No hearings today</div>';
 
@@ -174,7 +174,7 @@ async function loadDashboard() {
       ? data.upcomingHearings.map(h => `
         <div class="list-row">
           <span><a href="/case-detail?id=${h.case_id}" style="color:var(--accent-gold);font-weight:600;">${escapeHtml(h.case_number)}</a> — ${escapeHtml(h.client_name)}</span>
-          <span>${fmtDateShort(h.next_court_date)}</span>
+          <span>${fmtDateTime(h.next_court_date)}</span>
         </div>`).join('')
       : '<div class="empty-state">No hearings in the next 7 days</div>';
 
@@ -231,7 +231,7 @@ function renderNotifications(todayHearings, upcomingAppointments) {
         <i class="fas fa-gavel"></i>
         <div>
           <div class="notif-title">${escapeHtml(h.case_number)} — ${escapeHtml(h.client_name)}</div>
-          <div class="notif-sub">Today${h.court ? ' · ' + escapeHtml(h.court) : ''}</div>
+          <div class="notif-sub">${h.next_court_date ? new Date(h.next_court_date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : 'Today'}${h.court ? ' · ' + escapeHtml(h.court) : ''}</div>
         </div>
       </div>`).join('');
   }
