@@ -299,11 +299,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
   <div class="modal">
     <div class="modal-header"><h3><i class="fas fa-pen"></i> Edit Case</h3><button onclick="closeModal('edit-case-modal-overlay')"><i class="fas fa-times"></i></button></div>
     <div class="modal-body">
-      <div class="form-group"><label>Case Title</label><input class="form-control" id="edit-case-title"></div>
-      <div class="form-row">
-        <div class="form-group"><label>Status</label><select class="form-control" id="edit-case-status"></select></div>
-        <div class="form-group"><label>Assigned Lawyer</label><select class="form-control" id="edit-case-lawyer"><option value="">Unassigned</option></select></div>
-      </div>
+      <div class="form-group"><label>Status</label><select class="form-control" id="edit-case-status"></select></div>
 
       <div class="tc-section-label"><i class="fas fa-gavel"></i> Court &amp; Proceeding</div>
       <div class="form-row">
@@ -351,19 +347,6 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
         <div class="form-group"><label>Record Date</label><input type="date" class="form-control" id="edit-case-record-date"></div>
         <div class="form-group"><label>Recorded By / Advocate Signature</label><input class="form-control" id="edit-case-recorded-by"></div>
       </div>
-
-      <div class="tc-section-label"><i class="fas fa-money-bill-wave"></i> Billing</div>
-      <div class="form-row">
-        <div class="form-group"><label>Billing Amount</label><input type="number" min="0" step="0.01" class="form-control" id="edit-case-billing-amount"></div>
-        <div class="form-group"><label>Payment Status</label>
-          <select class="form-control" id="edit-case-payment-status">
-            <option value="unpaid">Unpaid</option>
-            <option value="partial">Partially Paid</option>
-            <option value="paid">Paid</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-group"><label>Amount Paid</label><input type="number" min="0" step="0.01" class="form-control" id="edit-case-amount-paid"></div>
 
       <div class="tc-section-label"><i class="fas fa-file-lines"></i> Summary &amp; Remarks</div>
       <div class="form-group"><label>Summary / Description</label><textarea class="form-control" id="edit-case-description" rows="3"></textarea></div>
@@ -489,10 +472,6 @@ async function renderOverview() {
       ${tc('Consultation End Time', c.consultation_end_time)}
       ${tc('Record Date', c.record_date ? fmtDate(c.record_date) : '')}
       ${tc('Recorded By / Advocate Signature', c.recorded_by)}
-      ${tc('Billing Amount', c.billing_amount != null ? fmtCurrency(c.billing_amount) : '')}
-      ${tc('Payment Status', c.payment_status ? c.payment_status.charAt(0).toUpperCase() + c.payment_status.slice(1) : '')}
-      ${tc('Amount Paid', c.amount_paid != null ? fmtCurrency(c.amount_paid) : '')}
-      ${tc('Outstanding Balance', (c.billing_amount != null && c.amount_paid != null) ? fmtCurrency(c.billing_amount - c.amount_paid) : '')}
     </div>
     ${c.last_court_order ? `<div style="margin-top:14px;"><div class="m-label">Last Court Order</div><div style="margin-top:6px;font-size:13.5px;">${escapeHtml(c.last_court_order)}</div></div>` : ''}
     ${c.prayer_sought ? `<div style="margin-top:14px;"><div class="m-label">Current Prayer/Order/Direction Sought</div><div style="margin-top:6px;font-size:13.5px;">${escapeHtml(c.prayer_sought)}</div></div>` : ''}
@@ -520,9 +499,6 @@ const TIME_CHART_EDIT_FIELDS = [
   ['consultation_end_time', 'consultationEndTime', 'edit-case-consult-end', 'time'],
   ['record_date', 'recordDate', 'edit-case-record-date', 'date'],
   ['recorded_by', 'recordedBy', 'edit-case-recorded-by', 'text'],
-  ['billing_amount', 'billingAmount', 'edit-case-billing-amount', 'text'],
-  ['payment_status', 'paymentStatus', 'edit-case-payment-status', 'text'],
-  ['amount_paid', 'amountPaid', 'edit-case-amount-paid', 'text'],
   ['remarks', 'remarks', 'edit-case-remarks', 'text'],
 ];
 function dateInputVal(d) { return d ? isoDate(d) : ''; }
@@ -531,10 +507,6 @@ function timeInputVal(t) { return t ? String(t).slice(0, 5) : ''; }
 function openEditCaseModal() {
   const sel = document.getElementById('edit-case-status');
   sel.innerHTML = statusesList.map(s => `<option value="${s.name}" ${s.name === currentCase.status ? 'selected' : ''}>${escapeHtml(s.label)}</option>`).join('');
-  const lawyerSel = document.getElementById('edit-case-lawyer');
-  lawyerSel.innerHTML = '<option value="">Unassigned</option>' + usersList.filter(u => u.role === 'lawyer').map(u =>
-    `<option value="${u.id}" ${u.id === currentCase.assigned_lawyer ? 'selected' : ''}>${escapeHtml(u.full_name)}</option>`).join('');
-  document.getElementById('edit-case-title').value = currentCase.case_title || '';
   document.getElementById('edit-case-opposing').value = currentCase.opposing_party || '';
   document.getElementById('edit-case-court').value = currentCase.court || '';
   document.getElementById('edit-case-description').value = currentCase.description || '';
@@ -544,16 +516,14 @@ function openEditCaseModal() {
     const raw = currentCase[col];
     if (type === 'date') el.value = dateInputVal(raw);
     else if (type === 'time') el.value = timeInputVal(raw);
-    else el.value = (raw === null || raw === undefined) ? (id === 'edit-case-payment-status' ? 'unpaid' : '') : raw;
+    else el.value = (raw === null || raw === undefined) ? '' : raw;
   });
   document.getElementById('edit-case-modal-overlay').classList.add('show');
 }
 
 async function saveEditCase() {
   const payload = {
-    caseTitle: document.getElementById('edit-case-title').value.trim(),
     status: document.getElementById('edit-case-status').value,
-    assignedLawyer: document.getElementById('edit-case-lawyer').value || null,
     opposingParty: document.getElementById('edit-case-opposing').value.trim(),
     court: document.getElementById('edit-case-court').value.trim(),
     description: document.getElementById('edit-case-description').value.trim()

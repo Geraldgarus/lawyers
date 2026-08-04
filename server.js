@@ -701,16 +701,39 @@ app.get('/api/cases/:id', async (req, res) => {
   }
 });
 
+// Case Type on the New Case form is free text, not a category picker — this
+// resolves it to a case_categories row (creating one on first use) so every
+// other part of the app that joins/filters on case_type_id keeps working.
+// The category's `code` is now only used to satisfy the table's UNIQUE
+// constraint (case numbering is manual), not for number generation.
+async function findOrCreateCaseCategory(dbClient, typeName) {
+  const trimmed = (typeName || '').trim();
+  if (!trimmed) throw new Error('Case type is required');
+  const { rows: existing } = await dbClient.query('SELECT id FROM case_categories WHERE LOWER(name) = LOWER($1)', [trimmed]);
+  if (existing.length) return existing[0].id;
+
+  const base = trimmed.replace(/[^A-Za-z]/g, '').slice(0, 5).toUpperCase() || 'GEN';
+  let code = base;
+  for (let suffix = 1; ; suffix++) {
+    const { rows: codeRows } = await dbClient.query('SELECT id FROM case_categories WHERE code = $1', [code]);
+    if (!codeRows.length) break;
+    code = (base.slice(0, 5 - String(suffix).length) + suffix).toUpperCase();
+  }
+  const { rows: created } = await dbClient.query(
+    'INSERT INTO case_categories (name, code) VALUES ($1, $2) RETURNING id', [trimmed, code]
+  );
+  return created[0].id;
+}
+
 app.post('/api/cases', requireRole('lawyer', 'secretary'), async (req, res) => {
   const {
-    clientId, newClient, caseTitle, caseTypeId, description, assignedLawyer, opposingParty, court,
+    clientId, newClient, caseNumber, caseType, description, opposingParty, court,
     caseYear, parties, presidingJudge, proceedingType, proceedingDate, counselPlaintiff, counselDefendant,
     courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTime, courtEndTime,
-    consultationStartTime, consultationEndTime, recordDate, recordedBy, billingAmount, paymentStatus,
-    amountPaid, remarks, claimAmount
+    consultationStartTime, consultationEndTime, recordDate, recordedBy, remarks, claimAmount
   } = req.body;
-  if (!caseTitle || !caseTypeId) {
-    return res.status(400).json({ error: 'caseTitle and caseTypeId are required' });
+  if (!caseNumber || !caseType) {
+    return res.status(400).json({ error: 'caseNumber and caseType are required' });
   }
   if (!clientId && !newClient) {
     return res.status(400).json({ error: 'clientId or newClient is required' });
@@ -732,39 +755,29 @@ app.post('/api/cases', requireRole('lawyer', 'secretary'), async (req, res) => {
       finalClientId = clientRows[0].id;
     }
 
-    const { rows: catRows } = await dbClient.query('SELECT code FROM case_categories WHERE id = $1', [caseTypeId]);
-    if (!catRows.length) throw new Error('Invalid caseTypeId');
-    const code = catRows[0].code;
-    const year = new Date().getFullYear();
+    const caseTypeId = await findOrCreateCaseCategory(dbClient, caseType);
 
-    const { rows: counterRows } = await dbClient.query(
-      `INSERT INTO case_number_counters (case_type_id, year, last_seq)
-       VALUES ($1, $2, 1)
-       ON CONFLICT (case_type_id, year)
-       DO UPDATE SET last_seq = case_number_counters.last_seq + 1
-       RETURNING last_seq`,
-      [caseTypeId, year]
-    );
-    const caseNumber = `${code}-${year}-${String(counterRows[0].last_seq).padStart(3, '0')}`;
+    // case_title has no dedicated input anymore — derive something
+    // meaningful so every other part of the app that displays it
+    // (lists, headers, timelines) still has a sensible label.
+    const finalCaseTitle = (parties && parties.trim()) ? parties.trim() : caseNumber.trim();
 
     const { rows } = await dbClient.query(
       `INSERT INTO cases (
-         case_number, client_id, case_title, case_type_id, description, assigned_lawyer, opposing_party, court,
+         case_number, client_id, case_title, case_type_id, description, opposing_party, court,
          case_year, parties, presiding_judge, proceeding_type, proceeding_date, counsel_plaintiff, counsel_defendant,
          court_clerk, last_court_order, prayer_sought, court_order_direction, court_start_time, court_end_time,
-         consultation_start_time, consultation_end_time, record_date, recorded_by, billing_amount, payment_status,
-         amount_paid, remarks, claim_amount, created_by
+         consultation_start_time, consultation_end_time, record_date, recorded_by, remarks, claim_amount, created_by
        )
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)
        RETURNING *`,
-      [caseNumber, finalClientId, caseTitle, caseTypeId, description || null,
-       assignedLawyer || null, opposingParty || null, court || null,
+      [caseNumber.trim(), finalClientId, finalCaseTitle, caseTypeId, description || null,
+       opposingParty || null, court || null,
        caseYear || null, parties || null, presidingJudge || null, proceedingType || null, proceedingDate || null,
        counselPlaintiff || null, counselDefendant || null, courtClerk || null, lastCourtOrder || null,
        prayerSought || null, courtOrderDirection || null, courtStartTime || null, courtEndTime || null,
        consultationStartTime || null, consultationEndTime || null, recordDate || null, recordedBy || null,
-       billingAmount || 0, paymentStatus || 'unpaid', amountPaid || 0, remarks || null, claimAmount || null,
-       req.user.id]
+       remarks || null, claimAmount || null, req.user.id]
     );
 
     await dbClient.query('COMMIT');
@@ -772,6 +785,9 @@ app.post('/api/cases', requireRole('lawyer', 'secretary'), async (req, res) => {
     res.status(201).json(rows[0]);
   } catch (err) {
     await dbClient.query('ROLLBACK');
+    if (err.code === '23505' && err.constraint && err.constraint.includes('case_number')) {
+      return res.status(400).json({ error: `Case number "${caseNumber}" is already in use` });
+    }
     res.status(400).json({ error: err.message });
   } finally {
     dbClient.release();

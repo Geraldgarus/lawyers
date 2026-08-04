@@ -91,7 +91,7 @@
     <div class="card-header"><h3><i class="fas fa-briefcase"></i> All Cases</h3></div>
     <div class="table-wrap">
       <table class="data-table">
-        <thead><tr><th>Case #</th><th>Client</th><th>Title</th><th>Type</th><th>Status</th><th>Next Action</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Case #</th><th>Client</th><th>Parties</th><th>Type</th><th>Status</th><th>Next Action</th><th>Actions</th></tr></thead>
         <tbody id="cases-body"><tr><td colspan="7" class="empty-state">Loading...</td></tr></tbody>
       </table>
     </div>
@@ -121,10 +121,12 @@
       </div>
       <button type="button" class="btn-outline btn-sm" id="toggle-new-client-btn" style="margin-bottom:16px;" onclick="toggleNewClient()"><i class="fas fa-user-plus"></i> Add New Client Instead</button>
 
-      <div class="form-group"><label>Case Title *</label><input class="form-control" id="case-title"></div>
       <div class="form-row">
-        <div class="form-group"><label>Case Type *</label><select class="form-control" id="case-type"></select></div>
-        <div class="form-group"><label>Assigned Lawyer</label><select class="form-control" id="case-lawyer"><option value="">Unassigned</option></select></div>
+        <div class="form-group"><label>Case Number *</label><input class="form-control" id="case-number" placeholder="e.g. CV-2026-001"></div>
+        <div class="form-group"><label>Case Type *</label>
+          <input class="form-control" id="case-type" list="case-type-list" placeholder="e.g. Civil, Criminal, Land...">
+          <datalist id="case-type-list"></datalist>
+        </div>
       </div>
 
       <div class="tc-section-label"><i class="fas fa-gavel"></i> Court &amp; Proceeding</div>
@@ -174,19 +176,6 @@
         <div class="form-group"><label>Recorded By / Advocate Signature</label><input class="form-control" id="case-recorded-by"></div>
       </div>
 
-      <div class="tc-section-label"><i class="fas fa-money-bill-wave"></i> Billing</div>
-      <div class="form-row">
-        <div class="form-group"><label>Billing Amount</label><input type="number" min="0" step="0.01" class="form-control" id="case-billing-amount" value="0"></div>
-        <div class="form-group"><label>Payment Status</label>
-          <select class="form-control" id="case-payment-status">
-            <option value="unpaid">Unpaid</option>
-            <option value="partial">Partially Paid</option>
-            <option value="paid">Paid</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-group"><label>Amount Paid</label><input type="number" min="0" step="0.01" class="form-control" id="case-amount-paid" value="0"></div>
-
       <div class="tc-section-label"><i class="fas fa-file-lines"></i> Summary &amp; Remarks</div>
       <div class="form-group"><label>Summary / Description</label><textarea class="form-control" id="case-description" rows="3" placeholder="A narrative summary of the matter — what happened, what is being claimed, and against whom"></textarea></div>
       <div class="form-group"><label>Remarks</label><textarea class="form-control" id="case-remarks" rows="2" placeholder="Additional comments or observations"></textarea></div>
@@ -205,12 +194,10 @@
 let casesData = [];
 let clientsList = [];
 let categoriesList = [];
-let usersList = [];
 let statusesList = [];
 
 async function loadLookups() {
   [clientsList, categoriesList, statusesList] = await Promise.all([apiGet('/clients'), apiGet('/case-categories'), apiGet('/case-statuses')]);
-  try { usersList = await apiGet('/users'); } catch (e) { usersList = []; }
 
   const statusSel = document.getElementById('filter-status');
   statusSel.innerHTML = '<option value="">All Statuses</option>' + statusesList.map(s => `<option value="${s.name}">${escapeHtml(s.label)}</option>`).join('');
@@ -218,16 +205,14 @@ async function loadLookups() {
   const typeSel = document.getElementById('filter-type');
   typeSel.innerHTML = '<option value="">All Types</option>' + categoriesList.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
 
-  const caseTypeSel = document.getElementById('case-type');
-  caseTypeSel.innerHTML = categoriesList.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+  // Case Type on the New Case form is free text (not a select), with existing
+  // category names offered as datalist suggestions for convenience only.
+  const caseTypeList = document.getElementById('case-type-list');
+  caseTypeList.innerHTML = categoriesList.map(c => `<option value="${escapeHtml(c.name)}">`).join('');
 
   const clientSel = document.getElementById('case-client-select');
   clientSel.innerHTML = '<option value="">— Select existing client —</option>' +
     clientsList.map(c => `<option value="${c.id}">${escapeHtml(c.full_name)}${c.phone ? ' (' + c.phone + ')' : ''}</option>`).join('');
-
-  const lawyerSel = document.getElementById('case-lawyer');
-  lawyerSel.innerHTML = '<option value="">Unassigned</option>' +
-    usersList.filter(u => u.role === 'lawyer').map(u => `<option value="${u.id}">${escapeHtml(u.full_name)}</option>`).join('');
 }
 
 async function loadCases() {
@@ -269,7 +254,7 @@ function renderCases() {
     <tr style="cursor:pointer;" onclick="window.location.href='/case-detail?id=${c.id}'">
       <td><strong>${escapeHtml(c.case_number)}</strong></td>
       <td>${escapeHtml(c.client_name)}</td>
-      <td>${escapeHtml(c.case_title)}</td>
+      <td>${escapeHtml(c.parties) || '—'}</td>
       <td>${escapeHtml(c.case_type_name)}</td>
       <td><span class="badge ${c.status}">${statusLabel(c.status)}</span></td>
       <td>${nextActionBadge(c)}</td>
@@ -305,17 +290,15 @@ const TIME_CHART_FIELDS = [
   ['case-order-direction', 'courtOrderDirection'], ['case-court-start', 'courtStartTime'],
   ['case-court-end', 'courtEndTime'], ['case-consult-start', 'consultationStartTime'],
   ['case-consult-end', 'consultationEndTime'], ['case-record-date', 'recordDate'],
-  ['case-recorded-by', 'recordedBy'], ['case-billing-amount', 'billingAmount'],
-  ['case-payment-status', 'paymentStatus'], ['case-amount-paid', 'amountPaid'], ['case-remarks', 'remarks'],
+  ['case-recorded-by', 'recordedBy'], ['case-remarks', 'remarks'],
 ];
 
 function openCaseModal() {
   document.getElementById('new-client-fields').style.display = 'none';
   document.getElementById('case-client-select').disabled = false;
   document.getElementById('toggle-new-client-btn').innerHTML = '<i class="fas fa-user-plus"></i> Add New Client Instead';
-  ['case-client-select','case-title','case-opposing','case-court','case-description','new-client-name','new-client-phone','new-client-email'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('case-lawyer').value = '';
-  TIME_CHART_FIELDS.forEach(([id]) => { const el = document.getElementById(id); if (el) el.value = id === 'case-billing-amount' || id === 'case-amount-paid' ? '0' : (id === 'case-payment-status' ? 'unpaid' : ''); });
+  ['case-client-select','case-number','case-type','case-opposing','case-court','case-description','new-client-name','new-client-phone','new-client-email'].forEach(id => document.getElementById(id).value = '');
+  TIME_CHART_FIELDS.forEach(([id]) => { const el = document.getElementById(id); if (el) el.value = ''; });
   document.getElementById('case-modal-overlay').classList.add('show');
 }
 function closeCaseModal() { document.getElementById('case-modal-overlay').classList.remove('show'); }
@@ -326,9 +309,8 @@ async function saveCase() {
   const usingNewClient = document.getElementById('new-client-fields').style.display !== 'none';
 
   const payload = {
-    caseTitle: document.getElementById('case-title').value.trim(),
-    caseTypeId: document.getElementById('case-type').value,
-    assignedLawyer: document.getElementById('case-lawyer').value || null,
+    caseNumber: document.getElementById('case-number').value.trim(),
+    caseType: document.getElementById('case-type').value.trim(),
     opposingParty: document.getElementById('case-opposing').value.trim(),
     court: document.getElementById('case-court').value.trim(),
     description: document.getElementById('case-description').value.trim()
@@ -352,7 +334,7 @@ async function saveCase() {
     payload.clientId = clientId;
   }
 
-  if (!payload.caseTitle || !payload.caseTypeId) { showToast('Case title and type are required', 'error'); return; }
+  if (!payload.caseNumber || !payload.caseType) { showToast('Case number and type are required', 'error'); return; }
 
   try {
     const created = await apiPost('/cases', payload);
