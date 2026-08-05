@@ -110,6 +110,23 @@ INSERT INTO case_statuses (name, label, is_closed, sort_order) VALUES
   ('closed_settled', 'Closed — Settled', TRUE, 8)
 ON CONFLICT (name) DO NOTHING;
 
+-- Case status now tracks the Time Chart's court-proceeding stage (the same
+-- Mention/1st PTC/Mediation/Hearing/Final PTC/Judgment/Ruling sequence used
+-- by the "Court Proceeding Type" field) instead of a generic case-lifecycle
+-- status. Old lifecycle statuses are deactivated, not deleted, so existing
+-- cases still referencing them via the status FK keep resolving.
+UPDATE case_statuses SET is_active = FALSE
+  WHERE name IN ('intake','active','filed','in_hearing','closed_won','closed_lost','closed_settled');
+INSERT INTO case_statuses (name, label, is_closed, sort_order, is_active) VALUES
+  ('mention', 'Mention', FALSE, 1, TRUE),
+  ('first_ptc', '1st PTC', FALSE, 2, TRUE),
+  ('mediation', 'Mediation', FALSE, 3, TRUE),
+  ('hearing', 'Hearing', FALSE, 4, TRUE),
+  ('final_ptc', 'Final PTC', FALSE, 5, TRUE),
+  ('judgment', 'Judgment', FALSE, 6, TRUE),
+  ('ruling', 'Ruling', FALSE, 7, TRUE)
+ON CONFLICT (name) DO UPDATE SET label = EXCLUDED.label, sort_order = EXCLUDED.sort_order, is_active = TRUE;
+
 -- ============================================================
 -- CASE NUMBER COUNTERS (atomic per type+year sequence)
 -- ============================================================
@@ -129,7 +146,7 @@ CREATE TABLE IF NOT EXISTS cases (
   client_id               INT REFERENCES clients(id) ON DELETE RESTRICT,   -- optional at intake
   case_title              VARCHAR(255) NOT NULL,
   case_type_id            INT NOT NULL REFERENCES case_categories(id) ON DELETE RESTRICT,
-  status                  VARCHAR(50) NOT NULL DEFAULT 'intake' REFERENCES case_statuses(name),
+  status                  VARCHAR(50) NOT NULL DEFAULT 'mention' REFERENCES case_statuses(name),
   description             TEXT,                     -- narrative summary of the matter
   assigned_lawyer         INT REFERENCES users(id) ON DELETE SET NULL,
   opposing_party          VARCHAR(255),              -- Versus (Opponent)
@@ -187,6 +204,7 @@ ALTER TABLE cases ADD COLUMN IF NOT EXISTS amount_paid             NUMERIC(12,2)
 ALTER TABLE cases ADD COLUMN IF NOT EXISTS remarks                 TEXT;
 ALTER TABLE cases ADD COLUMN IF NOT EXISTS claim_amount            NUMERIC(12,2);
 ALTER TABLE cases ALTER COLUMN client_id DROP NOT NULL;
+ALTER TABLE cases ALTER COLUMN status SET DEFAULT 'mention';
 CREATE INDEX IF NOT EXISTS idx_cases_client     ON cases(client_id);
 CREATE INDEX IF NOT EXISTS idx_cases_status     ON cases(status);
 CREATE INDEX IF NOT EXISTS idx_cases_type       ON cases(case_type_id);

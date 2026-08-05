@@ -63,6 +63,15 @@ function setLoading(containerId) {
   el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> Loading…</div>';
 }
 
+// Case status is now the Time Chart's court-proceeding stage — a few of
+// those slugs (the PTC ones) don't title-case cleanly on their own
+// ("first_ptc" -> "First Ptc" instead of "1st PTC"), so they're spelled
+// out explicitly; everything else still falls through to generic title-case.
+const STAGE_LABELS = {
+  mention: 'Mention', first_ptc: '1st PTC', mediation: 'Mediation',
+  hearing: 'Hearing', final_ptc: 'Final PTC', judgment: 'Judgment', ruling: 'Ruling'
+};
 function statusLabel(status) {
+  if (STAGE_LABELS[status]) return STAGE_LABELS[status];
   return String(status || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }

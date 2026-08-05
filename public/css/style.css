@@ -200,8 +200,8 @@ h1, h2, h3, .logo-text, .card-title { font-family: 'Playfair Display', serif; }
 
 /* ---- BADGES ---- */
 .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 10.5px; font-weight: 700; text-transform: capitalize; }
-.badge.success, .badge.paid, .badge.done, .badge.closed_won, .badge.active { background: var(--success-light); color: var(--success-text); }
-.badge.warning, .badge.partial, .badge.pending, .badge.intake, .badge.filed { background: var(--warning-light); color: var(--warning-text); }
+.badge.success, .badge.paid, .badge.done, .badge.closed_won, .badge.active, .badge.ruling { background: var(--success-light); color: var(--success-text); }
+.badge.warning, .badge.partial, .badge.pending, .badge.intake, .badge.filed, .badge.mention, .badge.first_ptc, .badge.mediation, .badge.hearing, .badge.final_ptc { background: var(--warning-light); color: var(--warning-text); }
 .badge.danger, .badge.unpaid, .badge.overdue, .badge.closed_lost { background: var(--danger-light); color: var(--danger-text); }
 .badge.info, .badge.in_hearing, .badge.judgment { background: var(--info-light); color: var(--info-text); }
 .badge.neutral, .badge.closed_settled { background: var(--neutral-bg); color: var(--neutral-text); }

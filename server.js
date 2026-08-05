@@ -776,7 +776,7 @@ app.post('/api/cases', requireRole('lawyer', 'secretary'), async (req, res) => {
          case_number, client_id, case_title, case_type_id, description, opposing_party, court,
          case_year, parties, remarks, claim_amount, status, created_by
        )
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,COALESCE($12, 'intake'),$13)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,COALESCE($12, 'mention'),$13)
        RETURNING *`,
       [caseNumber.trim(), finalClientId, finalCaseTitle, caseTypeId, description || null,
        opposingParty || null, court || null,
@@ -820,38 +820,116 @@ app.post('/api/cases', requireRole('lawyer', 'secretary'), async (req, res) => {
 app.put('/api/cases/:id', requireRole('lawyer', 'secretary'), async (req, res) => {
   const {
     caseTitle, status, description, assignedLawyer, opposingParty, court,
-    caseYear, parties, remarks, claimAmount
+    caseYear, parties, remarks, claimAmount, clientId, caseNumber, caseType,
+    // Time Chart & Court Records fields — Edit Case mirrors every field on
+    // the New Case form, so saving it updates the case's most recent Court
+    // Date entry the same way New Case submission creates the first one.
+    presidingJudge, proceedingType, proceedingDate, counselPlaintiff, counselDefendant,
+    courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTime, courtEndTime,
+    consultationStartTime, consultationEndTime, recordDate, recordedBy, nextCourtDate
   } = req.body;
-  // NUMERIC columns reject '' outright, so an empty (but present) form
-  // field must become null to fall through the COALESCE below and leave
-  // the existing value untouched — the same as if it weren't sent.
+  // NUMERIC/DATE/TIME columns reject '' outright, so an empty (but present)
+  // form field must become null to fall through the COALESCE below and
+  // leave the existing value untouched — the same as if it weren't sent.
   const caseYearN = caseYear || null;
   const claimAmountN = (claimAmount === '' || claimAmount === undefined) ? null : claimAmount;
-  try {
-    const { rows: before } = await pool.query('SELECT * FROM cases WHERE id = $1', [req.params.id]);
-    if (!before.length) return res.status(404).json({ error: 'Case not found' });
+  const clientIdN = clientId || null;
+  const courtStartTimeN = courtStartTime || null;
+  const courtEndTimeN = courtEndTime || null;
+  const consultationStartTimeN = consultationStartTime || null;
+  const consultationEndTimeN = consultationEndTime || null;
+  const recordDateN = recordDate || null;
+  const proceedingDateN = proceedingDate || null;
+  const nextCourtDateN = nextCourtDate || null;
 
-    const { rows } = await pool.query(
+  const dbClient = await pool.connect();
+  try {
+    await dbClient.query('BEGIN');
+    const { rows: before } = await dbClient.query('SELECT * FROM cases WHERE id = $1 FOR UPDATE', [req.params.id]);
+    if (!before.length) { await dbClient.query('ROLLBACK'); return res.status(404).json({ error: 'Case not found' }); }
+
+    let caseTypeId = null;
+    if (caseType) caseTypeId = await findOrCreateCaseCategory(dbClient, caseType);
+
+    const { rows } = await dbClient.query(
       `UPDATE cases SET
-        case_title              = COALESCE($1, case_title),
-        status                  = COALESCE($2, status),
-        description             = COALESCE($3, description),
-        assigned_lawyer         = COALESCE($4, assigned_lawyer),
-        opposing_party          = COALESCE($5, opposing_party),
-        court                   = COALESCE($6, court),
-        case_year               = COALESCE($7, case_year),
-        parties                 = COALESCE($8, parties),
-        remarks                 = COALESCE($9, remarks),
-        claim_amount            = COALESCE($10, claim_amount)
-       WHERE id = $11 RETURNING *`,
-      [caseTitle, status, description, assignedLawyer, opposingParty, court,
-       caseYearN, parties, remarks, claimAmountN, req.params.id]
+        case_number              = COALESCE($1, case_number),
+        client_id                = COALESCE($2, client_id),
+        case_type_id             = COALESCE($3, case_type_id),
+        case_title               = COALESCE($4, case_title),
+        status                   = COALESCE($5, status),
+        description              = COALESCE($6, description),
+        assigned_lawyer          = COALESCE($7, assigned_lawyer),
+        opposing_party           = COALESCE($8, opposing_party),
+        court                    = COALESCE($9, court),
+        case_year                = COALESCE($10, case_year),
+        parties                  = COALESCE($11, parties),
+        remarks                  = COALESCE($12, remarks),
+        claim_amount             = COALESCE($13, claim_amount)
+       WHERE id = $14 RETURNING *`,
+      [caseNumber ? caseNumber.trim() : null, clientIdN, caseTypeId, caseTitle, status, description,
+       assignedLawyer, opposingParty, court, caseYearN, parties, remarks, claimAmountN, req.params.id]
     );
-    await logActivity(req.user.id, req.user.email, 'UPDATE', 'case', req.params.id, before[0], rows[0], req);
-    res.json(rows[0]);
+    const updatedCase = rows[0];
+
+    const { rows: latestHearingRows } = await dbClient.query(
+      'SELECT id FROM hearings WHERE case_id = $1 ORDER BY hearing_date DESC, id DESC LIMIT 1',
+      [req.params.id]
+    );
+    if (latestHearingRows.length) {
+      await dbClient.query(
+        `UPDATE hearings SET
+          court                    = COALESCE($1, court),
+          hearing_date             = COALESCE($2, hearing_date),
+          presiding_judge          = COALESCE($3, presiding_judge),
+          proceeding_type          = COALESCE($4, proceeding_type),
+          counsel_plaintiff        = COALESCE($5, counsel_plaintiff),
+          counsel_defendant        = COALESCE($6, counsel_defendant),
+          court_clerk              = COALESCE($7, court_clerk),
+          last_court_order         = COALESCE($8, last_court_order),
+          prayer_sought            = COALESCE($9, prayer_sought),
+          court_order_direction    = COALESCE($10, court_order_direction),
+          court_start_time         = COALESCE($11, court_start_time),
+          court_end_time           = COALESCE($12, court_end_time),
+          consultation_start_time  = COALESCE($13, consultation_start_time),
+          consultation_end_time    = COALESCE($14, consultation_end_time),
+          record_date              = COALESCE($15, record_date),
+          recorded_by              = COALESCE($16, recorded_by),
+          next_court_date          = COALESCE($17, next_court_date)
+         WHERE id = $18`,
+        [court, proceedingDateN, presidingJudge, proceedingType, counselPlaintiff, counselDefendant,
+         courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTimeN, courtEndTimeN,
+         consultationStartTimeN, consultationEndTimeN, recordDateN, recordedBy, nextCourtDateN,
+         latestHearingRows[0].id]
+      );
+    } else {
+      await dbClient.query(
+        `INSERT INTO hearings (
+           case_id, hearing_date, court, presiding_judge, proceeding_type, counsel_plaintiff, counsel_defendant,
+           court_clerk, last_court_order, prayer_sought, court_order_direction, court_start_time, court_end_time,
+           consultation_start_time, consultation_end_time, record_date, recorded_by, next_court_date, created_by
+         )
+         VALUES ($1,COALESCE($2, CURRENT_DATE),$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
+        [req.params.id, proceedingDateN, court || null, presidingJudge || null, proceedingType || null,
+         counselPlaintiff || null, counselDefendant || null, courtClerk || null, lastCourtOrder || null,
+         prayerSought || null, courtOrderDirection || null, courtStartTimeN, courtEndTimeN,
+         consultationStartTimeN, consultationEndTimeN, recordDateN, recordedBy || null,
+         nextCourtDateN, req.user.id]
+      );
+    }
+
+    await dbClient.query('COMMIT');
+    await logActivity(req.user.id, req.user.email, 'UPDATE', 'case', req.params.id, before[0], updatedCase, req);
+    res.json(updatedCase);
   } catch (err) {
+    await dbClient.query('ROLLBACK');
+    if (err.code === '23505' && err.constraint && err.constraint.includes('case_number')) {
+      return res.status(400).json({ error: `Case number "${caseNumber}" is already in use` });
+    }
     if (err.code === '23503') return res.status(400).json({ error: 'Invalid status' });
-    res.status(500).json({ error: err.message });
+    res.status(400).json({ error: err.message });
+  } finally {
+    dbClient.release();
   }
 });
 
