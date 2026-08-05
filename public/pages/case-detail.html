@@ -826,12 +826,11 @@ function printHearing(id) {
   const proceedingDateTime = h.proceeding_type || h.hearing_date
     ? [h.proceeding_type, h.hearing_date ? fmtDate(h.hearing_date) : null].filter(Boolean).join(' — ')
     : '';
-  const courtTimeRange = (h.court_start_time || h.court_end_time)
-    ? `${h.court_start_time ? fmtTimeStr(h.court_start_time) : '.......'} To ${h.court_end_time ? fmtTimeStr(h.court_end_time) : '.......'}`
-    : '';
-  const consultTimeRange = (h.consultation_start_time || h.consultation_end_time)
-    ? `${h.consultation_start_time ? fmtTimeStr(h.consultation_start_time) : '.......'} To ${h.consultation_end_time ? fmtTimeStr(h.consultation_end_time) : '.......'}`
-    : '';
+  // From/To are fixed black labels — each time value is blanked
+  // independently so a filled start time doesn't turn an unfilled end
+  // time blue too (and vice versa).
+  const timeRange = (startVal, endVal) =>
+    `From ${blank(startVal ? fmtTimeStr(startVal) : null, 10)} To ${blank(endVal ? fmtTimeStr(endVal) : null, 10)}`;
 
   win.document.write(`
     <!DOCTYPE html>
@@ -854,7 +853,6 @@ function printHearing(id) {
         .field-label { font-weight: 700; }
         p { margin: 6px 0; }
         .versus { text-align: center; font-weight: 700; margin: 4px 0; }
-        .blank-line { display: block; border-bottom: 1px dotted #1a1a1a; height: 22px; }
         .section { border-top: 1px solid #ddd; padding-top: 12px; margin-top: 16px; }
         .section:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
         .sig-row { display: flex; justify-content: space-between; margin-top: 46px; }
@@ -888,7 +886,6 @@ function printHearing(id) {
         <p>Parties: ${blank(c.parties, 40)}</p>
         <p class="versus">Versus</p>
         <p>${blank(c.opposing_party, 60)}</p>
-        <span class="blank-line"></span>
       </div>
 
       <div class="section">
@@ -905,14 +902,12 @@ function printHearing(id) {
       <div class="section">
         <p><span class="field-label">Last Order of the Court:</span> ${blank(h.last_court_order, 40)}</p>
         <p><span class="field-label">Current Prayer/Order/Direction being sought:</span> ${blank(h.prayer_sought, 30)}</p>
-        <span class="blank-line"></span>
         <p style="margin-top:10px;"><span class="field-label">Court Order/Direction:</span> ${blank(h.court_order_direction, 40)}</p>
-        <span class="blank-line"></span>
       </div>
 
       <div class="section">
-        <p><span class="field-label">Time spent: In Court:</span> &nbsp; ${blank(courtTimeRange, 26)}</p>
-        <p style="margin-left:70px;"><span class="field-label">For Office Consultation:</span> ${blank(consultTimeRange, 26)}</p>
+        <p><span class="field-label">Time spent: In Court:</span> &nbsp; ${timeRange(h.court_start_time, h.court_end_time)}</p>
+        <p style="margin-left:70px;"><span class="field-label">For Office Consultation:</span> ${timeRange(h.consultation_start_time, h.consultation_end_time)}</p>
       </div>
 
       <div class="sig-row">
