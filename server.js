@@ -1818,22 +1818,6 @@ app.get('/api/reports/financial', requireRole('lawyer'), async (req, res) => {
   }
 });
 
-app.get('/api/reports/case-load', requireRole('lawyer'), async (req, res) => {
-  try {
-    const { rows } = await pool.query(`
-      SELECT u.id, u.full_name, COUNT(c.id)::int AS open_cases
-      FROM users u
-      LEFT JOIN cases c ON c.assigned_lawyer = u.id
-        AND c.status IN (SELECT name FROM case_statuses WHERE is_closed = FALSE)
-      WHERE u.role = 'lawyer'
-      GROUP BY u.id, u.full_name
-    `);
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // ════════════════════════════════════════════════════════════════════════════
 //  SETTINGS
 // ════════════════════════════════════════════════════════════════════════════

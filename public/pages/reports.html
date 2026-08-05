@@ -9,13 +9,15 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 .dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
 @media (max-width:900px) { .dash-grid { grid-template-columns:1fr; } }
 .list-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; }
 .list-row:last-child { border-bottom:none; }
-.bar-track { height:10px; background:var(--neutral-bg); border-radius:6px; overflow:hidden; margin-top:4px; }
-.bar-fill { height:100%; background:var(--accent-gold); border-radius:6px; }
+.fin-charts-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+@media (max-width:700px) { .fin-charts-row { grid-template-columns:1fr; } }
+.fin-chart-box { position:relative; height:260px; }
 </style>
 <script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>
 </head>
@@ -89,15 +91,19 @@
     <div class="stat-card"><div class="stat-label">Net Profit</div><div class="stat-value" id="stat-profit">—</div></div>
   </div>
 
-  <div class="dash-grid">
-    <div class="card">
-      <div class="card-header"><h3><i class="fas fa-chart-pie"></i> Cases by Status</h3></div>
-      <div class="card-body" id="cases-summary"><div class="empty-state">Loading...</div></div>
+  <div class="card">
+    <div class="card-header"><h3><i class="fas fa-sack-dollar"></i> Financial Overview</h3></div>
+    <div class="card-body">
+      <div class="fin-charts-row">
+        <div class="fin-chart-box"><canvas id="fin-doughnut-chart"></canvas></div>
+        <div class="fin-chart-box"><canvas id="fin-bar-chart"></canvas></div>
+      </div>
     </div>
-    <div class="card">
-      <div class="card-header"><h3><i class="fas fa-scale-balanced"></i> Case Load by Lawyer</h3></div>
-      <div class="card-body" id="case-load"><div class="empty-state">Loading...</div></div>
-    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3><i class="fas fa-chart-pie"></i> Cases by Status</h3></div>
+    <div class="card-body" id="cases-summary"><div class="empty-state">Loading...</div></div>
   </div>
 </main>
 
@@ -111,6 +117,39 @@ function clearFilters() {
   loadReports();
 }
 
+let finDoughnutChart, finBarChart;
+function renderFinancialCharts(revenue, expenses, profit) {
+  const doughnutCtx = document.getElementById('fin-doughnut-chart').getContext('2d');
+  const barCtx = document.getElementById('fin-bar-chart').getContext('2d');
+  if (finDoughnutChart) finDoughnutChart.destroy();
+  if (finBarChart) finBarChart.destroy();
+
+  const noData = revenue === 0 && expenses === 0;
+  finDoughnutChart = new Chart(doughnutCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Revenue', 'Expenses'],
+      datasets: [{ data: noData ? [1, 0] : [revenue, expenses], backgroundColor: ['#10B981', '#EF4444'], borderWidth: 0 }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
+    }
+  });
+  finBarChart = new Chart(barCtx, {
+    type: 'bar',
+    data: {
+      labels: ['Revenue', 'Expenses', 'Profit/Loss'],
+      datasets: [{ data: [revenue, expenses, profit], backgroundColor: ['#10B981', '#EF4444', profit >= 0 ? '#3B82F6' : '#F59E0B'], borderRadius: 6 }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+}
+
 async function loadReports() {
   const from = document.getElementById('filter-from').value;
   const to = document.getElementById('filter-to').value;
@@ -119,10 +158,9 @@ async function loadReports() {
   if (to) params.set('to', to);
 
   try {
-    const [financial, casesSummary, caseLoad] = await Promise.all([
+    const [financial, casesSummary] = await Promise.all([
       apiGet('/reports/financial?' + params.toString()),
-      apiGet('/reports/cases-summary?' + params.toString()),
-      apiGet('/reports/case-load')
+      apiGet('/reports/cases-summary?' + params.toString())
     ]);
 
     document.getElementById('stat-income').innerText = fmtCurrency(financial.totalIncome);
@@ -131,18 +169,11 @@ async function loadReports() {
     profitEl.innerText = fmtCurrency(financial.netProfit);
     profitEl.style.color = financial.netProfit >= 0 ? 'var(--success)' : 'var(--danger)';
 
+    renderFinancialCharts(financial.totalIncome, financial.totalExpenses, financial.netProfit);
+
     document.getElementById('cases-summary').innerHTML = casesSummary.length
       ? casesSummary.map(s => `<div class="list-row"><span class="badge ${s.status}">${statusLabel(s.status)}</span><span style="font-weight:700;">${s.count}</span></div>`).join('')
       : '<div class="empty-state">No cases in this period</div>';
-
-    const maxLoad = Math.max(...caseLoad.map(l => l.open_cases), 1);
-    document.getElementById('case-load').innerHTML = caseLoad.length
-      ? caseLoad.map(l => `
-        <div style="margin-bottom:12px;">
-          <div class="list-row" style="border:none;padding-bottom:2px;"><span>${escapeHtml(l.full_name)}</span><span style="font-weight:700;">${l.open_cases}</span></div>
-          <div class="bar-track"><div class="bar-fill" style="width:${(l.open_cases / maxLoad * 100)}%;"></div></div>
-        </div>`).join('')
-      : '<div class="empty-state">No lawyers on record</div>';
 
   } catch (err) { showToast(err.message, 'error'); }
 }
