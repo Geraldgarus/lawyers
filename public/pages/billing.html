@@ -70,6 +70,8 @@
 
 <main class="main-content" id="main-content">
   <div class="filter-bar">
+    <div class="filter-group"><label>From</label><input type="date" id="filter-from"></div>
+    <div class="filter-group"><label>To</label><input type="date" id="filter-to"></div>
     <div class="filter-group">
       <label>Status</label>
       <select id="filter-status">
@@ -78,6 +80,7 @@
       </select>
     </div>
     <button class="btn-gold" onclick="loadInvoices()"><i class="fas fa-search"></i> Filter</button>
+    <button class="btn-outline" onclick="clearFilters()"><i class="fas fa-times"></i> Clear</button>
     <div style="flex:1;"></div>
     <span style="font-size:12px;color:var(--text-muted);align-self:center;"><i class="fas fa-circle-info"></i> To create an invoice, open the relevant case &rarr; Payments tab</span>
   </div>
@@ -105,15 +108,27 @@
 <script>
 async function loadInvoices() {
   setLoading('invoices-body');
+  const params = new URLSearchParams();
   const status = document.getElementById('filter-status').value;
-  const params = status ? `?status=${status}` : '';
+  const from = document.getElementById('filter-from').value;
+  const to = document.getElementById('filter-to').value;
+  if (status) params.set('status', status);
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
   try {
-    const invoices = await apiGet('/invoices' + params);
+    const invoices = await apiGet('/invoices?' + params.toString());
     renderInvoices(invoices);
   } catch (err) {
     document.getElementById('invoices-body').innerHTML = '<tr><td colspan="7" class="empty-state">Failed to load invoices</td></tr>';
     showToast(err.message, 'error');
   }
+}
+
+function clearFilters() {
+  document.getElementById('filter-status').value = '';
+  document.getElementById('filter-from').value = '';
+  document.getElementById('filter-to').value = '';
+  loadInvoices();
 }
 
 function renderInvoices(invoices) {

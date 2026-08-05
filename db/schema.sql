@@ -341,7 +341,15 @@ INSERT INTO expense_categories (name, label) VALUES
   ('photocopying', 'Photocopying'),
   ('court_fees', 'Court Fees'),
   ('accommodation', 'Accommodation'),
-  ('other', 'Other')
+  ('other', 'Other'),
+  -- Office overhead categories — these expenses aren't tied to any one
+  -- case (see expenses.case_id going nullable below), unlike the
+  -- case-cost categories above.
+  ('electricity', 'Electricity'),
+  ('water', 'Water'),
+  ('maintenance', 'Maintenance'),
+  ('internet', 'Internet'),
+  ('salaries', 'Salaries')
 ON CONFLICT (name) DO NOTHING;
 
 -- ============================================================
@@ -349,7 +357,7 @@ ON CONFLICT (name) DO NOTHING;
 -- ============================================================
 CREATE TABLE IF NOT EXISTS expenses (
   id           SERIAL PRIMARY KEY,
-  case_id      INT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+  case_id      INT REFERENCES cases(id) ON DELETE CASCADE,   -- optional — office overhead (electricity, salaries, etc.) has no case
   description  VARCHAR(255) NOT NULL,
   category     VARCHAR(50) NOT NULL DEFAULT 'other' REFERENCES expense_categories(name),
   amount       NUMERIC(12,2) NOT NULL,
@@ -357,6 +365,7 @@ CREATE TABLE IF NOT EXISTS expenses (
   created_by   INT REFERENCES users(id) ON DELETE SET NULL,
   created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE expenses ALTER COLUMN case_id DROP NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_expenses_case     ON expenses(case_id);
 CREATE INDEX IF NOT EXISTS idx_expenses_date     ON expenses(expense_date);
 CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category);

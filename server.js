@@ -1402,12 +1402,31 @@ app.get('/api/expenses', requireRole('lawyer', 'secretary'), async (req, res) =>
     const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
     const { rows } = await pool.query(`
       SELECT e.*, c.case_number, c.case_title
-      FROM expenses e JOIN cases c ON c.id = e.case_id
+      FROM expenses e LEFT JOIN cases c ON c.id = e.case_id
       ${where}
       ORDER BY e.expense_date DESC
     `, values);
     res.json(rows);
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Office overhead expenses (electricity, water, salaries, etc.) aren't tied
+// to a case — this is the general entry point used by the standalone
+// Expenses page's "Add Expense" button; caseId is optional.
+app.post('/api/expenses', requireRole('lawyer', 'secretary'), async (req, res) => {
+  const { caseId, description, category, amount, expenseDate } = req.body;
+  if (!description || amount === undefined) return res.status(400).json({ error: 'description and amount are required' });
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO expenses (case_id, description, category, amount, expense_date, created_by)
+       VALUES ($1, $2, $3, $4, COALESCE($5, CURRENT_DATE), $6) RETURNING *`,
+      [caseId || null, description, category || 'other', amount, expenseDate || null, req.user.id]
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    if (err.code === '23503') return res.status(400).json({ error: 'Invalid category or case' });
     res.status(500).json({ error: err.message });
   }
 });
@@ -1487,12 +1506,14 @@ async function recomputeInvoiceStatus(invoiceId) {
 }
 
 app.get('/api/invoices', requireRole('lawyer'), async (req, res) => {
-  const { status, case_id } = req.query;
+  const { status, case_id, from, to } = req.query;
   try {
     const conditions = [];
     const values = [];
     if (status) { values.push(status); conditions.push(`i.status = $${values.length}`); }
     if (case_id) { values.push(case_id); conditions.push(`i.case_id = $${values.length}`); }
+    if (from) { values.push(from); conditions.push(`i.issued_date >= $${values.length}`); }
+    if (to) { values.push(to); conditions.push(`i.issued_date <= $${values.length}`); }
     const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
     const { rows } = await pool.query(`
       SELECT i.*, c.case_number, c.case_title, cl.full_name AS client_name,

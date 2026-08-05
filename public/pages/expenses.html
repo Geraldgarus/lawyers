@@ -85,20 +85,56 @@
   </div>
 
   <div class="card">
-    <div class="card-header"><h3><i class="fas fa-receipt"></i> All Expenses</h3></div>
+    <div class="card-header">
+      <h3><i class="fas fa-receipt"></i> All Expenses</h3>
+      <button class="btn-primary btn-sm" onclick="openExpenseModal()"><i class="fas fa-plus"></i> Add Expense</button>
+    </div>
     <div class="table-wrap">
       <table class="data-table">
-        <thead><tr><th>Date</th><th>Case</th><th>Description</th><th>Category</th><th>Amount</th></tr></thead>
-        <tbody id="expenses-body"><tr><td colspan="5" class="empty-state">Loading...</td></tr></tbody>
+        <thead><tr><th>Date</th><th>Case</th><th>Description</th><th>Category</th><th>Amount</th><th>Actions</th></tr></thead>
+        <tbody id="expenses-body"><tr><td colspan="6" class="empty-state">Loading...</td></tr></tbody>
       </table>
     </div>
   </div>
 </main>
 
+<!-- Add Expense Modal -->
+<div class="modal-overlay" id="expense-modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="fas fa-receipt"></i> Add Expense</h3><button onclick="closeModal('expense-modal-overlay')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Case</label>
+        <select class="form-control" id="expense-case-select"><option value="">— No case (office expense) —</option></select>
+      </div>
+      <div class="form-group"><label>Description *</label><input class="form-control" id="expense-desc"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Category</label>
+          <select class="form-control" id="expense-category"></select>
+          <button type="button" class="btn-outline btn-sm" id="toggle-new-category-btn" style="margin-top:8px;" onclick="toggleNewCategory()"><i class="fas fa-plus"></i> Add New Category</button>
+          <div id="new-category-fields" style="display:none;margin-top:8px;display:flex;gap:8px;">
+            <input class="form-control" id="new-category-label" placeholder="e.g. Stationery">
+            <button type="button" class="btn-gold btn-sm" onclick="addExpenseCategory()" style="white-space:nowrap;">Add</button>
+          </div>
+        </div>
+        <div class="form-group"><label>Amount (TSh) *</label><input type="number" min="0" step="0.01" class="form-control" id="expense-amount"></div>
+      </div>
+      <div class="form-group"><label>Date</label><input type="date" class="form-control" id="expense-date"></div>
+    </div>
+    <div class="modal-footer"><button class="btn-outline" onclick="closeModal('expense-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveExpense()">Save</button></div>
+  </div>
+</div>
+
 <script src="../js/api.js"></script>
 <script src="../js/utils.js"></script>
 <script src="../js/auth.js"></script>
 <script>
+let currentUser = null;
+let casesList = [];
+let expenseCategoriesList = [];
+
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
 async function loadExpenses() {
   setLoading('expenses-body');
   const params = new URLSearchParams();
@@ -112,7 +148,7 @@ async function loadExpenses() {
     const expenses = await apiGet('/expenses?' + params.toString());
     renderExpenses(expenses);
   } catch (err) {
-    document.getElementById('expenses-body').innerHTML = '<tr><td colspan="5" class="empty-state">Failed to load expenses</td></tr>';
+    document.getElementById('expenses-body').innerHTML = '<tr><td colspan="6" class="empty-state">Failed to load expenses</td></tr>';
     showToast(err.message, 'error');
   }
 }
@@ -121,16 +157,23 @@ function renderExpenses(expenses) {
   const tbody = document.getElementById('expenses-body');
   const total = expenses.reduce((s, e) => s + parseFloat(e.amount), 0);
   document.getElementById('stat-total').innerText = fmtCurrency(total);
-  if (!expenses.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><i class="fas fa-receipt"></i>No expenses found</td></tr>'; return; }
+  if (!expenses.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-receipt"></i>No expenses found</td></tr>'; return; }
   tbody.innerHTML = expenses.map(e => `
     <tr>
       <td>${fmtDate(e.expense_date)}</td>
-      <td><a href="/case-detail?id=${e.case_id}" style="color:var(--accent-gold);">${escapeHtml(e.case_number)}</a></td>
+      <td>${e.case_id ? `<a href="/case-detail?id=${e.case_id}" style="color:var(--accent-gold);">${escapeHtml(e.case_number)}</a>` : '<span style="color:var(--text-muted);">Office</span>'}</td>
       <td>${escapeHtml(e.description)}</td>
       <td><span class="badge neutral">${e.category.replace('_',' ')}</span></td>
       <td>${fmtCurrency(e.amount)}</td>
+      <td>${currentUser && currentUser.role === 'lawyer' ? `<button class="btn-icon danger" onclick="deleteExpense(${e.id})" title="Delete"><i class="fas fa-trash"></i></button>` : ''}</td>
     </tr>
   `).join('');
+}
+
+async function deleteExpense(id) {
+  if (!confirm('Delete this expense?')) return;
+  try { await apiDelete(`/expenses/${id}`); showToast('Expense deleted'); loadExpenses(); }
+  catch (err) { showToast(err.message, 'error'); }
 }
 
 function clearFilters() {
@@ -140,21 +183,83 @@ function clearFilters() {
   loadExpenses();
 }
 
+function populateCategorySelects() {
+  document.getElementById('filter-category').innerHTML = '<option value="">All</option>' +
+    expenseCategoriesList.map(c => `<option value="${c.name}">${escapeHtml(c.label)}</option>`).join('');
+  document.getElementById('expense-category').innerHTML =
+    expenseCategoriesList.map(c => `<option value="${c.name}" ${c.name === 'other' ? 'selected' : ''}>${escapeHtml(c.label)}</option>`).join('');
+}
+
 async function loadCategoriesLookup() {
   try {
-    const cats = await apiGet('/expense-categories');
-    document.getElementById('filter-category').innerHTML = '<option value="">All</option>' +
-      cats.map(c => `<option value="${c.name}">${escapeHtml(c.label)}</option>`).join('');
+    expenseCategoriesList = await apiGet('/expense-categories');
+    populateCategorySelects();
   } catch (e) {}
 }
 
+function toggleNewCategory() {
+  const fields = document.getElementById('new-category-fields');
+  const showing = fields.style.display !== 'none';
+  fields.style.display = showing ? 'none' : 'flex';
+  if (!showing) document.getElementById('new-category-label').focus();
+}
+
+async function addExpenseCategory() {
+  const label = document.getElementById('new-category-label').value.trim();
+  if (!label) return;
+  try {
+    const cat = await apiPost('/expense-categories', { label });
+    await loadCategoriesLookup();
+    document.getElementById('expense-category').value = cat.name;
+    document.getElementById('new-category-label').value = '';
+    document.getElementById('new-category-fields').style.display = 'none';
+    showToast('Category added');
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+async function loadCasesLookup() {
+  try {
+    casesList = await apiGet('/cases');
+    document.getElementById('expense-case-select').innerHTML = '<option value="">— No case (office expense) —</option>' +
+      casesList.map(c => `<option value="${c.id}">${escapeHtml(c.case_number)}${c.client_name ? ' — ' + escapeHtml(c.client_name) : ''}</option>`).join('');
+  } catch (e) { casesList = []; }
+}
+
+function openExpenseModal() {
+  document.getElementById('expense-case-select').value = '';
+  document.getElementById('expense-desc').value = '';
+  document.getElementById('expense-amount').value = '';
+  document.getElementById('expense-date').value = isoDate(new Date());
+  document.getElementById('new-category-fields').style.display = 'none';
+  populateCategorySelects();
+  document.getElementById('expense-modal-overlay').classList.add('show');
+}
+
+async function saveExpense() {
+  const description = document.getElementById('expense-desc').value.trim();
+  const amount = document.getElementById('expense-amount').value;
+  if (!description || !amount) { showToast('Description and amount are required', 'error'); return; }
+  try {
+    await apiPost('/expenses', {
+      caseId: document.getElementById('expense-case-select').value || null,
+      description, amount,
+      category: document.getElementById('expense-category').value,
+      expenseDate: document.getElementById('expense-date').value
+    });
+    closeModal('expense-modal-overlay');
+    showToast('Expense recorded');
+    loadExpenses();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
-  const user = initPageChrome();
-  if (user && user.role === 'assistant') {
+  currentUser = initPageChrome();
+  if (currentUser && currentUser.role === 'assistant') {
     document.querySelector('.main-content').innerHTML = '<div class="empty-state"><i class="fas fa-lock"></i>You do not have permission to view expenses</div>';
     return;
   }
   await loadCategoriesLookup();
+  await loadCasesLookup();
   loadExpenses();
 });
 </script>
