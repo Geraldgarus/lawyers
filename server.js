@@ -730,6 +730,37 @@ async function findOrCreateCaseCategory(dbClient, typeName) {
   return created[0].id;
 }
 
+// Case status is the same Time Chart stage vocabulary as "Court Proceeding
+// Type" on the Court Date form — rather than letting the two be set
+// independently (and silently drift apart), the case's status always
+// mirrors whatever proceeding type was recorded on its most recent Court
+// Date. slugify() already turns "1st PTC" into "1st_ptc" via the generic
+// non-alnum-run rule, which doesn't match the case_statuses seed name
+// ("first_ptc") — so this needs its own explicit map, not slugify().
+const PROCEEDING_TYPE_TO_STATUS = {
+  'mention': 'mention', '1st ptc': 'first_ptc', 'mediation': 'mediation',
+  'hearing': 'hearing', 'final ptc': 'final_ptc', 'judgment': 'judgment', 'ruling': 'ruling'
+};
+function statusFromProceedingType(proceedingType) {
+  if (!proceedingType) return null;
+  return PROCEEDING_TYPE_TO_STATUS[String(proceedingType).trim().toLowerCase()] || null;
+}
+// Re-derives a case's status from its most recently recorded Court Date
+// (by hearing_date DESC, id DESC — same "what's next" ordering used
+// everywhere else) — call after any hearing create/update/delete so the
+// status badge never goes stale. Returns the derived status, or null if
+// nothing changed (no hearings, or the proceeding type isn't one of the
+// seven Time Chart stages).
+async function syncCaseStatusFromLatestHearing(db, caseId) {
+  const { rows } = await db.query(
+    'SELECT proceeding_type FROM hearings WHERE case_id = $1 ORDER BY hearing_date DESC, id DESC LIMIT 1',
+    [caseId]
+  );
+  const status = rows.length ? statusFromProceedingType(rows[0].proceeding_type) : null;
+  if (status) await db.query('UPDATE cases SET status = $1 WHERE id = $2', [status, caseId]);
+  return status;
+}
+
 app.post('/api/cases', requireRole('lawyer', 'secretary'), async (req, res) => {
   const {
     clientId, newClient, caseNumber, caseType, description, opposingParty, court,
@@ -802,6 +833,9 @@ app.post('/api/cases', requireRole('lawyer', 'secretary'), async (req, res) => {
        consultationStartTime || null, consultationEndTime || null, recordDate || null, recordedBy || null,
        nextCourtDate || null, req.user.id]
     );
+
+    const derivedStatus = await syncCaseStatusFromLatestHearing(dbClient, newCase.id);
+    if (derivedStatus) newCase.status = derivedStatus;
 
     await dbClient.query('COMMIT');
     await logActivity(req.user.id, req.user.email, 'CREATE', 'case', newCase.id, null, newCase, req);
@@ -917,6 +951,9 @@ app.put('/api/cases/:id', requireRole('lawyer', 'secretary'), async (req, res) =
          nextCourtDateN, req.user.id]
       );
     }
+
+    const derivedStatus = await syncCaseStatusFromLatestHearing(dbClient, req.params.id);
+    if (derivedStatus) updatedCase.status = derivedStatus;
 
     await dbClient.query('COMMIT');
     await logActivity(req.user.id, req.user.email, 'UPDATE', 'case', req.params.id, before[0], updatedCase, req);
@@ -1046,6 +1083,7 @@ app.post('/api/cases/:id/hearings', async (req, res) => {
        consultationStartTime || null, consultationEndTime || null, recordDate || null, recordedBy || null,
        nextCourtDate || null, req.user.id]
     );
+    await syncCaseStatusFromLatestHearing(pool, req.params.id);
     await logActivity(req.user.id, req.user.email, 'CREATE', 'hearing', rows[0].id, null, rows[0], req);
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -1093,6 +1131,7 @@ app.put('/api/hearings/:id', async (req, res) => {
        consultationStartTimeN, consultationEndTimeN, recordDateN, recordedBy, nextCourtDateN, req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Hearing not found' });
+    await syncCaseStatusFromLatestHearing(pool, rows[0].case_id);
     res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1101,8 +1140,10 @@ app.put('/api/hearings/:id', async (req, res) => {
 
 app.delete('/api/hearings/:id', requireRole('lawyer', 'secretary'), async (req, res) => {
   try {
-    const { rowCount } = await pool.query('DELETE FROM hearings WHERE id = $1', [req.params.id]);
-    if (!rowCount) return res.status(404).json({ error: 'Hearing not found' });
+    const { rows: before } = await pool.query('SELECT case_id FROM hearings WHERE id = $1', [req.params.id]);
+    if (!before.length) return res.status(404).json({ error: 'Hearing not found' });
+    await pool.query('DELETE FROM hearings WHERE id = $1', [req.params.id]);
+    await syncCaseStatusFromLatestHearing(pool, before[0].case_id);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

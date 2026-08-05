@@ -40,7 +40,6 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
     <a href="/cases" class="nav-item" data-page="cases"><i class="fas fa-suitcase"></i> Time Chart and Court Records</a>
     <a href="/calendar" class="nav-item" data-page="calendar"><i class="fas fa-calendar-days"></i> Calendar</a>
     <a href="/documents" class="nav-item" data-page="documents"><i class="fas fa-folder-open"></i> Documents</a>
-    <a href="/tasks" class="nav-item" data-page="tasks"><i class="fas fa-list-check"></i> Tasks</a>
     <div class="nav-section-label">Finance</div>
     <a href="/billing" class="nav-item" data-page="billing"><i class="fas fa-file-invoice-dollar"></i> Billing &amp; Payments</a>
     <a href="/expenses" class="nav-item" data-page="expenses"><i class="fas fa-money-bill-wave"></i> Expenses</a>
@@ -313,8 +312,6 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
   <div class="modal">
     <div class="modal-header"><h3><i class="fas fa-pen"></i> Edit Case</h3><button onclick="closeModal('edit-case-modal-overlay')"><i class="fas fa-times"></i></button></div>
     <div class="modal-body">
-      <div class="form-group"><label>Status</label><select class="form-control" id="edit-case-status"></select></div>
-
       <div class="form-group"><label>Client</label>
         <select class="form-control" id="edit-case-client-select"></select>
       </div>
@@ -390,7 +387,6 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 const CASE_ID = new URLSearchParams(window.location.search).get('id');
 let currentCase = null;
 let currentUser = null;
-let statusesList = [];
 let expenseCategoriesList = [];
 let clientsList = [];
 
@@ -551,9 +547,6 @@ function datetimeInputVal(d) {
 let latestHearingForEdit = null;
 
 async function openEditCaseModal() {
-  const sel = document.getElementById('edit-case-status');
-  sel.innerHTML = statusesList.map(s => `<option value="${s.name}" ${s.name === currentCase.status ? 'selected' : ''}>${escapeHtml(s.label)}</option>`).join('');
-
   const clientSel = document.getElementById('edit-case-client-select');
   clientSel.innerHTML = '<option value="">— No client —</option>' +
     clientsList.map(c => `<option value="${c.id}" ${currentCase.client_id === c.id ? 'selected' : ''}>${escapeHtml(c.full_name)}${c.phone ? ' (' + c.phone + ')' : ''}</option>`).join('');
@@ -594,7 +587,6 @@ async function openEditCaseModal() {
 
 async function saveEditCase() {
   const payload = {
-    status: document.getElementById('edit-case-status').value,
     clientId: document.getElementById('edit-case-client-select').value || null,
     caseNumber: document.getElementById('edit-case-number').value.trim(),
     caseType: document.getElementById('edit-case-type').value.trim(),
@@ -704,14 +696,17 @@ async function saveHearing() {
       showToast('Court date added');
     }
     closeModal('hearing-modal-overlay');
+    // Adding/editing a Court Date can change the case's status (it's
+    // derived from the latest Court Proceeding Type server-side), so the
+    // header badge needs a full case reload, not just the Overview body.
     loadHearings();
-    renderOverview();
+    loadCase();
   } catch (err) { showToast(err.message, 'error'); }
 }
 
 async function deleteHearing(id) {
   if (!confirm('Delete this court date?')) return;
-  try { await apiDelete(`/hearings/${id}`); showToast('Court date deleted'); loadHearings(); renderOverview(); }
+  try { await apiDelete(`/hearings/${id}`); showToast('Court date deleted'); loadHearings(); loadCase(); }
   catch (err) { showToast(err.message, 'error'); }
 }
 
@@ -1108,7 +1103,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('tab-btn-payments').style.display = 'none';
   }
 
-  try { statusesList = await apiGet('/case-statuses'); } catch (e) { statusesList = []; }
   try { expenseCategoriesList = await apiGet('/expense-categories'); } catch (e) { expenseCategoriesList = []; }
   try { clientsList = await apiGet('/clients'); } catch (e) { clientsList = []; }
   await loadCase();
