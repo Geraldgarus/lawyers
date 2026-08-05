@@ -1728,12 +1728,6 @@ app.get('/api/dashboard/summary', async (req, res) => {
       WHERE latest.next_court_date::date > CURRENT_DATE AND latest.next_court_date::date <= CURRENT_DATE + INTERVAL '7 days'
       ORDER BY latest.next_court_date LIMIT 10
     `);
-    const { rows: overdueTasks } = await pool.query(`
-      SELECT t.*, c.case_number, c.case_title
-      FROM tasks t JOIN cases c ON c.id = t.case_id
-      WHERE t.status = 'pending' AND t.due_date < CURRENT_DATE
-      ORDER BY t.due_date LIMIT 15
-    `);
     const { rows: caseStatusCounts } = await pool.query(`
       SELECT c.status, COUNT(*)::int AS count, cs.is_closed
       FROM cases c LEFT JOIN case_statuses cs ON cs.name = c.status
@@ -1752,7 +1746,6 @@ app.get('/api/dashboard/summary', async (req, res) => {
       todayHearings,
       upcomingHearings,
       upcomingAppointments,
-      overdueTasks,
       caseStatusCounts,
       activeCaseCount: activeCountRows[0].count,
       recentActivity
@@ -1766,6 +1759,18 @@ app.get('/api/dashboard/summary', async (req, res) => {
         WHERE i.status != 'paid'
       `);
       summary.outstandingInvoicesTotal = parseFloat(billing[0].outstanding);
+
+      // All-time financial totals for the dashboard's Financial Overview
+      // card — same shape as GET /api/reports/financial with no date
+      // filter, kept in the summary payload so a plain dashboard reload is
+      // enough to pick up new expenses/payments (no separate report call).
+      const { rows: revenueRows } = await pool.query(`SELECT COALESCE(SUM(amount),0) AS total FROM payments`);
+      const { rows: expenseRows } = await pool.query(`SELECT COALESCE(SUM(amount),0) AS total FROM expenses`);
+      const totalRevenueAllTime = parseFloat(revenueRows[0].total);
+      const totalExpensesAllTime = parseFloat(expenseRows[0].total);
+      summary.totalRevenueAllTime = totalRevenueAllTime;
+      summary.totalExpensesAllTime = totalExpensesAllTime;
+      summary.netProfitAllTime = totalRevenueAllTime - totalExpensesAllTime;
     }
 
     res.json(summary);

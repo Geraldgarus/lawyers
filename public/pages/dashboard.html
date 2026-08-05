@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
 body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 .dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; }
@@ -16,6 +17,23 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 .quick-actions { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
 .list-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; }
 .list-row:last-child { border-bottom:none; }
+
+.fin-stats-row { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
+.fin-stat { flex:1 1 160px; background:var(--surface-tint); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+.fin-charts-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+@media (max-width:700px) { .fin-charts-row { grid-template-columns:1fr; } }
+.fin-chart-box { position:relative; height:220px; }
+
+.activity-item { display:flex; gap:10px; align-items:flex-start; padding:9px 0; border-bottom:1px solid var(--border); font-size:12.5px; }
+.activity-item:last-child { border-bottom:none; }
+.activity-icon { width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:11px; margin-top:1px; }
+.activity-icon.create { background:var(--success-light); color:var(--success-text); }
+.activity-icon.update { background:var(--info-light); color:var(--info-text); }
+.activity-icon.delete { background:var(--danger-light); color:var(--danger-text); }
+.activity-icon.auth { background:var(--neutral-bg); color:var(--neutral-text); }
+.activity-text { color:var(--text-dark); }
+.activity-text b { font-weight:600; }
+.activity-time { color:var(--text-muted); font-size:11px; margin-top:1px; }
 
 .notif-wrap { position:relative; }
 .notif-btn { position:relative; background:none; border:1px solid var(--border); border-radius:8px; padding:8px 10px; cursor:pointer; color:var(--text-dark); font-size:15px; }
@@ -107,8 +125,6 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
     <div class="stat-card"><div class="stat-label">Active Cases</div><div class="stat-value" id="stat-active">—</div></div>
     <div class="stat-card"><div class="stat-label">Today's Hearings</div><div class="stat-value" id="stat-hearings">—</div></div>
     <div class="stat-card"><div class="stat-label">Upcoming Hearings</div><div class="stat-value" id="stat-upcoming-hearings">—</div></div>
-    <div class="stat-card"><div class="stat-label">Upcoming Appointments</div><div class="stat-value" id="stat-appointments">—</div></div>
-    <div class="stat-card"><div class="stat-label">Overdue Tasks</div><div class="stat-value" id="stat-overdue" style="color:var(--danger);">—</div></div>
     <div class="stat-card" id="stat-outstanding-card" style="display:none;"><div class="stat-label">Outstanding Invoices</div><div class="stat-value" id="stat-outstanding" style="color:var(--danger);">—</div></div>
   </div>
 
@@ -123,14 +139,18 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
     </div>
   </div>
 
-  <div class="dash-grid">
-    <div class="card">
-      <div class="card-header"><h3><i class="fas fa-user-clock"></i> Upcoming Appointments</h3></div>
-      <div class="card-body" id="upcoming-appointments"><div class="empty-state">Loading...</div></div>
-    </div>
-    <div class="card">
-      <div class="card-header"><h3><i class="fas fa-triangle-exclamation"></i> Overdue Tasks</h3></div>
-      <div class="card-body" id="overdue-tasks"><div class="empty-state">Loading...</div></div>
+  <div class="card" id="financial-overview-card" style="display:none;">
+    <div class="card-header"><h3><i class="fas fa-sack-dollar"></i> Financial Overview (All Time)</h3></div>
+    <div class="card-body">
+      <div class="fin-stats-row">
+        <div class="fin-stat"><div class="stat-label">Total Revenue</div><div class="stat-value" id="fin-revenue" style="color:var(--success-text);">—</div></div>
+        <div class="fin-stat"><div class="stat-label">Total Expenses</div><div class="stat-value" id="fin-expenses" style="color:var(--danger-text);">—</div></div>
+        <div class="fin-stat"><div class="stat-label">Net Profit</div><div class="stat-value" id="fin-profit">—</div></div>
+      </div>
+      <div class="fin-charts-row">
+        <div class="fin-chart-box"><canvas id="fin-doughnut-chart"></canvas></div>
+        <div class="fin-chart-box"><canvas id="fin-bar-chart"></canvas></div>
+      </div>
     </div>
   </div>
 
@@ -149,19 +169,86 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 <script src="../js/utils.js"></script>
 <script src="../js/auth.js"></script>
 <script>
+const ACTIVITY_ICONS = {
+  case: 'fa-briefcase', client: 'fa-address-book', hearing: 'fa-gavel',
+  expense: 'fa-receipt', payment: 'fa-money-bill-wave', invoice: 'fa-file-invoice-dollar',
+  note: 'fa-note-sticky', document: 'fa-file', task: 'fa-list-check', user: 'fa-user',
+  appointment: 'fa-calendar-check'
+};
+function activityIcon(entityType) { return ACTIVITY_ICONS[entityType] || 'fa-circle-dot'; }
+function activityClass(action) {
+  if (action === 'CREATE') return 'create';
+  if (action === 'UPDATE') return 'update';
+  if (action === 'DELETE') return 'delete';
+  return 'auth';
+}
+function activityText(a) {
+  const who = `<b>${escapeHtml(a.username)}</b>`;
+  const entity = escapeHtml(String(a.entity_type || '').replace(/_/g, ' '));
+  switch (a.action) {
+    case 'CREATE': return `${who} created a ${entity}`;
+    case 'UPDATE': return `${who} updated a ${entity}`;
+    case 'DELETE': return `${who} deleted a ${entity}`;
+    case 'LOGIN': return `${who} logged in`;
+    case 'LOGOUT': return `${who} logged out`;
+    default: return `${who} ${escapeHtml(a.action.toLowerCase())} a ${entity}`;
+  }
+}
+
+let finDoughnutChart, finBarChart;
+function renderFinancialCharts(revenue, expenses, profit) {
+  const doughnutCtx = document.getElementById('fin-doughnut-chart').getContext('2d');
+  const barCtx = document.getElementById('fin-bar-chart').getContext('2d');
+  if (finDoughnutChart) finDoughnutChart.destroy();
+  if (finBarChart) finBarChart.destroy();
+
+  const noData = revenue === 0 && expenses === 0;
+  finDoughnutChart = new Chart(doughnutCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Revenue', 'Expenses'],
+      datasets: [{ data: noData ? [1, 0] : [revenue, expenses], backgroundColor: ['#10B981', '#EF4444'], borderWidth: 0 }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
+    }
+  });
+  finBarChart = new Chart(barCtx, {
+    type: 'bar',
+    data: {
+      labels: ['Revenue', 'Expenses', 'Profit'],
+      datasets: [{ data: [revenue, expenses, profit], backgroundColor: ['#10B981', '#EF4444', profit >= 0 ? '#3B82F6' : '#F59E0B'], borderRadius: 6 }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+}
+
 async function loadDashboard() {
   try {
     const data = await apiGet('/dashboard/summary');
 
     document.getElementById('stat-hearings').innerText = data.todayHearings.length;
     document.getElementById('stat-upcoming-hearings').innerText = data.upcomingHearings.length;
-    document.getElementById('stat-appointments').innerText = data.upcomingAppointments.length;
-    document.getElementById('stat-overdue').innerText = data.overdueTasks.length;
     document.getElementById('stat-active').innerText = data.activeCaseCount;
 
     if (data.outstandingInvoicesTotal !== undefined) {
       document.getElementById('stat-outstanding-card').style.display = '';
       document.getElementById('stat-outstanding').innerText = fmtCurrency(data.outstandingInvoicesTotal);
+    }
+
+    if (data.totalRevenueAllTime !== undefined) {
+      document.getElementById('financial-overview-card').style.display = '';
+      document.getElementById('fin-revenue').innerText = fmtCurrency(data.totalRevenueAllTime);
+      document.getElementById('fin-expenses').innerText = fmtCurrency(data.totalExpensesAllTime);
+      const profitEl = document.getElementById('fin-profit');
+      profitEl.innerText = fmtCurrency(data.netProfitAllTime);
+      profitEl.style.color = data.netProfitAllTime >= 0 ? 'var(--success-text)' : 'var(--danger-text)';
+      renderFinancialCharts(data.totalRevenueAllTime, data.totalExpensesAllTime, data.netProfitAllTime);
     }
 
     document.getElementById('today-hearings').innerHTML = data.todayHearings.length
@@ -180,22 +267,6 @@ async function loadDashboard() {
         </div>`).join('')
       : '<div class="empty-state">No hearings in the next 7 days</div>';
 
-    document.getElementById('upcoming-appointments').innerHTML = data.upcomingAppointments.length
-      ? data.upcomingAppointments.map(a => `
-        <div class="list-row">
-          <span>${escapeHtml(a.client_name)} ${a.purpose ? '— ' + escapeHtml(a.purpose) : ''}</span>
-          <span>${fmtDateShort(a.appointment_date)}</span>
-        </div>`).join('')
-      : '<div class="empty-state">No appointments in the next 7 days</div>';
-
-    document.getElementById('overdue-tasks').innerHTML = data.overdueTasks.length
-      ? data.overdueTasks.map(t => `
-        <div class="list-row">
-          <span><a href="/case-detail?id=${t.case_id}" style="color:var(--accent-gold);font-weight:600;">${escapeHtml(t.case_number)}</a> — ${escapeHtml(t.title)}</span>
-          <span style="color:var(--danger);">${fmtDate(t.due_date)}</span>
-        </div>`).join('')
-      : '<div class="empty-state">Nothing overdue</div>';
-
     document.getElementById('case-status').innerHTML = data.caseStatusCounts.length
       ? data.caseStatusCounts.map(s => `
         <div class="list-row"><span class="badge ${s.status}">${statusLabel(s.status)}</span><span style="font-weight:700;">${s.count}</span></div>`).join('')
@@ -203,7 +274,13 @@ async function loadDashboard() {
 
     document.getElementById('recent-activity').innerHTML = data.recentActivity.length
       ? data.recentActivity.map(a => `
-        <div class="list-row"><span><strong>${escapeHtml(a.username)}</strong> ${a.action.toLowerCase()}d a ${escapeHtml(a.entity_type)}</span><span style="color:var(--text-muted);">${fmtDateTime(a.created_at)}</span></div>`).join('')
+        <div class="activity-item">
+          <div class="activity-icon ${activityClass(a.action)}"><i class="fas ${activityIcon(a.entity_type)}"></i></div>
+          <div style="flex:1;">
+            <div class="activity-text">${activityText(a)}</div>
+            <div class="activity-time">${fmtDateTime(a.created_at)}</div>
+          </div>
+        </div>`).join('')
       : '<div class="empty-state">No activity yet</div>';
 
     renderNotifications(data.todayHearings, data.upcomingAppointments);

@@ -86,7 +86,6 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
     <button class="tab-btn active" data-tab="overview">Overview</button>
     <button class="tab-btn" data-tab="hearings">Court Dates</button>
     <button class="tab-btn" data-tab="documents">Documents</button>
-    <button class="tab-btn" data-tab="tasks">Tasks</button>
     <button class="tab-btn" data-tab="expenses" id="tab-btn-expenses">Expenses</button>
     <button class="tab-btn" data-tab="payments" id="tab-btn-payments">Payments</button>
     <button class="tab-btn" data-tab="notes">Notes</button>
@@ -116,17 +115,6 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
       <div class="table-wrap"><table class="data-table">
         <thead><tr><th>File</th><th>Category</th><th>Size</th><th>Uploaded</th><th></th></tr></thead>
         <tbody id="documents-body"><tr><td colspan="5" class="empty-state">Loading...</td></tr></tbody>
-      </table></div>
-    </div>
-  </div>
-
-  <!-- TASKS -->
-  <div class="tab-panel" id="panel-tasks">
-    <div class="card">
-      <div class="card-header"><h3><i class="fas fa-list-check"></i> Tasks</h3><button class="btn-primary btn-sm" onclick="openTaskModal()"><i class="fas fa-plus"></i> Add Task</button></div>
-      <div class="table-wrap"><table class="data-table">
-        <thead><tr><th>Done</th><th>Title</th><th>Due</th><th>Priority</th><th>Assigned</th><th></th></tr></thead>
-        <tbody id="tasks-body"><tr><td colspan="6" class="empty-state">Loading...</td></tr></tbody>
       </table></div>
     </div>
   </div>
@@ -261,24 +249,6 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
       <div class="form-group"><label>File *</label><input type="file" class="form-control" id="doc-file"></div>
     </div>
     <div class="modal-footer"><button class="btn-outline" onclick="closeModal('doc-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveDocument()">Upload</button></div>
-  </div>
-</div>
-
-<!-- Task Modal -->
-<div class="modal-overlay" id="task-modal-overlay">
-  <div class="modal">
-    <div class="modal-header"><h3><i class="fas fa-list-check"></i> Add Task</h3><button onclick="closeModal('task-modal-overlay')"><i class="fas fa-times"></i></button></div>
-    <div class="modal-body">
-      <div class="form-group"><label>Title *</label><input class="form-control" id="task-title"></div>
-      <div class="form-row">
-        <div class="form-group"><label>Due Date</label><input type="date" class="form-control" id="task-due"></div>
-        <div class="form-group"><label>Priority</label>
-          <select class="form-control" id="task-priority"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select>
-        </div>
-      </div>
-      <div class="form-group"><label>Assigned To</label><select class="form-control" id="task-assigned"><option value="">Unassigned</option></select></div>
-    </div>
-    <div class="modal-footer"><button class="btn-outline" onclick="closeModal('task-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveTask()">Save</button></div>
   </div>
 </div>
 
@@ -420,7 +390,6 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 const CASE_ID = new URLSearchParams(window.location.search).get('id');
 let currentCase = null;
 let currentUser = null;
-let usersList = [];
 let statusesList = [];
 let expenseCategoriesList = [];
 let clientsList = [];
@@ -443,7 +412,6 @@ async function loadTabData(tab) {
   try {
     if (tab === 'hearings') await loadHearings();
     else if (tab === 'documents') await loadDocuments();
-    else if (tab === 'tasks') await loadTasks();
     else if (tab === 'expenses') await loadExpenses();
     else if (tab === 'payments') await loadInvoices();
     else if (tab === 'notes') await loadNotes();
@@ -971,55 +939,6 @@ async function deleteDocument(id) {
   catch (err) { showToast(err.message, 'error'); }
 }
 
-// ---------- TASKS ----------
-async function loadTasks() {
-  setLoading('tasks-body');
-  const tasks = await apiGet(`/cases/${CASE_ID}/tasks`);
-  const tbody = document.getElementById('tasks-body');
-  if (!tasks.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No tasks yet</td></tr>'; return; }
-  tbody.innerHTML = tasks.map(t => `
-    <tr>
-      <td><input type="checkbox" ${t.status === 'done' ? 'checked' : ''} onchange="toggleTask(${t.id}, this.checked)"></td>
-      <td style="${t.status === 'done' ? 'text-decoration:line-through;color:#94a3b8;' : ''}">${escapeHtml(t.title)}</td>
-      <td style="${isPastDate(t.due_date) && t.status !== 'done' ? 'color:var(--danger);font-weight:600;' : ''}">${t.due_date ? fmtDate(t.due_date) : '—'}</td>
-      <td><span class="priority-${t.priority}">${t.priority}</span></td>
-      <td>${escapeHtml(t.assigned_to_name) || '—'}</td>
-      <td><button class="btn-icon danger" onclick="deleteTask(${t.id})" title="Delete"><i class="fas fa-trash"></i></button></td>
-    </tr>
-  `).join('');
-}
-function openTaskModal() {
-  const sel = document.getElementById('task-assigned');
-  sel.innerHTML = '<option value="">Unassigned</option>' + usersList.map(u => `<option value="${u.id}">${escapeHtml(u.full_name)}</option>`).join('');
-  document.getElementById('task-title').value = '';
-  document.getElementById('task-due').value = '';
-  document.getElementById('task-priority').value = 'medium';
-  document.getElementById('task-modal-overlay').classList.add('show');
-}
-async function saveTask() {
-  const title = document.getElementById('task-title').value.trim();
-  if (!title) { showToast('Title is required', 'error'); return; }
-  try {
-    await apiPost(`/cases/${CASE_ID}/tasks`, {
-      title, dueDate: document.getElementById('task-due').value || null,
-      priority: document.getElementById('task-priority').value,
-      assignedTo: document.getElementById('task-assigned').value || null
-    });
-    closeModal('task-modal-overlay');
-    showToast('Task added');
-    loadTasks();
-  } catch (err) { showToast(err.message, 'error'); }
-}
-async function toggleTask(id, checked) {
-  try { await apiPut(`/tasks/${id}`, { status: checked ? 'done' : 'pending' }); loadTasks(); }
-  catch (err) { showToast(err.message, 'error'); }
-}
-async function deleteTask(id) {
-  if (!confirm('Delete this task?')) return;
-  try { await apiDelete(`/tasks/${id}`); showToast('Task deleted'); loadTasks(); }
-  catch (err) { showToast(err.message, 'error'); }
-}
-
 // ---------- EXPENSES ----------
 async function loadExpenses() {
   setLoading('expenses-body');
@@ -1189,7 +1108,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('tab-btn-payments').style.display = 'none';
   }
 
-  try { usersList = await apiGet('/users'); } catch (e) { usersList = []; }
   try { statusesList = await apiGet('/case-statuses'); } catch (e) { statusesList = []; }
   try { expenseCategoriesList = await apiGet('/expense-categories'); } catch (e) { expenseCategoriesList = []; }
   try { clientsList = await apiGet('/clients'); } catch (e) { clientsList = []; }
