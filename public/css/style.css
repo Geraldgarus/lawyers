@@ -23,6 +23,47 @@
   --info-light: #DBEAFE;
   --info-text: #1D4ED8;
   --row-hover: rgba(0,0,0,0.03);
+  /* Generic tint helpers — hover/surface overlays that have to flip
+     direction (black-alpha vs white-alpha) between light and dark, so
+     every rule that wants one of these effects reads a variable instead
+     of a hardcoded rgba(), and only this block + the dark override below
+     need to know which theme is active. */
+  --hover-tint: rgba(0,0,0,0.05);
+  --hover-tint-strong: rgba(0,0,0,0.1);
+  --surface-tint: rgba(0,0,0,0.02);
+  --neutral-bg: rgba(0,0,0,0.06);
+  --neutral-text: #475569;
+  --faint-text: rgba(0,0,0,0.15);
+  --native-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --sidebar-bg: #1E293B;
+  --sidebar-text: #F1F5F9;
+  --sidebar-text-muted: rgba(241,245,249,0.58);
+  --sidebar-border: rgba(241,245,249,0.1);
+  --bg-main: #0F172A;
+  --bg-card: #1E293B;
+  --bg-input: #0F172A;
+  --text-dark: #F1F5F9;
+  --text-muted: #94A3B8;
+  --border: #334155;
+  --success-light: rgba(16,185,129,0.15);
+  --success-text: #34D399;
+  --warning-light: rgba(245,158,11,0.15);
+  --warning-text: #FBBF24;
+  --danger-light: rgba(239,68,68,0.15);
+  --danger-text: #F87171;
+  --info-light: rgba(59,130,246,0.15);
+  --info-text: #60A5FA;
+  --row-hover: rgba(255,255,255,0.04);
+  --hover-tint: rgba(255,255,255,0.06);
+  --hover-tint-strong: rgba(255,255,255,0.16);
+  --surface-tint: rgba(255,255,255,0.03);
+  --neutral-bg: rgba(255,255,255,0.08);
+  --neutral-text: #CBD5E1;
+  --faint-text: rgba(255,255,255,0.18);
+  --native-scheme: dark;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -32,7 +73,11 @@ body {
   background: var(--bg-main);
   color: var(--text-dark);
   overflow-x: hidden;
-  color-scheme: light;
+  color-scheme: var(--native-scheme);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.sidebar, .navbar, .card, .modal, .filter-bar, .stat-card, .dropdown-menu, .notif-panel {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 h1, h2, h3, .logo-text, .card-title { font-family: 'Playfair Display', serif; }
@@ -69,7 +114,7 @@ h1, h2, h3, .logo-text, .card-title { font-family: 'Playfair Display', serif; }
   transition: background 0.2s; border: none; background: none; width: 100%; text-align: left; cursor: pointer;
 }
 .nav-item i { width: 16px; text-align: center; }
-.nav-item:hover { background: rgba(0,0,0,0.05); color: var(--sidebar-text); }
+.nav-item:hover { background: var(--hover-tint); color: var(--sidebar-text); }
 .nav-item.active { background: var(--accent-gold); color: white; font-weight: 600; }
 .sidebar-footer { padding: 14px 20px; border-top: 1px solid var(--sidebar-border); font-size: 11px; color: var(--sidebar-text-muted); }
 
@@ -88,6 +133,12 @@ h1, h2, h3, .logo-text, .card-title { font-family: 'Playfair Display', serif; }
 .page-title { font-size: 16px; font-weight: 700; color: var(--text-dark); }
 .page-subtitle { font-size: 11.5px; color: var(--text-muted); }
 .navbar-right { display: flex; align-items: center; gap: 12px; }
+.theme-toggle-btn {
+  background: none; border: 1px solid var(--border); border-radius: 8px;
+  width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--text-muted); font-size: 14px; flex-shrink: 0;
+}
+.theme-toggle-btn:hover { background: var(--hover-tint); color: var(--text-dark); }
 .user-dropdown { position: relative; }
 .user-pill { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); }
 .user-avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--accent-gold); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
@@ -97,7 +148,7 @@ h1, h2, h3, .logo-text, .card-title { font-family: 'Playfair Display', serif; }
 .dropdown-menu { display: none; position: absolute; right: 0; top: calc(100% + 6px); background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; min-width: 170px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); z-index: 200; padding: 6px; }
 .dropdown-menu.show { display: block; }
 .dropdown-menu button, .dropdown-menu a { display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 12px; border: none; background: none; cursor: pointer; font-size: 12.5px; border-radius: 6px; color: var(--text-dark); text-decoration: none; }
-.dropdown-menu button:hover, .dropdown-menu a:hover { background: rgba(0,0,0,0.05); }
+.dropdown-menu button:hover, .dropdown-menu a:hover { background: var(--hover-tint); }
 .dropdown-menu hr { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
 
 /* ---- MAIN ---- */
@@ -117,11 +168,11 @@ h1, h2, h3, .logo-text, .card-title { font-family: 'Playfair Display', serif; }
 .btn-gold { background: var(--accent-gold); color: white; border: none; border-radius: 8px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 .btn-gold:hover { background: #a17e4c; }
 .btn-outline { background: transparent; color: var(--text-dark); border: 1px solid var(--border); border-radius: 8px; padding: 9px 18px; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-.btn-outline:hover { background: rgba(0,0,0,0.05); }
+.btn-outline:hover { background: var(--hover-tint); }
 .btn-danger { background: var(--danger); color: white; border: none; border-radius: 8px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 6px; }
-.btn-icon { background: rgba(0,0,0,0.05); color: var(--text-dark); border: none; padding: 6px 9px; border-radius: 6px; cursor: pointer; font-size: 12px; }
-.btn-icon:hover { background: rgba(0,0,0,0.1); }
+.btn-icon { background: var(--hover-tint); color: var(--text-dark); border: none; padding: 6px 9px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+.btn-icon:hover { background: var(--hover-tint-strong); }
 .btn-icon.danger { background: var(--danger-light); color: var(--danger-text); }
 
 /* ---- STATS ---- */
@@ -140,7 +191,7 @@ h1, h2, h3, .logo-text, .card-title { font-family: 'Playfair Display', serif; }
 /* ---- TABLE ---- */
 .table-wrap { overflow-x: auto; }
 .data-table { width: 100%; border-collapse: collapse; }
-.data-table th { background: rgba(0,0,0,0.02); padding: 10px 14px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.data-table th { background: var(--surface-tint); padding: 10px 14px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
 .data-table td { padding: 11px 14px; font-size: 13px; color: var(--text-dark); border-bottom: 1px solid var(--border); }
 .data-table tbody tr:hover { background: var(--row-hover); }
 .data-table tbody tr:last-child td { border-bottom: none; }
@@ -153,7 +204,7 @@ h1, h2, h3, .logo-text, .card-title { font-family: 'Playfair Display', serif; }
 .badge.warning, .badge.partial, .badge.pending, .badge.intake, .badge.filed { background: var(--warning-light); color: var(--warning-text); }
 .badge.danger, .badge.unpaid, .badge.overdue, .badge.closed_lost { background: var(--danger-light); color: var(--danger-text); }
 .badge.info, .badge.in_hearing, .badge.judgment { background: var(--info-light); color: var(--info-text); }
-.badge.neutral, .badge.closed_settled { background: rgba(0,0,0,0.06); color: #475569; }
+.badge.neutral, .badge.closed_settled { background: var(--neutral-bg); color: var(--neutral-text); }
 .priority-high { color: var(--danger-text); font-weight: 700; }
 .priority-medium { color: var(--warning-text); font-weight: 700; }
 .priority-low { color: var(--text-muted); }

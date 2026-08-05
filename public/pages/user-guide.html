@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>User Guide - Tanscar Attorneys</title>
 <link rel="stylesheet" href="../css/style.css">
+<script src="../js/theme.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -14,7 +15,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 .guide-section h4 { font-size:14px; margin-bottom:10px; display:flex; align-items:center; gap:8px; color:var(--accent-gold); }
 .guide-section ol, .guide-section ul { margin-left:20px; font-size:13.5px; line-height:1.9; color:var(--text-dark); }
 .guide-section p { font-size:13px; color:var(--text-muted); margin-bottom:8px; }
-.guide-note { background:rgba(0,0,0,0.03); border-left:3px solid var(--accent-gold); padding:10px 14px; border-radius:6px; font-size:12.5px; color:var(--text-muted); margin-top:8px; }
+.guide-note { background:var(--surface-tint); border-left:3px solid var(--accent-gold); padding:10px 14px; border-radius:6px; font-size:12.5px; color:var(--text-muted); margin-top:8px; }
 </style>
 <script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>
 </head>
@@ -60,6 +61,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
     <div><div class="page-title">User Guide</div><div class="page-subtitle">How to use Tanscar Attorneys</div></div>
   </div>
   <div class="navbar-right">
+    <button class="theme-toggle-btn" onclick="toggleTheme()" title="Switch to dark theme"><i class="fas fa-moon"></i></button>
     <div class="user-dropdown">
       <div class="user-pill" id="userPill">
         <div class="user-avatar" id="userAvatar">U</div>

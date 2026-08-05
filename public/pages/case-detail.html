@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Case Detail - Tanscar Attorneys</title>
 <link rel="stylesheet" href="../css/style.css">
+<script src="../js/theme.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -62,6 +63,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
     <div><div class="page-title">Case Detail</div><div class="page-subtitle"><a href="/cases" style="color:var(--text-muted);text-decoration:none;"><i class="fas fa-arrow-left"></i> Back to Cases</a></div></div>
   </div>
   <div class="navbar-right">
+    <button class="theme-toggle-btn" onclick="toggleTheme()" title="Switch to dark theme"><i class="fas fa-moon"></i></button>
     <div class="user-dropdown">
       <div class="user-pill" id="userPill">
         <div class="user-avatar" id="userAvatar">U</div>
@@ -1053,7 +1055,7 @@ async function loadTimeline() {
   if (!events.length) { body.innerHTML = '<div class="empty-state">No activity recorded yet</div>'; return; }
   body.innerHTML = events.map(e => `
     <div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">
-      <div style="width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,0.05);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--accent-gold);">
+      <div style="width:32px;height:32px;border-radius:50%;background:var(--hover-tint);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--accent-gold);">
         <i class="fas ${TIMELINE_ICONS[e.type] || 'fa-circle'}"></i>
       </div>
       <div>
