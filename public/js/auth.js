@@ -70,5 +70,33 @@ function initPageChrome() {
 
   document.getElementById('logoutBtn')?.addEventListener('click', logout);
 
+  enforcePageAccess();
+
   return user;
+}
+
+// Pages an admin hasn't customized are unrestricted for that user (their
+// normal role-based set); the moment any grant is saved for them, they can
+// only reach exactly what's listed — both in the sidebar and by direct URL.
+// Runs fire-and-forget from initPageChrome() (rather than making it — and
+// every page's synchronous `const user = initPageChrome()` call site —
+// async) so a denied page blanks itself and redirects as soon as the check
+// resolves, using the user's own JWT-authenticated identity as the source
+// of truth, not anything spoofable client-side.
+async function enforcePageAccess() {
+  const pageKey = window.location.pathname.replace('/', '') || 'dashboard';
+  try {
+    const { customized, pages } = await apiGet('/permissions/me');
+    if (!customized) return;
+
+    document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+      if (item.dataset.page !== 'dashboard' && !pages.includes(item.dataset.page)) item.style.display = 'none';
+    });
+
+    if (pageKey !== 'dashboard' && pageKey !== 'case-detail' && !pages.includes(pageKey)) {
+      document.body.innerHTML = '<div class="empty-state" style="padding:80px 20px;"><i class="fas fa-lock"></i>You do not have access to this page. Redirecting…</div>';
+      document.body.classList.add('loaded');
+      setTimeout(() => { window.location.href = '/dashboard'; }, 900);
+    }
+  } catch (e) { /* fail open — don't lock a user out over a network hiccup */ }
 }

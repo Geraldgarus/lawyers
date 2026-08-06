@@ -74,6 +74,30 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 
 <main class="main-content" id="main-content">
   <div class="card">
+    <div class="card-header"><h3><i class="fas fa-user-lock"></i> User Page Access</h3></div>
+    <div class="card-body">
+      <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px;">
+        Grant a specific user access to only certain pages — this is checked in addition to their role, and
+        blocks the page even if they type its address directly, not just hidden from the sidebar.
+      </p>
+      <div class="form-group" style="max-width:360px;">
+        <label>Select User</label>
+        <select class="form-control" id="perm-user-select" onchange="onPermUserChange()">
+          <option value="">— Choose a user —</option>
+        </select>
+      </div>
+      <div id="perm-pages-wrap" style="display:none;">
+        <p id="perm-status-note" style="font-size:12.5px;color:var(--text-muted);margin-bottom:14px;"></p>
+        <div id="perm-pages-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-bottom:18px;"></div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn-primary" onclick="savePermissions()"><i class="fas fa-save"></i> Save Access</button>
+          <button class="btn-outline" onclick="resetPermissions()"><i class="fas fa-rotate-left"></i> Reset to Default</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="card-header">
       <h3><i class="fas fa-table"></i> Role Capability Matrix</h3>
       <a href="/users" class="btn-outline btn-sm"><i class="fas fa-user-shield"></i> Manage Users</a>
@@ -121,8 +145,80 @@ const PERMISSIONS = [
 
 function icon(v) { return v ? '<i class="fas fa-check perm-yes"></i>' : '<i class="fas fa-xmark perm-no"></i>'; }
 
+// Mirrors GRANTABLE_PAGES in server.js — Dashboard isn't listed since it's
+// always reachable (nowhere to land if it weren't).
+const GRANTABLE_PAGES = [
+  ['clients', 'Clients'],
+  ['cases', 'Time Chart and Court Records'],
+  ['calendar', 'Calendar'],
+  ['documents', 'Documents'],
+  ['tasks', 'Tasks'],
+  ['billing', 'Billing & Payments'],
+  ['expenses', 'Expenses'],
+  ['reports', 'Reports'],
+  ['case-status-report', 'Case Status Report'],
+  ['settings', 'Settings'],
+  ['users', 'User Management'],
+  ['permissions', 'Permissions & Access'],
+  ['user-guide', 'User Guide'],
+];
+
+async function loadUsersForPermissions() {
+  try {
+    const users = await apiGet('/users');
+    document.getElementById('perm-user-select').innerHTML = '<option value="">— Choose a user —</option>' +
+      users.map(u => `<option value="${u.id}">${escapeHtml(u.full_name)} (${escapeHtml(u.role)})</option>`).join('');
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+async function onPermUserChange() {
+  const id = document.getElementById('perm-user-select').value;
+  const wrap = document.getElementById('perm-pages-wrap');
+  if (!id) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  try {
+    const { customized, pages } = await apiGet(`/permissions/${id}`);
+    document.getElementById('perm-status-note').innerHTML = customized
+      ? '<i class="fas fa-lock" style="color:var(--accent-gold);"></i> This user has custom access — only the checked pages below are reachable.'
+      : 'This user currently has unrestricted (default) access to every page their role allows. Uncheck what you want to restrict, then Save.';
+    document.getElementById('perm-pages-grid').innerHTML = GRANTABLE_PAGES.map(([key, label]) => `
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+        <input type="checkbox" value="${key}" ${(!customized || pages.includes(key)) ? 'checked' : ''}>
+        ${escapeHtml(label)}
+      </label>`).join('');
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+async function savePermissions() {
+  const id = document.getElementById('perm-user-select').value;
+  if (!id) return;
+  const checked = Array.from(document.querySelectorAll('#perm-pages-grid input:checked')).map(el => el.value);
+  try {
+    await apiPut(`/permissions/${id}`, { pages: checked });
+    showToast('Access saved');
+    onPermUserChange();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+async function resetPermissions() {
+  const id = document.getElementById('perm-user-select').value;
+  if (!id) return;
+  if (!confirm('Reset this user to default (unrestricted) access?')) return;
+  try {
+    await apiDelete(`/permissions/${id}`);
+    showToast('Reset to default access');
+    onPermUserChange();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-  initPageChrome();
+  const user = initPageChrome();
+  if (!user) return;
+  if (user.role !== 'lawyer') {
+    document.getElementById('main-content').innerHTML = '<div class="empty-state"><i class="fas fa-lock"></i>You do not have permission to view this page</div>';
+    return;
+  }
+  loadUsersForPermissions();
   document.getElementById('perm-body').innerHTML = PERMISSIONS.map(([label, l, s, a]) => `
     <tr><td>${label}</td><td>${icon(l)}</td><td>${icon(s)}</td><td>${icon(a)}</td></tr>
   `).join('');

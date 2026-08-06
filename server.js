@@ -275,10 +275,9 @@ app.post('/api/users', requireRole('lawyer'), async (req, res) => {
   if (!username || !email || !password || !role || !fullName) {
     return res.status(400).json({ error: 'username, email, password, role, fullName are required' });
   }
-  if (!['lawyer', 'secretary', 'assistant'].includes(role)) {
-    return res.status(400).json({ error: 'Invalid role' });
-  }
   try {
+    const { rows: roleRows } = await pool.query('SELECT 1 FROM user_roles WHERE name = $1 AND is_active = TRUE', [role]);
+    if (!roleRows.length) return res.status(400).json({ error: 'Invalid role' });
     const hash = await bcrypt.hash(password, 10);
     const { rows } = await pool.query(
       `INSERT INTO users (username, email, password_hash, role, full_name, phone)
@@ -297,6 +296,10 @@ app.post('/api/users', requireRole('lawyer'), async (req, res) => {
 app.put('/api/users/:id', requireRole('lawyer'), async (req, res) => {
   const { fullName, username, email, phone, role, isActive } = req.body;
   try {
+    if (role) {
+      const { rows: roleRows } = await pool.query('SELECT 1 FROM user_roles WHERE name = $1 AND is_active = TRUE', [role]);
+      if (!roleRows.length) return res.status(400).json({ error: 'Invalid role' });
+    }
     const { rows } = await pool.query(
       `UPDATE users SET
         full_name = COALESCE($1, full_name),
@@ -373,6 +376,121 @@ app.put('/api/users/:id/unlock', requireRole('lawyer'), async (req, res) => {
     );
     if (!rowCount) return res.status(404).json({ error: 'User not found' });
     res.json({ success: true, message: 'Account unlocked' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+//  USER ROLES (editable lookup — labels only, see schema.sql comment)
+// ════════════════════════════════════════════════════════════════════════════
+
+app.get('/api/user-roles', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM user_roles WHERE is_active = TRUE ORDER BY id');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/user-roles', requireRole('lawyer'), async (req, res) => {
+  const { label } = req.body;
+  if (!label) return res.status(400).json({ error: 'label is required' });
+  const name = slugify(label);
+  if (!name) return res.status(400).json({ error: 'label must contain at least one letter or number' });
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO user_roles (name, label) VALUES ($1, $2)
+       ON CONFLICT (name) DO UPDATE SET label = EXCLUDED.label, is_active = TRUE
+       RETURNING *`,
+      [name, label]
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/user-roles/:id', requireRole('lawyer'), async (req, res) => {
+  try {
+    // Roles are never hard-deleted — a role already assigned to a user must
+    // keep resolving to a real label, so this only hides it from future
+    // assignment (same convention as case/expense categories).
+    const { rowCount } = await pool.query('UPDATE user_roles SET is_active = FALSE WHERE id = $1', [req.params.id]);
+    if (!rowCount) return res.status(404).json({ error: 'Role not found' });
+    res.json({ success: true, message: 'Role deactivated' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+//  PERMISSIONS & ACCESS (per-user page grants)
+// ════════════════════════════════════════════════════════════════════════════
+
+// Every page a user could be granted/denied, independent of role — Dashboard
+// isn't listed because it's always reachable (nowhere to land otherwise).
+const GRANTABLE_PAGES = [
+  'clients', 'cases', 'calendar', 'documents', 'tasks', 'billing', 'expenses',
+  'reports', 'case-status-report', 'settings', 'users', 'permissions', 'user-guide'
+];
+
+async function getUserPageAccess(userId) {
+  const { rows } = await pool.query('SELECT page_key FROM user_page_access WHERE user_id = $1 ORDER BY page_key', [userId]);
+  return { customized: rows.length > 0, pages: rows.map(r => r.page_key) };
+}
+
+// Used by every page's client-side access check (see auth.js) — any
+// authenticated user can look up their own grants.
+app.get('/api/permissions/me', async (req, res) => {
+  try {
+    res.json(await getUserPageAccess(req.user.id));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/permissions/:userId', requireRole('lawyer'), async (req, res) => {
+  try {
+    res.json(await getUserPageAccess(req.params.userId));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/permissions/:userId', requireRole('lawyer'), async (req, res) => {
+  const { pages } = req.body;
+  if (!Array.isArray(pages)) return res.status(400).json({ error: 'pages must be an array' });
+  const validPages = pages.filter(p => GRANTABLE_PAGES.includes(p));
+  const dbClient = await pool.connect();
+  try {
+    await dbClient.query('BEGIN');
+    await dbClient.query('DELETE FROM user_page_access WHERE user_id = $1', [req.params.userId]);
+    for (const pageKey of validPages) {
+      await dbClient.query(
+        'INSERT INTO user_page_access (user_id, page_key) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+        [req.params.userId, pageKey]
+      );
+    }
+    await dbClient.query('COMMIT');
+    await logActivity(req.user.id, req.user.email, 'UPDATE', 'permissions', req.params.userId, null, { pages: validPages }, req);
+    res.json({ success: true, pages: validPages });
+  } catch (err) {
+    await dbClient.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally {
+    dbClient.release();
+  }
+});
+
+// Reverts a user to the unrestricted default (their normal role-based page
+// set) by clearing all custom grants.
+app.delete('/api/permissions/:userId', requireRole('lawyer'), async (req, res) => {
+  try {
+    await pool.query('DELETE FROM user_page_access WHERE user_id = $1', [req.params.userId]);
+    await logActivity(req.user.id, req.user.email, 'UPDATE', 'permissions', req.params.userId, null, { reset: true }, req);
+    res.json({ success: true, message: 'Reset to default access' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

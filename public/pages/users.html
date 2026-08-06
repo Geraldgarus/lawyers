@@ -82,6 +82,19 @@
       </table>
     </div>
   </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fas fa-id-badge"></i> User Roles</h3>
+      <button class="btn-primary btn-sm" onclick="openRoleModal()"><i class="fas fa-plus"></i> Add Role</button>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Label</th><th>Status</th><th></th></tr></thead>
+        <tbody id="roles-body"><tr><td colspan="3" class="empty-state">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
 </main>
 
 <!-- User Modal -->
@@ -121,12 +134,69 @@
   </div>
 </div>
 
+<!-- Add Role Modal -->
+<div class="modal-overlay" id="role-modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="fas fa-id-badge"></i> Add Role</h3><button onclick="closeModal('role-modal-overlay')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Role Name *</label><input class="form-control" id="role-label" placeholder="e.g. Paralegal"></div>
+      <p style="font-size:12px;color:var(--text-muted);">
+        This creates a role you can assign to a user. It's a label for organizing staff — what a user can actually
+        do is still based on Lawyer/Secretary/Assistant capabilities, plus whatever pages you grant them in
+        <a href="/permissions" style="color:var(--accent-gold);">Permissions &amp; Access</a>.
+      </p>
+    </div>
+    <div class="modal-footer"><button class="btn-outline" onclick="closeModal('role-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveRole()">Save</button></div>
+  </div>
+</div>
+
 <script src="../js/api.js"></script>
 <script src="../js/utils.js"></script>
 <script src="../js/auth.js"></script>
 <script>
 let usersData = [];
+let rolesList = [];
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+async function loadRoles() {
+  setLoading('roles-body');
+  try {
+    rolesList = await apiGet('/user-roles');
+    document.getElementById('user-role').innerHTML = rolesList.map(r => `<option value="${r.name}">${escapeHtml(r.label)}</option>`).join('');
+    document.getElementById('roles-body').innerHTML = rolesList.map(r => `
+      <tr>
+        <td>${escapeHtml(r.label)}</td>
+        <td><span class="badge success">Active</span></td>
+        <td>${['lawyer','secretary','assistant'].includes(r.name) ? '' : `<button class="btn-icon danger" onclick="deactivateRole(${r.id})" title="Deactivate"><i class="fas fa-ban"></i></button>`}</td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    document.getElementById('roles-body').innerHTML = '<tr><td colspan="3" class="empty-state">Failed to load roles</td></tr>';
+    showToast(err.message, 'error');
+  }
+}
+
+function openRoleModal() {
+  document.getElementById('role-label').value = '';
+  document.getElementById('role-modal-overlay').classList.add('show');
+}
+
+async function saveRole() {
+  const label = document.getElementById('role-label').value.trim();
+  if (!label) { showToast('Role name is required', 'error'); return; }
+  try {
+    await apiPost('/user-roles', { label });
+    closeModal('role-modal-overlay');
+    showToast('Role added');
+    loadRoles();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+async function deactivateRole(id) {
+  if (!confirm('Deactivate this role? It will no longer be assignable to new users.')) return;
+  try { await apiDelete(`/user-roles/${id}`); showToast('Role deactivated'); loadRoles(); }
+  catch (err) { showToast(err.message, 'error'); }
+}
 
 async function loadUsers() {
   setLoading('users-body');
@@ -146,7 +216,7 @@ function renderUsers() {
       <td><strong>${escapeHtml(u.full_name)}</strong></td>
       <td>${escapeHtml(u.username)}</td>
       <td>${escapeHtml(u.email)}</td>
-      <td><span class="badge info">${u.role}</span></td>
+      <td><span class="badge info">${escapeHtml((rolesList.find(r => r.name === u.role) || {}).label || u.role)}</span></td>
       <td>
         <span class="badge ${u.is_active ? 'success' : 'danger'}">${u.is_active ? 'Active' : 'Deactivated'}</span>
         ${u.locked_until && new Date(u.locked_until) > new Date() ? '<span class="badge warning" style="margin-left:4px;">Locked</span>' : ''}
@@ -257,6 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('main-content').innerHTML = '<div class="empty-state"><i class="fas fa-lock"></i>You do not have permission to manage users</div>';
     return;
   }
+  loadRoles();
   loadUsers();
 });
 </script>

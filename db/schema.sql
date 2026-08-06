@@ -30,6 +30,41 @@ CREATE TABLE IF NOT EXISTS users (
 DROP TRIGGER IF EXISTS trg_users_updated_at ON users;
 CREATE TRIGGER trg_users_updated_at BEFORE UPDATE ON users
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Role is now an editable lookup (see user_roles below), not a fixed
+-- three-value enum — custom roles can be assigned once created there.
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+
+-- ============================================================
+-- USER ROLES (editable lookup — labels only, not tied to capabilities;
+-- Lawyer/Secretary/Assistant remain the only roles with hardcoded
+-- capabilities via requireRole() — a custom role just organizes users
+-- and can be granted page access below)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS user_roles (
+  id         SERIAL PRIMARY KEY,
+  name       VARCHAR(50)  NOT NULL UNIQUE,   -- slug used as the stored value on users.role
+  label      VARCHAR(100) NOT NULL,
+  is_active  BOOLEAN      NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO user_roles (name, label) VALUES
+  ('lawyer', 'Lawyer'), ('secretary', 'Secretary'), ('assistant', 'Assistant')
+ON CONFLICT (name) DO NOTHING;
+
+-- ============================================================
+-- USER PAGE ACCESS (per-user page grants)
+-- A user with zero rows here is "unrestricted" — sees the normal
+-- role-based default page set. The moment any row is saved for a
+-- user, they become "customized" and can only reach exactly the
+-- pages listed here, checked both for sidebar visibility and for
+-- actually loading the page.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS user_page_access (
+  user_id  INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  page_key VARCHAR(50) NOT NULL,
+  PRIMARY KEY (user_id, page_key)
+);
+CREATE INDEX IF NOT EXISTS idx_user_page_access_user ON user_page_access(user_id);
 
 -- ============================================================
 -- ACTIVITY LOGS (audit trail)
