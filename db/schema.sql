@@ -35,10 +35,11 @@ CREATE TRIGGER trg_users_updated_at BEFORE UPDATE ON users
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
 
 -- ============================================================
--- USER ROLES (editable lookup — labels only, not tied to capabilities;
--- Lawyer/Secretary/Assistant remain the only roles with hardcoded
--- capabilities via requireRole() — a custom role just organizes users
--- and can be granted page access below)
+-- USER ROLES (editable lookup). 'admin' is the one hardcoded
+-- superuser role — it always has full access and is never
+-- deactivatable. Every other role (including the built-in
+-- Lawyer/Secretary/Assistant labels) gets its capabilities assigned
+-- manually via role_capabilities below, and can be deactivated.
 -- ============================================================
 CREATE TABLE IF NOT EXISTS user_roles (
   id         SERIAL PRIMARY KEY,
@@ -48,8 +49,52 @@ CREATE TABLE IF NOT EXISTS user_roles (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 INSERT INTO user_roles (name, label) VALUES
-  ('lawyer', 'Lawyer'), ('secretary', 'Secretary'), ('assistant', 'Assistant')
+  ('admin', 'Admin'), ('lawyer', 'Lawyer'), ('secretary', 'Secretary'), ('assistant', 'Assistant')
 ON CONFLICT (name) DO NOTHING;
+
+-- The one existing seeded admin account moves from 'lawyer' to the new
+-- 'admin' role so there's always at least one account with full access;
+-- a no-op after the first boot since it only ever matches that account.
+UPDATE users SET role = 'admin' WHERE username = 'admin' AND email = 'admin@advocatesuite.local';
+
+-- ============================================================
+-- ROLE CAPABILITIES (which actions each role may perform — the real
+-- enforcement, checked server-side on every write route via
+-- requireCapability()). 'admin' bypasses this table entirely (always
+-- full access) and is never stored here. The capability_key values are
+-- fixed in code (server.js CAPABILITIES), not user-editable — only
+-- which roles have which of them is.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS role_capabilities (
+  role_name      VARCHAR(50) NOT NULL REFERENCES user_roles(name) ON DELETE CASCADE,
+  capability_key VARCHAR(50) NOT NULL,
+  PRIMARY KEY (role_name, capability_key)
+);
+
+-- Seeds Lawyer/Secretary/Assistant with exactly what they could already
+-- do via the old hardcoded requireRole() checks, so converting to a
+-- manually-assigned matrix doesn't change anyone's access on its own —
+-- ON CONFLICT DO NOTHING makes this a one-time seed, safe to leave in
+-- place on every boot even after an admin has since edited the matrix.
+INSERT INTO role_capabilities (role_name, capability_key) VALUES
+  ('lawyer', 'create_edit_case'), ('lawyer', 'delete_case'),
+  ('lawyer', 'add_edit_clients'), ('lawyer', 'delete_client'),
+  ('lawyer', 'log_hearing_appointment'), ('lawyer', 'delete_hearing_appointment'),
+  ('lawyer', 'upload_document'), ('lawyer', 'delete_document'),
+  ('lawyer', 'create_update_task'), ('lawyer', 'delete_task'),
+  ('lawyer', 'view_record_expenses'), ('lawyer', 'delete_expense'),
+  ('lawyer', 'view_billing'), ('lawyer', 'manage_invoices_payments'),
+  ('lawyer', 'add_case_note'), ('lawyer', 'view_reports'),
+  ('lawyer', 'manage_users'), ('lawyer', 'manage_settings'),
+  ('secretary', 'create_edit_case'), ('secretary', 'add_edit_clients'),
+  ('secretary', 'log_hearing_appointment'), ('secretary', 'delete_hearing_appointment'),
+  ('secretary', 'upload_document'), ('secretary', 'delete_document'),
+  ('secretary', 'create_update_task'), ('secretary', 'delete_task'),
+  ('secretary', 'view_record_expenses'), ('secretary', 'add_case_note'),
+  ('assistant', 'add_edit_clients'), ('assistant', 'log_hearing_appointment'),
+  ('assistant', 'upload_document'), ('assistant', 'create_update_task'),
+  ('assistant', 'add_case_note')
+ON CONFLICT DO NOTHING;
 
 -- ============================================================
 -- USER PAGE ACCESS (per-user page grants)

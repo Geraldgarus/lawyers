@@ -19,9 +19,11 @@ async function logout() {
 }
 
 // Nav items whose href matches one of these page names are hidden for anyone
-// who isn't a lawyer — purely a UX nicety, every one of these is independently
-// enforced server-side via requireRole() so this is not the real security boundary.
+// who isn't a lawyer or admin — purely a UX nicety, every one of these is
+// independently enforced server-side via requireCapability() so this is not
+// the real security boundary.
 const LAWYER_ONLY_PAGES = ['billing', 'reports', 'case-status-report', 'users', 'permissions'];
+const hasFullAccessUI = user => user.role === 'lawyer' || user.role === 'admin';
 
 function initPageChrome() {
   const user = requireAuth();
@@ -34,7 +36,7 @@ function initPageChrome() {
   if (roleEl) roleEl.innerText = user.role.charAt(0).toUpperCase() + user.role.slice(1);
   if (avatarEl) avatarEl.innerText = (user.fullName || user.username || 'U').charAt(0).toUpperCase();
 
-  if (user.role !== 'lawyer') {
+  if (!hasFullAccessUI(user)) {
     document.querySelectorAll('.nav-item[data-page]').forEach(item => {
       if (LAWYER_ONLY_PAGES.includes(item.dataset.page)) item.style.display = 'none';
     });

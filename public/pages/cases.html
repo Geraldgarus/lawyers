@@ -242,7 +242,7 @@ function renderCases() {
       <td>${nextActionBadge(c)}</td>
       <td onclick="event.stopPropagation()">
         <button class="btn-icon" onclick="window.location.href='/case-detail?id=${c.id}'" title="View"><i class="fas fa-eye"></i></button>
-        ${currentUser && currentUser.role === 'lawyer' ? `<button class="btn-icon danger" onclick="deleteCase(${c.id}, '${escapeHtml(c.case_number).replace(/'/g, "\\'")}')" title="Delete"><i class="fas fa-trash"></i></button>` : ''}
+        ${currentUser && hasFullAccessUI(currentUser) ? `<button class="btn-icon danger" onclick="deleteCase(${c.id}, '${escapeHtml(c.case_number).replace(/'/g, "\\'")}')" title="Delete"><i class="fas fa-trash"></i></button>` : ''}
       </td>
     </tr>
   `).join('');

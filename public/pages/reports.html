@@ -190,7 +190,7 @@ async function loadReports() {
 
 document.addEventListener('DOMContentLoaded', () => {
   const user = initPageChrome();
-  if (user && user.role !== 'lawyer') {
+  if (user && !hasFullAccessUI(user)) {
     document.getElementById('main-content').innerHTML = '<div class="empty-state"><i class="fas fa-lock"></i>You do not have permission to view reports</div>';
     return;
   }

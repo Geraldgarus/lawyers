@@ -77,12 +77,53 @@ function protectAPI(req, res, next) {
 }
 app.use('/api', protectAPI);
 
-function requireRole(...roles) {
-  return (req, res, next) => {
-    if (!req.user || !roles.includes(req.user.role)) {
-      return res.status(403).json({ error: 'Forbidden: insufficient permissions for this action' });
+// The fixed set of actions capabilities can gate — keys are referenced by
+// requireCapability() calls below and stored per-role in role_capabilities;
+// labels are what the editable matrix on Permissions & Access displays.
+// Adding a new gated action means adding a key here AND a requireCapability()
+// call at its route — the matrix can only toggle which roles have an
+// existing key, not invent new ones.
+const CAPABILITIES = [
+  ['create_edit_case', 'Create / edit a case'],
+  ['delete_case', 'Delete a case'],
+  ['add_edit_clients', 'Add / edit clients'],
+  ['delete_client', 'Delete a client'],
+  ['log_hearing_appointment', 'Log a hearing or appointment'],
+  ['delete_hearing_appointment', 'Delete a hearing or appointment'],
+  ['upload_document', 'Upload a document'],
+  ['delete_document', 'Delete a document'],
+  ['create_update_task', 'Create / update a task'],
+  ['delete_task', 'Delete a task'],
+  ['view_record_expenses', 'View & record expenses'],
+  ['delete_expense', 'Delete an expense'],
+  ['view_billing', 'View billing figures & invoices'],
+  ['manage_invoices_payments', 'Create invoices / record payments'],
+  ['add_case_note', 'Add a case note'],
+  ['view_reports', 'View reports'],
+  ['manage_users', 'Manage users'],
+  ['manage_settings', 'Manage case categories & settings'],
+];
+const CAPABILITY_KEYS = CAPABILITIES.map(([key]) => key);
+
+// 'admin' is the one hardcoded superuser role — it bypasses the
+// role_capabilities table entirely rather than needing every capability
+// stored for it, so it can never be locked out by an editing mistake.
+async function roleHasCapability(role, key) {
+  if (role === 'admin') return true;
+  const { rows } = await pool.query(
+    'SELECT 1 FROM role_capabilities WHERE role_name = $1 AND capability_key = $2', [role, key]
+  );
+  return rows.length > 0;
+}
+
+function requireCapability(key) {
+  return async (req, res, next) => {
+    try {
+      if (req.user && await roleHasCapability(req.user.role, key)) return next();
+      res.status(403).json({ error: 'Forbidden: insufficient permissions for this action' });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
-    next();
   };
 }
 
@@ -270,7 +311,7 @@ app.get('/api/users/:id', async (req, res) => {
   }
 });
 
-app.post('/api/users', requireRole('lawyer'), async (req, res) => {
+app.post('/api/users', requireCapability('manage_users'), async (req, res) => {
   const { username, email, password, role, fullName, phone } = req.body;
   if (!username || !email || !password || !role || !fullName) {
     return res.status(400).json({ error: 'username, email, password, role, fullName are required' });
@@ -293,7 +334,7 @@ app.post('/api/users', requireRole('lawyer'), async (req, res) => {
   }
 });
 
-app.put('/api/users/:id', requireRole('lawyer'), async (req, res) => {
+app.put('/api/users/:id', requireCapability('manage_users'), async (req, res) => {
   const { fullName, username, email, phone, role, isActive } = req.body;
   try {
     if (role) {
@@ -326,7 +367,7 @@ app.put('/api/users/:id', requireRole('lawyer'), async (req, res) => {
 // lock everyone out of admin functions). All references from other tables
 // (created_by, assigned_to, etc.) are ON DELETE SET NULL, so case/client
 // history is preserved even after the user record itself is gone.
-app.delete('/api/users/:id', requireRole('lawyer'), async (req, res) => {
+app.delete('/api/users/:id', requireCapability('manage_users'), async (req, res) => {
   const targetId = parseInt(req.params.id, 10);
   if (targetId === req.user.id) {
     return res.status(400).json({ error: 'You cannot delete your own account while logged in.' });
@@ -353,7 +394,7 @@ app.delete('/api/users/:id', requireRole('lawyer'), async (req, res) => {
   }
 });
 
-app.put('/api/users/:id/reset-password', requireRole('lawyer'), async (req, res) => {
+app.put('/api/users/:id/reset-password', requireCapability('manage_users'), async (req, res) => {
   const { newPassword } = req.body;
   if (!newPassword || newPassword.length < 6) {
     return res.status(400).json({ error: 'newPassword must be at least 6 characters' });
@@ -368,7 +409,7 @@ app.put('/api/users/:id/reset-password', requireRole('lawyer'), async (req, res)
   }
 });
 
-app.put('/api/users/:id/unlock', requireRole('lawyer'), async (req, res) => {
+app.put('/api/users/:id/unlock', requireCapability('manage_users'), async (req, res) => {
   try {
     const { rowCount } = await pool.query(
       'UPDATE users SET failed_attempts = 0, locked_until = NULL WHERE id = $1',
@@ -394,7 +435,7 @@ app.get('/api/user-roles', async (req, res) => {
   }
 });
 
-app.post('/api/user-roles', requireRole('lawyer'), async (req, res) => {
+app.post('/api/user-roles', requireCapability('manage_users'), async (req, res) => {
   const { label } = req.body;
   if (!label) return res.status(400).json({ error: 'label is required' });
   const name = slugify(label);
@@ -412,16 +453,72 @@ app.post('/api/user-roles', requireRole('lawyer'), async (req, res) => {
   }
 });
 
-app.delete('/api/user-roles/:id', requireRole('lawyer'), async (req, res) => {
+app.delete('/api/user-roles/:id', requireCapability('manage_users'), async (req, res) => {
   try {
     // Roles are never hard-deleted — a role already assigned to a user must
     // keep resolving to a real label, so this only hides it from future
-    // assignment (same convention as case/expense categories).
-    const { rowCount } = await pool.query('UPDATE user_roles SET is_active = FALSE WHERE id = $1', [req.params.id]);
-    if (!rowCount) return res.status(404).json({ error: 'Role not found' });
+    // assignment (same convention as case/expense categories). 'admin' is
+    // the one exception: it must always remain assignable, or the system
+    // could end up with no way to reach full access.
+    const { rows: roleRows } = await pool.query('SELECT name FROM user_roles WHERE id = $1', [req.params.id]);
+    if (!roleRows.length) return res.status(404).json({ error: 'Role not found' });
+    if (roleRows[0].name === 'admin') return res.status(400).json({ error: 'The admin role cannot be deactivated' });
+    await pool.query('UPDATE user_roles SET is_active = FALSE WHERE id = $1', [req.params.id]);
     res.json({ success: true, message: 'Role deactivated' });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+//  ROLE CAPABILITIES (which actions each role may perform — see CAPABILITIES
+//  and requireCapability() near the top of this file)
+// ════════════════════════════════════════════════════════════════════════════
+
+app.get('/api/role-capabilities', requireCapability('manage_users'), async (req, res) => {
+  try {
+    const { rows: roles } = await pool.query(
+      "SELECT name, label FROM user_roles WHERE is_active = TRUE AND name != 'admin' ORDER BY id"
+    );
+    const { rows: grants } = await pool.query('SELECT role_name, capability_key FROM role_capabilities');
+    const matrix = {};
+    roles.forEach(r => { matrix[r.name] = []; });
+    grants.forEach(g => { if (matrix[g.role_name]) matrix[g.role_name].push(g.capability_key); });
+    res.json({ capabilities: CAPABILITIES.map(([key, label]) => ({ key, label })), roles, matrix });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Replaces the full capability set for one role in a single save (mirrors
+// the per-user page-access picker) — 'admin' is rejected since it always
+// has everything and isn't stored in this table.
+app.put('/api/role-capabilities/:roleName', requireCapability('manage_users'), async (req, res) => {
+  const { roleName } = req.params;
+  const { capabilities } = req.body;
+  if (roleName === 'admin') return res.status(400).json({ error: 'The admin role always has full access and cannot be edited' });
+  if (!Array.isArray(capabilities)) return res.status(400).json({ error: 'capabilities must be an array' });
+  const validKeys = capabilities.filter(k => CAPABILITY_KEYS.includes(k));
+  const dbClient = await pool.connect();
+  try {
+    await dbClient.query('BEGIN');
+    const { rows: roleRows } = await dbClient.query('SELECT 1 FROM user_roles WHERE name = $1', [roleName]);
+    if (!roleRows.length) { await dbClient.query('ROLLBACK'); return res.status(404).json({ error: 'Role not found' }); }
+    await dbClient.query('DELETE FROM role_capabilities WHERE role_name = $1', [roleName]);
+    for (const key of validKeys) {
+      await dbClient.query(
+        'INSERT INTO role_capabilities (role_name, capability_key) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+        [roleName, key]
+      );
+    }
+    await dbClient.query('COMMIT');
+    await logActivity(req.user.id, req.user.email, 'UPDATE', 'role_capabilities', roleName, null, { capabilities: validKeys }, req);
+    res.json({ success: true, capabilities: validKeys });
+  } catch (err) {
+    await dbClient.query('ROLLBACK');
+    res.status(500).json({ error: err.message });
+  } finally {
+    dbClient.release();
   }
 });
 
@@ -451,7 +548,7 @@ app.get('/api/permissions/me', async (req, res) => {
   }
 });
 
-app.get('/api/permissions/:userId', requireRole('lawyer'), async (req, res) => {
+app.get('/api/permissions/:userId', requireCapability('manage_users'), async (req, res) => {
   try {
     res.json(await getUserPageAccess(req.params.userId));
   } catch (err) {
@@ -459,7 +556,7 @@ app.get('/api/permissions/:userId', requireRole('lawyer'), async (req, res) => {
   }
 });
 
-app.put('/api/permissions/:userId', requireRole('lawyer'), async (req, res) => {
+app.put('/api/permissions/:userId', requireCapability('manage_users'), async (req, res) => {
   const { pages } = req.body;
   if (!Array.isArray(pages)) return res.status(400).json({ error: 'pages must be an array' });
   const validPages = pages.filter(p => GRANTABLE_PAGES.includes(p));
@@ -486,7 +583,7 @@ app.put('/api/permissions/:userId', requireRole('lawyer'), async (req, res) => {
 
 // Reverts a user to the unrestricted default (their normal role-based page
 // set) by clearing all custom grants.
-app.delete('/api/permissions/:userId', requireRole('lawyer'), async (req, res) => {
+app.delete('/api/permissions/:userId', requireCapability('manage_users'), async (req, res) => {
   try {
     await pool.query('DELETE FROM user_page_access WHERE user_id = $1', [req.params.userId]);
     await logActivity(req.user.id, req.user.email, 'UPDATE', 'permissions', req.params.userId, null, { reset: true }, req);
@@ -533,7 +630,7 @@ app.get('/api/clients/:id', async (req, res) => {
   }
 });
 
-app.post('/api/clients', async (req, res) => {
+app.post('/api/clients', requireCapability('add_edit_clients'), async (req, res) => {
   const { fullName, phone, email, address, nationalId, notes } = req.body;
   if (!fullName) return res.status(400).json({ error: 'fullName is required' });
   try {
@@ -549,7 +646,7 @@ app.post('/api/clients', async (req, res) => {
   }
 });
 
-app.put('/api/clients/:id', async (req, res) => {
+app.put('/api/clients/:id', requireCapability('add_edit_clients'), async (req, res) => {
   const { fullName, phone, email, address, nationalId, notes } = req.body;
   try {
     const { rows } = await pool.query(
@@ -571,7 +668,7 @@ app.put('/api/clients/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/clients/:id', requireRole('lawyer'), async (req, res) => {
+app.delete('/api/clients/:id', requireCapability('delete_client'), async (req, res) => {
   try {
     const { rowCount } = await pool.query('DELETE FROM clients WHERE id = $1', [req.params.id]);
     if (!rowCount) return res.status(404).json({ error: 'Client not found' });
@@ -598,7 +695,7 @@ app.get('/api/case-categories', async (req, res) => {
   }
 });
 
-app.post('/api/case-categories', requireRole('lawyer'), async (req, res) => {
+app.post('/api/case-categories', requireCapability('manage_settings'), async (req, res) => {
   const { name, code } = req.body;
   if (!name || !code) return res.status(400).json({ error: 'name and code are required' });
   try {
@@ -613,7 +710,7 @@ app.post('/api/case-categories', requireRole('lawyer'), async (req, res) => {
   }
 });
 
-app.put('/api/case-categories/:id', requireRole('lawyer'), async (req, res) => {
+app.put('/api/case-categories/:id', requireCapability('manage_settings'), async (req, res) => {
   const { name, code, isActive } = req.body;
   try {
     const { rows } = await pool.query(
@@ -629,7 +726,7 @@ app.put('/api/case-categories/:id', requireRole('lawyer'), async (req, res) => {
   }
 });
 
-app.delete('/api/case-categories/:id', requireRole('lawyer'), async (req, res) => {
+app.delete('/api/case-categories/:id', requireCapability('manage_settings'), async (req, res) => {
   try {
     const { rowCount } = await pool.query('DELETE FROM case_categories WHERE id = $1', [req.params.id]);
     if (!rowCount) return res.status(404).json({ error: 'Category not found' });
@@ -660,7 +757,7 @@ app.get('/api/case-statuses', async (req, res) => {
   }
 });
 
-app.post('/api/case-statuses', requireRole('lawyer'), async (req, res) => {
+app.post('/api/case-statuses', requireCapability('manage_settings'), async (req, res) => {
   const { label, isClosed } = req.body;
   if (!label) return res.status(400).json({ error: 'label is required' });
   const name = slugify(label);
@@ -678,7 +775,7 @@ app.post('/api/case-statuses', requireRole('lawyer'), async (req, res) => {
   }
 });
 
-app.put('/api/case-statuses/:id', requireRole('lawyer'), async (req, res) => {
+app.put('/api/case-statuses/:id', requireCapability('manage_settings'), async (req, res) => {
   const { label, isClosed, isActive } = req.body;
   try {
     const { rows } = await pool.query(
@@ -694,7 +791,7 @@ app.put('/api/case-statuses/:id', requireRole('lawyer'), async (req, res) => {
   }
 });
 
-app.delete('/api/case-statuses/:id', requireRole('lawyer'), async (req, res) => {
+app.delete('/api/case-statuses/:id', requireCapability('manage_settings'), async (req, res) => {
   try {
     const { rowCount } = await pool.query('DELETE FROM case_statuses WHERE id = $1', [req.params.id]);
     if (!rowCount) return res.status(404).json({ error: 'Status not found' });
@@ -721,7 +818,7 @@ app.get('/api/expense-categories', async (req, res) => {
   }
 });
 
-app.post('/api/expense-categories', requireRole('lawyer'), async (req, res) => {
+app.post('/api/expense-categories', requireCapability('manage_settings'), async (req, res) => {
   const { label } = req.body;
   if (!label) return res.status(400).json({ error: 'label is required' });
   const name = slugify(label);
@@ -738,7 +835,7 @@ app.post('/api/expense-categories', requireRole('lawyer'), async (req, res) => {
   }
 });
 
-app.put('/api/expense-categories/:id', requireRole('lawyer'), async (req, res) => {
+app.put('/api/expense-categories/:id', requireCapability('manage_settings'), async (req, res) => {
   const { label, isActive } = req.body;
   try {
     const { rows } = await pool.query(
@@ -753,7 +850,7 @@ app.put('/api/expense-categories/:id', requireRole('lawyer'), async (req, res) =
   }
 });
 
-app.delete('/api/expense-categories/:id', requireRole('lawyer'), async (req, res) => {
+app.delete('/api/expense-categories/:id', requireCapability('manage_settings'), async (req, res) => {
   try {
     const { rowCount } = await pool.query('DELETE FROM expense_categories WHERE id = $1', [req.params.id]);
     if (!rowCount) return res.status(404).json({ error: 'Category not found' });
@@ -852,7 +949,7 @@ async function syncCaseStatusFromLatestHearing(db, caseId) {
   return status;
 }
 
-app.post('/api/cases', requireRole('lawyer', 'secretary'), async (req, res) => {
+app.post('/api/cases', requireCapability('create_edit_case'), async (req, res) => {
   const {
     clientId, newClient, caseNumber, description, opposingParty, court, region,
     caseYear, parties, remarks, claimAmount, status,
@@ -941,7 +1038,7 @@ app.post('/api/cases', requireRole('lawyer', 'secretary'), async (req, res) => {
   }
 });
 
-app.put('/api/cases/:id', requireRole('lawyer', 'secretary'), async (req, res) => {
+app.put('/api/cases/:id', requireCapability('create_edit_case'), async (req, res) => {
   const {
     caseTitle, status, description, assignedLawyer, opposingParty, court, region,
     caseYear, parties, remarks, claimAmount, clientId, caseNumber,
@@ -1058,7 +1155,7 @@ app.put('/api/cases/:id', requireRole('lawyer', 'secretary'), async (req, res) =
   }
 });
 
-app.delete('/api/cases/:id', requireRole('lawyer'), async (req, res) => {
+app.delete('/api/cases/:id', requireCapability('delete_case'), async (req, res) => {
   try {
     const { rows: before } = await pool.query('SELECT * FROM cases WHERE id = $1', [req.params.id]);
     if (!before.length) return res.status(404).json({ error: 'Case not found' });
@@ -1167,7 +1264,7 @@ async function syncCaseFieldsFromHearingForm(db, caseId, { caseNumber, caseYear,
   );
 }
 
-app.post('/api/cases/:id/hearings', async (req, res) => {
+app.post('/api/cases/:id/hearings', requireCapability('log_hearing_appointment'), async (req, res) => {
   const {
     hearingDate, court, region, presidingJudge, proceedingType, counselPlaintiff, counselDefendant,
     courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTime, courtEndTime,
@@ -1210,7 +1307,7 @@ app.post('/api/cases/:id/hearings', async (req, res) => {
   }
 });
 
-app.put('/api/hearings/:id', async (req, res) => {
+app.put('/api/hearings/:id', requireCapability('log_hearing_appointment'), async (req, res) => {
   const {
     hearingDate, court, region, presidingJudge, proceedingType, counselPlaintiff, counselDefendant,
     courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTime, courtEndTime,
@@ -1269,7 +1366,7 @@ app.put('/api/hearings/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/hearings/:id', requireRole('lawyer', 'secretary'), async (req, res) => {
+app.delete('/api/hearings/:id', requireCapability('delete_hearing_appointment'), async (req, res) => {
   try {
     const { rows: before } = await pool.query('SELECT case_id FROM hearings WHERE id = $1', [req.params.id]);
     if (!before.length) return res.status(404).json({ error: 'Hearing not found' });
@@ -1317,7 +1414,7 @@ app.get('/api/cases/:id/appointments', async (req, res) => {
   }
 });
 
-app.post('/api/appointments', async (req, res) => {
+app.post('/api/appointments', requireCapability('log_hearing_appointment'), async (req, res) => {
   const { caseId, clientId, appointmentDate, purpose, consultationFee } = req.body;
   if (!clientId || !appointmentDate) {
     return res.status(400).json({ error: 'clientId and appointmentDate are required' });
@@ -1334,7 +1431,7 @@ app.post('/api/appointments', async (req, res) => {
   }
 });
 
-app.put('/api/appointments/:id', async (req, res) => {
+app.put('/api/appointments/:id', requireCapability('log_hearing_appointment'), async (req, res) => {
   const { appointmentDate, purpose, consultationFee, feePaid } = req.body;
   try {
     const { rows } = await pool.query(
@@ -1353,7 +1450,7 @@ app.put('/api/appointments/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/appointments/:id', requireRole('lawyer', 'secretary'), async (req, res) => {
+app.delete('/api/appointments/:id', requireCapability('delete_hearing_appointment'), async (req, res) => {
   try {
     const { rowCount } = await pool.query('DELETE FROM appointments WHERE id = $1', [req.params.id]);
     if (!rowCount) return res.status(404).json({ error: 'Appointment not found' });
@@ -1422,7 +1519,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 25 * 1024 * 1024 } });
 
-app.post('/api/cases/:id/documents', upload.single('file'), async (req, res) => {
+app.post('/api/cases/:id/documents', requireCapability('upload_document'), upload.single('file'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   const { category } = req.body;
   try {
@@ -1463,7 +1560,7 @@ app.get('/api/documents/:id/download', async (req, res) => {
   }
 });
 
-app.delete('/api/documents/:id', requireRole('lawyer', 'secretary'), async (req, res) => {
+app.delete('/api/documents/:id', requireCapability('delete_document'), async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM documents WHERE id = $1', [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Document not found' });
@@ -1515,7 +1612,7 @@ app.get('/api/cases/:id/tasks', async (req, res) => {
   }
 });
 
-app.post('/api/cases/:id/tasks', async (req, res) => {
+app.post('/api/cases/:id/tasks', requireCapability('create_update_task'), async (req, res) => {
   const { title, dueDate, assignedTo, priority } = req.body;
   if (!title) return res.status(400).json({ error: 'title is required' });
   try {
@@ -1530,7 +1627,7 @@ app.post('/api/cases/:id/tasks', async (req, res) => {
   }
 });
 
-app.put('/api/tasks/:id', async (req, res) => {
+app.put('/api/tasks/:id', requireCapability('create_update_task'), async (req, res) => {
   const { title, dueDate, assignedTo, priority, status } = req.body;
   try {
     const completedAt = status === 'done' ? new Date() : (status === 'pending' ? null : undefined);
@@ -1552,7 +1649,7 @@ app.put('/api/tasks/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/tasks/:id', requireRole('lawyer', 'secretary'), async (req, res) => {
+app.delete('/api/tasks/:id', requireCapability('delete_task'), async (req, res) => {
   try {
     const { rowCount } = await pool.query('DELETE FROM tasks WHERE id = $1', [req.params.id]);
     if (!rowCount) return res.status(404).json({ error: 'Task not found' });
@@ -1566,7 +1663,7 @@ app.delete('/api/tasks/:id', requireRole('lawyer', 'secretary'), async (req, res
 //  EXPENSES
 // ════════════════════════════════════════════════════════════════════════════
 
-app.get('/api/expenses', requireRole('lawyer', 'secretary'), async (req, res) => {
+app.get('/api/expenses', requireCapability('view_record_expenses'), async (req, res) => {
   const { from, to, category, case_id } = req.query;
   try {
     const conditions = [];
@@ -1591,7 +1688,7 @@ app.get('/api/expenses', requireRole('lawyer', 'secretary'), async (req, res) =>
 // Office overhead expenses (electricity, water, salaries, etc.) aren't tied
 // to a case — this is the general entry point used by the standalone
 // Expenses page's "Add Expense" button; caseId is optional.
-app.post('/api/expenses', requireRole('lawyer', 'secretary'), async (req, res) => {
+app.post('/api/expenses', requireCapability('view_record_expenses'), async (req, res) => {
   const { caseId, description, category, amount, expenseDate } = req.body;
   if (!description || amount === undefined) return res.status(400).json({ error: 'description and amount are required' });
   try {
@@ -1607,7 +1704,7 @@ app.post('/api/expenses', requireRole('lawyer', 'secretary'), async (req, res) =
   }
 });
 
-app.get('/api/cases/:id/expenses', requireRole('lawyer', 'secretary'), async (req, res) => {
+app.get('/api/cases/:id/expenses', requireCapability('view_record_expenses'), async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM expenses WHERE case_id = $1 ORDER BY expense_date DESC', [req.params.id]);
     res.json(rows);
@@ -1616,7 +1713,7 @@ app.get('/api/cases/:id/expenses', requireRole('lawyer', 'secretary'), async (re
   }
 });
 
-app.post('/api/cases/:id/expenses', requireRole('lawyer', 'secretary'), async (req, res) => {
+app.post('/api/cases/:id/expenses', requireCapability('view_record_expenses'), async (req, res) => {
   const { description, category, amount, expenseDate } = req.body;
   if (!description || amount === undefined) return res.status(400).json({ error: 'description and amount are required' });
   try {
@@ -1632,7 +1729,7 @@ app.post('/api/cases/:id/expenses', requireRole('lawyer', 'secretary'), async (r
   }
 });
 
-app.put('/api/expenses/:id', requireRole('lawyer', 'secretary'), async (req, res) => {
+app.put('/api/expenses/:id', requireCapability('view_record_expenses'), async (req, res) => {
   const { description, category, amount, expenseDate } = req.body;
   try {
     const { rows } = await pool.query(
@@ -1652,7 +1749,7 @@ app.put('/api/expenses/:id', requireRole('lawyer', 'secretary'), async (req, res
   }
 });
 
-app.delete('/api/expenses/:id', requireRole('lawyer'), async (req, res) => {
+app.delete('/api/expenses/:id', requireCapability('delete_expense'), async (req, res) => {
   try {
     const { rowCount } = await pool.query('DELETE FROM expenses WHERE id = $1', [req.params.id]);
     if (!rowCount) return res.status(404).json({ error: 'Expense not found' });
@@ -1681,7 +1778,7 @@ async function recomputeInvoiceStatus(invoiceId) {
   await pool.query('UPDATE invoices SET status = $1 WHERE id = $2', [status, invoiceId]);
 }
 
-app.get('/api/invoices', requireRole('lawyer'), async (req, res) => {
+app.get('/api/invoices', requireCapability('view_billing'), async (req, res) => {
   const { status, case_id, from, to } = req.query;
   try {
     const conditions = [];
@@ -1706,7 +1803,7 @@ app.get('/api/invoices', requireRole('lawyer'), async (req, res) => {
   }
 });
 
-app.get('/api/invoices/:id', requireRole('lawyer'), async (req, res) => {
+app.get('/api/invoices/:id', requireCapability('view_billing'), async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM invoices WHERE id = $1', [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Invoice not found' });
@@ -1719,7 +1816,7 @@ app.get('/api/invoices/:id', requireRole('lawyer'), async (req, res) => {
   }
 });
 
-app.get('/api/cases/:id/invoices', requireRole('lawyer'), async (req, res) => {
+app.get('/api/cases/:id/invoices', requireCapability('view_billing'), async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT i.*, COALESCE((SELECT SUM(amount) FROM payments p WHERE p.invoice_id = i.id), 0) AS amount_paid
@@ -1731,7 +1828,7 @@ app.get('/api/cases/:id/invoices', requireRole('lawyer'), async (req, res) => {
   }
 });
 
-app.post('/api/cases/:id/invoices', requireRole('lawyer'), async (req, res) => {
+app.post('/api/cases/:id/invoices', requireCapability('manage_invoices_payments'), async (req, res) => {
   const { description, items, totalAmount, dueDate } = req.body;
   const dbClient = await pool.connect();
   try {
@@ -1766,7 +1863,7 @@ app.post('/api/cases/:id/invoices', requireRole('lawyer'), async (req, res) => {
   }
 });
 
-app.put('/api/invoices/:id', requireRole('lawyer'), async (req, res) => {
+app.put('/api/invoices/:id', requireCapability('manage_invoices_payments'), async (req, res) => {
   const { description, dueDate } = req.body;
   try {
     const { rows } = await pool.query(
@@ -1781,7 +1878,7 @@ app.put('/api/invoices/:id', requireRole('lawyer'), async (req, res) => {
   }
 });
 
-app.delete('/api/invoices/:id', requireRole('lawyer'), async (req, res) => {
+app.delete('/api/invoices/:id', requireCapability('manage_invoices_payments'), async (req, res) => {
   try {
     const { rowCount } = await pool.query('DELETE FROM invoices WHERE id = $1', [req.params.id]);
     if (!rowCount) return res.status(404).json({ error: 'Invoice not found' });
@@ -1791,7 +1888,7 @@ app.delete('/api/invoices/:id', requireRole('lawyer'), async (req, res) => {
   }
 });
 
-app.post('/api/invoices/:id/payments', requireRole('lawyer'), async (req, res) => {
+app.post('/api/invoices/:id/payments', requireCapability('manage_invoices_payments'), async (req, res) => {
   const { amount, paymentDate, paymentMethod, notes } = req.body;
   if (!amount) return res.status(400).json({ error: 'amount is required' });
   try {
@@ -1811,7 +1908,7 @@ app.post('/api/invoices/:id/payments', requireRole('lawyer'), async (req, res) =
   }
 });
 
-app.delete('/api/payments/:id', requireRole('lawyer'), async (req, res) => {
+app.delete('/api/payments/:id', requireCapability('manage_invoices_payments'), async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM payments WHERE id = $1', [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Payment not found' });
@@ -1840,7 +1937,7 @@ app.get('/api/cases/:id/notes', async (req, res) => {
   }
 });
 
-app.post('/api/cases/:id/notes', async (req, res) => {
+app.post('/api/cases/:id/notes', requireCapability('add_case_note'), async (req, res) => {
   const { body } = req.body;
   if (!body) return res.status(400).json({ error: 'body is required' });
   try {
@@ -1858,7 +1955,7 @@ app.delete('/api/notes/:id', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM notes WHERE id = $1', [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Note not found' });
-    if (rows[0].author_id !== req.user.id && req.user.role !== 'lawyer') {
+    if (rows[0].author_id !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ error: 'You can only delete your own notes' });
     }
     await pool.query('DELETE FROM notes WHERE id = $1', [req.params.id]);
@@ -1929,7 +2026,7 @@ app.get('/api/dashboard/summary', async (req, res) => {
       recentActivity
     };
 
-    if (req.user.role === 'lawyer') {
+    if (await roleHasCapability(req.user.role, 'view_billing')) {
       const { rows: billing } = await pool.query(`
         SELECT COALESCE(SUM(i.total_amount - COALESCE(p.paid, 0)), 0) AS outstanding
         FROM invoices i
@@ -1961,7 +2058,7 @@ app.get('/api/dashboard/summary', async (req, res) => {
 //  REPORTS (lawyer only)
 // ════════════════════════════════════════════════════════════════════════════
 
-app.get('/api/reports/cases-summary', requireRole('lawyer'), async (req, res) => {
+app.get('/api/reports/cases-summary', requireCapability('view_reports'), async (req, res) => {
   const { from, to, status } = req.query;
   try {
     const conditions = [];
@@ -1983,7 +2080,7 @@ app.get('/api/reports/cases-summary', requireRole('lawyer'), async (req, res) =>
   }
 });
 
-app.get('/api/reports/financial', requireRole('lawyer'), async (req, res) => {
+app.get('/api/reports/financial', requireCapability('view_reports'), async (req, res) => {
   const { from, to } = req.query;
   try {
     const dateFilterP = from && to ? 'WHERE payment_date BETWEEN $1 AND $2' : '';
@@ -2016,7 +2113,7 @@ app.get('/api/settings', async (req, res) => {
   }
 });
 
-app.put('/api/settings', requireRole('lawyer'), async (req, res) => {
+app.put('/api/settings', requireCapability('manage_settings'), async (req, res) => {
   try {
     const entries = Object.entries(req.body);
     for (const [key, value] of entries) {

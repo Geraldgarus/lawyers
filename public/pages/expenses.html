@@ -164,7 +164,7 @@ function renderExpenses(expenses) {
       <td>${escapeHtml(e.description)}</td>
       <td><span class="badge neutral">${e.category.replace('_',' ')}</span></td>
       <td>${fmtCurrency(e.amount)}</td>
-      <td>${currentUser && currentUser.role === 'lawyer' ? `<button class="btn-icon danger" onclick="deleteExpense(${e.id})" title="Delete"><i class="fas fa-trash"></i></button>` : ''}</td>
+      <td>${currentUser && hasFullAccessUI(currentUser) ? `<button class="btn-icon danger" onclick="deleteExpense(${e.id})" title="Delete"><i class="fas fa-trash"></i></button>` : ''}</td>
     </tr>
   `).join('');
 }

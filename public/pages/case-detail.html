@@ -487,7 +487,7 @@ async function renderOverview() {
   } catch (e) {}
 
   let balanceHtml = '';
-  if (currentUser.role === 'lawyer') {
+  if (hasFullAccessUI(currentUser)) {
     try {
       const invoices = await apiGet(`/cases/${CASE_ID}/invoices`);
       const balance = invoices.reduce((s, i) => s + (parseFloat(i.total_amount) - parseFloat(i.amount_paid)), 0);
@@ -1122,7 +1122,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('tab-btn-expenses').style.display = 'none';
     document.getElementById('tab-btn-payments').style.display = 'none';
   }
-  if (currentUser.role !== 'lawyer') {
+  if (!hasFullAccessUI(currentUser)) {
     document.getElementById('tab-btn-payments').style.display = 'none';
   }
 

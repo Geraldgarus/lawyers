@@ -141,9 +141,10 @@
     <div class="modal-body">
       <div class="form-group"><label>Role Name *</label><input class="form-control" id="role-label" placeholder="e.g. Paralegal"></div>
       <p style="font-size:12px;color:var(--text-muted);">
-        This creates a role you can assign to a user. It's a label for organizing staff — what a user can actually
-        do is still based on Lawyer/Secretary/Assistant capabilities, plus whatever pages you grant them in
-        <a href="/permissions" style="color:var(--accent-gold);">Permissions &amp; Access</a>.
+        This creates a role you can assign to a user. Its actual capabilities (create/delete a case, manage
+        billing, etc.) start blank until you check some for it in the Role Capability Matrix on
+        <a href="/permissions" style="color:var(--accent-gold);">Permissions &amp; Access</a>, alongside whatever
+        pages you grant it there too.
       </p>
     </div>
     <div class="modal-footer"><button class="btn-outline" onclick="closeModal('role-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveRole()">Save</button></div>
@@ -167,7 +168,7 @@ async function loadRoles() {
       <tr>
         <td>${escapeHtml(r.label)}</td>
         <td><span class="badge success">Active</span></td>
-        <td>${['lawyer','secretary','assistant'].includes(r.name) ? '' : `<button class="btn-icon danger" onclick="deactivateRole(${r.id})" title="Deactivate"><i class="fas fa-ban"></i></button>`}</td>
+        <td>${r.name === 'admin' ? '' : `<button class="btn-icon danger" onclick="deactivateRole(${r.id})" title="Deactivate"><i class="fas fa-ban"></i></button>`}</td>
       </tr>
     `).join('');
   } catch (err) {
@@ -323,7 +324,7 @@ async function deleteUser(id) {
 
 document.addEventListener('DOMContentLoaded', () => {
   const user = initPageChrome();
-  if (user && user.role !== 'lawyer') {
+  if (user && !hasFullAccessUI(user)) {
     document.getElementById('main-content').innerHTML = '<div class="empty-state"><i class="fas fa-lock"></i>You do not have permission to manage users</div>';
     return;
   }

@@ -11,9 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
-.perm-table td:nth-child(2), .perm-table td:nth-child(3), .perm-table td:nth-child(4) { text-align:center; }
-.perm-yes { color:var(--success); }
-.perm-no { color:var(--faint-text); }
+.perm-table th, .perm-table td { white-space:nowrap; }
 </style>
 <script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>
 </head>
@@ -104,14 +102,14 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
     </div>
     <div class="card-body" style="padding-top:0;">
       <p style="font-size:12.5px;color:var(--text-muted);margin:14px 0 18px;">
-        Every capability below is enforced on the server, not just hidden in the menu — a role without access
-        cannot use the feature even by navigating directly to it. To change a user's role, use
-        <a href="/users" style="color:var(--accent-gold);">User Management</a>.
+        Every capability below is enforced on the server, not just hidden in the menu — a role without a
+        checked box cannot use that feature even by navigating directly to it. <strong>Admin</strong> always has
+        full access and isn't shown here. Check the boxes for each role, then save that role's row.
       </p>
       <div class="table-wrap">
-        <table class="data-table perm-table">
-          <thead><tr><th>Capability</th><th>Lawyer</th><th>Secretary</th><th>Assistant</th></tr></thead>
-          <tbody id="perm-body"></tbody>
+        <table class="data-table perm-table" id="perm-matrix-table">
+          <thead><tr><th>Capability</th></tr></thead>
+          <tbody id="perm-body"><tr><td class="empty-state">Loading...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -122,28 +120,49 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 <script src="../js/utils.js"></script>
 <script src="../js/auth.js"></script>
 <script>
-const PERMISSIONS = [
-  ['Create / edit a case', true, true, false],
-  ['Delete a case', true, false, false],
-  ['Add / edit clients', true, true, true],
-  ['Delete a client', true, false, false],
-  ['Log a hearing or appointment', true, true, true],
-  ['Delete a hearing or appointment', true, true, false],
-  ['Upload a document', true, true, true],
-  ['Delete a document', true, true, false],
-  ['Create / update a task', true, true, true],
-  ['Delete a task', true, true, false],
-  ['View &amp; record expenses', true, true, false],
-  ['Delete an expense', true, false, false],
-  ['View billing figures &amp; invoices', true, false, false],
-  ['Create invoices / record payments', true, false, false],
-  ['Add a case note', true, true, true],
-  ['View reports', true, false, false],
-  ['Manage users', true, false, false],
-  ['Manage case categories &amp; settings', true, false, false],
-];
+let capabilityMatrix = null; // { capabilities, roles, matrix } from GET /api/role-capabilities
 
-function icon(v) { return v ? '<i class="fas fa-check perm-yes"></i>' : '<i class="fas fa-xmark perm-no"></i>'; }
+async function loadCapabilityMatrix() {
+  try {
+    capabilityMatrix = await apiGet('/role-capabilities');
+    renderCapabilityMatrix();
+  } catch (err) {
+    document.getElementById('perm-body').innerHTML = '<tr><td class="empty-state">Failed to load capability matrix</td></tr>';
+    showToast(err.message, 'error');
+  }
+}
+
+function renderCapabilityMatrix() {
+  const { capabilities, roles, matrix } = capabilityMatrix;
+  document.querySelector('#perm-matrix-table thead tr').innerHTML = '<th>Capability</th>' +
+    roles.map(r => `<th style="text-align:center;">${escapeHtml(r.label)}</th>`).join('');
+  document.getElementById('perm-body').innerHTML = capabilities.map(cap => `
+    <tr>
+      <td>${escapeHtml(cap.label)}</td>
+      ${roles.map(r => `
+        <td style="text-align:center;">
+          <input type="checkbox" data-role="${escapeHtml(r.name)}" data-cap="${escapeHtml(cap.key)}"
+            ${matrix[r.name] && matrix[r.name].includes(cap.key) ? 'checked' : ''}>
+        </td>`).join('')}
+    </tr>`).join('') + `
+    <tr>
+      <td></td>
+      ${roles.map(r => `
+        <td style="text-align:center;">
+          <button class="btn-primary btn-sm" onclick="saveRoleCapabilities('${escapeHtml(r.name)}')" title="Save ${escapeHtml(r.label)}">
+            <i class="fas fa-save"></i>
+          </button>
+        </td>`).join('')}
+    </tr>`;
+}
+
+async function saveRoleCapabilities(roleName) {
+  const checked = Array.from(document.querySelectorAll(`input[data-role="${CSS.escape(roleName)}"]:checked`)).map(el => el.dataset.cap);
+  try {
+    await apiPut(`/role-capabilities/${roleName}`, { capabilities: checked });
+    showToast('Capabilities saved');
+  } catch (err) { showToast(err.message, 'error'); }
+}
 
 // Mirrors GRANTABLE_PAGES in server.js — Dashboard isn't listed since it's
 // always reachable (nowhere to land if it weren't).
@@ -214,14 +233,12 @@ async function resetPermissions() {
 document.addEventListener('DOMContentLoaded', () => {
   const user = initPageChrome();
   if (!user) return;
-  if (user.role !== 'lawyer') {
+  if (!hasFullAccessUI(user)) {
     document.getElementById('main-content').innerHTML = '<div class="empty-state"><i class="fas fa-lock"></i>You do not have permission to view this page</div>';
     return;
   }
   loadUsersForPermissions();
-  document.getElementById('perm-body').innerHTML = PERMISSIONS.map(([label, l, s, a]) => `
-    <tr><td>${label}</td><td>${icon(l)}</td><td>${icon(s)}</td><td>${icon(a)}</td></tr>
-  `).join('');
+  loadCapabilityMatrix();
 });
 </script>
 </body>
