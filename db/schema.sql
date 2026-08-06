@@ -158,8 +158,8 @@ CREATE TABLE IF NOT EXISTS cases (
   presiding_judge         VARCHAR(255),
   proceeding_type         VARCHAR(50),               -- Mention, 1st PTC, Mediation, Hearing, Final PTC, Judgment, Ruling
   proceeding_date         DATE,
-  counsel_plaintiff       VARCHAR(255),
-  counsel_defendant       VARCHAR(255),
+  counsel_plaintiff       TEXT,
+  counsel_defendant       TEXT,
   court_clerk             VARCHAR(255),
   last_court_order        TEXT,
   prayer_sought           TEXT,                      -- Current Prayer/Order/Direction Sought
@@ -187,8 +187,10 @@ ALTER TABLE cases ADD COLUMN IF NOT EXISTS parties                 TEXT;
 ALTER TABLE cases ADD COLUMN IF NOT EXISTS presiding_judge         VARCHAR(255);
 ALTER TABLE cases ADD COLUMN IF NOT EXISTS proceeding_type         VARCHAR(50);
 ALTER TABLE cases ADD COLUMN IF NOT EXISTS proceeding_date         DATE;
-ALTER TABLE cases ADD COLUMN IF NOT EXISTS counsel_plaintiff       VARCHAR(255);
-ALTER TABLE cases ADD COLUMN IF NOT EXISTS counsel_defendant       VARCHAR(255);
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS counsel_plaintiff       TEXT;
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS counsel_defendant       TEXT;
+ALTER TABLE cases ALTER COLUMN counsel_plaintiff TYPE TEXT;
+ALTER TABLE cases ALTER COLUMN counsel_defendant TYPE TEXT;
 ALTER TABLE cases ADD COLUMN IF NOT EXISTS court_clerk             VARCHAR(255);
 ALTER TABLE cases ADD COLUMN IF NOT EXISTS last_court_order        TEXT;
 ALTER TABLE cases ADD COLUMN IF NOT EXISTS prayer_sought           TEXT;
@@ -231,8 +233,8 @@ CREATE TABLE IF NOT EXISTS hearings (
   -- ---- Time Chart & Court Records fields, filled fresh at every court date ----
   presiding_judge          VARCHAR(255),
   proceeding_type          VARCHAR(50),           -- Mention, 1st PTC, Mediation, Hearing, Final PTC, Judgment, Ruling
-  counsel_plaintiff        VARCHAR(255),
-  counsel_defendant        VARCHAR(255),
+  counsel_plaintiff        TEXT,
+  counsel_defendant        TEXT,
   court_clerk              VARCHAR(255),
   last_court_order         TEXT,
   prayer_sought            TEXT,                  -- Current Prayer/Order/Direction Sought
@@ -251,8 +253,10 @@ CREATE TABLE IF NOT EXISTS hearings (
 -- before the Time Chart & Court Records fields were added.
 ALTER TABLE hearings ADD COLUMN IF NOT EXISTS presiding_judge          VARCHAR(255);
 ALTER TABLE hearings ADD COLUMN IF NOT EXISTS proceeding_type          VARCHAR(50);
-ALTER TABLE hearings ADD COLUMN IF NOT EXISTS counsel_plaintiff        VARCHAR(255);
-ALTER TABLE hearings ADD COLUMN IF NOT EXISTS counsel_defendant        VARCHAR(255);
+ALTER TABLE hearings ADD COLUMN IF NOT EXISTS counsel_plaintiff        TEXT;
+ALTER TABLE hearings ADD COLUMN IF NOT EXISTS counsel_defendant        TEXT;
+ALTER TABLE hearings ALTER COLUMN counsel_plaintiff TYPE TEXT;
+ALTER TABLE hearings ALTER COLUMN counsel_defendant TYPE TEXT;
 ALTER TABLE hearings ADD COLUMN IF NOT EXISTS court_clerk              VARCHAR(255);
 ALTER TABLE hearings ADD COLUMN IF NOT EXISTS last_court_order         TEXT;
 ALTER TABLE hearings ADD COLUMN IF NOT EXISTS prayer_sought            TEXT;
