@@ -145,12 +145,13 @@ CREATE TABLE IF NOT EXISTS cases (
   case_number             VARCHAR(30)  NOT NULL UNIQUE,      -- e.g. CV-2026-001
   client_id               INT REFERENCES clients(id) ON DELETE RESTRICT,   -- optional at intake
   case_title              VARCHAR(255) NOT NULL,
-  case_type_id            INT NOT NULL REFERENCES case_categories(id) ON DELETE RESTRICT,
+  case_type_id            INT REFERENCES case_categories(id) ON DELETE RESTRICT,   -- no longer collected on the form; dormant
   status                  VARCHAR(50) NOT NULL DEFAULT 'mention' REFERENCES case_statuses(name),
   description             TEXT,                     -- narrative summary of the matter
   assigned_lawyer         INT REFERENCES users(id) ON DELETE SET NULL,
   opposing_party          VARCHAR(255),              -- Versus (Opponent)
   court                   VARCHAR(255),              -- Court Name
+  region                  VARCHAR(255),              -- "In the {court} of Tanzania at {region}" on the printed Time Chart
   -- ---- Time Chart & Court Records fields (firm's existing paper tracking sheet) ----
   case_year               INT,
   parties                 TEXT,
@@ -203,8 +204,10 @@ ALTER TABLE cases ADD COLUMN IF NOT EXISTS payment_status          VARCHAR(20) N
 ALTER TABLE cases ADD COLUMN IF NOT EXISTS amount_paid             NUMERIC(12,2) NOT NULL DEFAULT 0;
 ALTER TABLE cases ADD COLUMN IF NOT EXISTS remarks                 TEXT;
 ALTER TABLE cases ADD COLUMN IF NOT EXISTS claim_amount            NUMERIC(12,2);
+ALTER TABLE cases ADD COLUMN IF NOT EXISTS region VARCHAR(255);
 ALTER TABLE cases ALTER COLUMN client_id DROP NOT NULL;
 ALTER TABLE cases ALTER COLUMN status SET DEFAULT 'mention';
+ALTER TABLE cases ALTER COLUMN case_type_id DROP NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_cases_client     ON cases(client_id);
 CREATE INDEX IF NOT EXISTS idx_cases_status     ON cases(status);
 CREATE INDEX IF NOT EXISTS idx_cases_type       ON cases(case_type_id);
@@ -222,6 +225,7 @@ CREATE TABLE IF NOT EXISTS hearings (
   case_id                  INT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
   hearing_date             TIMESTAMP NOT NULL,   -- the court date itself
   court                    VARCHAR(255),
+  region                   VARCHAR(255),          -- "In the {court} of Tanzania at {region}" on the printed Time Chart
   purpose                  VARCHAR(255),          -- legacy, superseded by proceeding_type below
   outcome                  TEXT,                  -- legacy, superseded by court_order_direction below
   -- ---- Time Chart & Court Records fields, filled fresh at every court date ----
@@ -260,6 +264,7 @@ ALTER TABLE hearings ADD COLUMN IF NOT EXISTS consultation_end_time    TIME;
 ALTER TABLE hearings ADD COLUMN IF NOT EXISTS record_date              DATE;
 ALTER TABLE hearings ADD COLUMN IF NOT EXISTS recorded_by              VARCHAR(255);
 ALTER TABLE hearings ADD COLUMN IF NOT EXISTS next_court_date          TIMESTAMP;
+ALTER TABLE hearings ADD COLUMN IF NOT EXISTS region                   VARCHAR(255);
 ALTER TABLE hearings ALTER COLUMN next_court_date TYPE TIMESTAMP;
 CREATE INDEX IF NOT EXISTS idx_hearings_case ON hearings(case_id);
 CREATE INDEX IF NOT EXISTS idx_hearings_date ON hearings(hearing_date);

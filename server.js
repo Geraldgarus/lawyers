@@ -404,8 +404,8 @@ app.get('/api/clients/:id', async (req, res) => {
     const { rows } = await pool.query('SELECT * FROM clients WHERE id = $1', [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Client not found' });
     const { rows: cases } = await pool.query(
-      `SELECT c.id, c.case_number, c.case_title, c.status, cc.name AS case_type
-       FROM cases c JOIN case_categories cc ON cc.id = c.case_type_id
+      `SELECT c.id, c.case_number, c.case_title, c.status
+       FROM cases c
        WHERE c.client_id = $1 ORDER BY c.created_at DESC`,
       [req.params.id]
     );
@@ -654,19 +654,18 @@ app.delete('/api/expense-categories/:id', requireRole('lawyer'), async (req, res
 // ════════════════════════════════════════════════════════════════════════════
 
 app.get('/api/cases', async (req, res) => {
-  const { status, case_type_id, client_id, assigned_lawyer, q } = req.query;
+  const { status, client_id, assigned_lawyer, q } = req.query;
   try {
     const conditions = [];
     const values = [];
     if (status) { values.push(status); conditions.push(`c.status = $${values.length}`); }
-    if (case_type_id) { values.push(case_type_id); conditions.push(`c.case_type_id = $${values.length}`); }
     if (client_id) { values.push(client_id); conditions.push(`c.client_id = $${values.length}`); }
     if (assigned_lawyer) { values.push(assigned_lawyer); conditions.push(`c.assigned_lawyer = $${values.length}`); }
     if (q) { values.push(`%${q}%`); conditions.push(`(c.case_title ILIKE $${values.length} OR c.case_number ILIKE $${values.length} OR cl.full_name ILIKE $${values.length})`); }
     const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
 
     const { rows } = await pool.query(`
-      SELECT c.*, cl.full_name AS client_name, cc.name AS case_type_name,
+      SELECT c.*, cl.full_name AS client_name,
         u.full_name AS assigned_lawyer_name,
         -- The next court date is recorded on the Court Date form itself
         -- (filled in after attending court), so it's whatever was noted on
@@ -676,7 +675,6 @@ app.get('/api/cases', async (req, res) => {
         (SELECT COUNT(*)::int FROM tasks t WHERE t.case_id = c.id AND t.status = 'pending' AND t.due_date < CURRENT_DATE) AS overdue_task_count
       FROM cases c
       LEFT JOIN clients cl ON cl.id = c.client_id
-      JOIN case_categories cc ON cc.id = c.case_type_id
       LEFT JOIN users u ON u.id = c.assigned_lawyer
       ${where}
       ORDER BY c.created_at DESC
@@ -691,10 +689,9 @@ app.get('/api/cases/:id', async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT c.*, cl.full_name AS client_name, cl.phone AS client_phone, cl.email AS client_email,
-        cc.name AS case_type_name, u.full_name AS assigned_lawyer_name, cb.full_name AS created_by_name
+        u.full_name AS assigned_lawyer_name, cb.full_name AS created_by_name
       FROM cases c
       LEFT JOIN clients cl ON cl.id = c.client_id
-      JOIN case_categories cc ON cc.id = c.case_type_id
       LEFT JOIN users u ON u.id = c.assigned_lawyer
       LEFT JOIN users cb ON cb.id = c.created_by
       WHERE c.id = $1
@@ -705,30 +702,6 @@ app.get('/api/cases/:id', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-// Case Type on the New Case form is free text, not a category picker — this
-// resolves it to a case_categories row (creating one on first use) so every
-// other part of the app that joins/filters on case_type_id keeps working.
-// The category's `code` is now only used to satisfy the table's UNIQUE
-// constraint (case numbering is manual), not for number generation.
-async function findOrCreateCaseCategory(dbClient, typeName) {
-  const trimmed = (typeName || '').trim();
-  if (!trimmed) throw new Error('Case type is required');
-  const { rows: existing } = await dbClient.query('SELECT id FROM case_categories WHERE LOWER(name) = LOWER($1)', [trimmed]);
-  if (existing.length) return existing[0].id;
-
-  const base = trimmed.replace(/[^A-Za-z]/g, '').slice(0, 5).toUpperCase() || 'GEN';
-  let code = base;
-  for (let suffix = 1; ; suffix++) {
-    const { rows: codeRows } = await dbClient.query('SELECT id FROM case_categories WHERE code = $1', [code]);
-    if (!codeRows.length) break;
-    code = (base.slice(0, 5 - String(suffix).length) + suffix).toUpperCase();
-  }
-  const { rows: created } = await dbClient.query(
-    'INSERT INTO case_categories (name, code) VALUES ($1, $2) RETURNING id', [trimmed, code]
-  );
-  return created[0].id;
-}
 
 // Case status is the same Time Chart stage vocabulary as "Court Proceeding
 // Type" on the Court Date form — rather than letting the two be set
@@ -763,18 +736,18 @@ async function syncCaseStatusFromLatestHearing(db, caseId) {
 
 app.post('/api/cases', requireRole('lawyer', 'secretary'), async (req, res) => {
   const {
-    clientId, newClient, caseNumber, caseType, description, opposingParty, court,
+    clientId, newClient, caseNumber, description, opposingParty, court, region,
     caseYear, parties, remarks, claimAmount, status,
     // Time Chart & Court Records fields — the New Case form is the sheet
     // itself, so this first entry becomes the case's first Court Date row
     // (see the hearings INSERT below), exactly like every subsequent visit
     // recorded from the Court Dates tab.
-    presidingJudge, proceedingType, proceedingDate, counselPlaintiff, counselDefendant,
+    presidingJudge, proceedingType, counselPlaintiff, counselDefendant,
     courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTime, courtEndTime,
     consultationStartTime, consultationEndTime, recordDate, recordedBy, nextCourtDate
   } = req.body;
-  if (!caseNumber || !caseType) {
-    return res.status(400).json({ error: 'caseNumber and caseType are required' });
+  if (!caseNumber) {
+    return res.status(400).json({ error: 'caseNumber is required' });
   }
 
   const dbClient = await pool.connect();
@@ -795,8 +768,6 @@ app.post('/api/cases', requireRole('lawyer', 'secretary'), async (req, res) => {
       finalClientId = clientRows[0].id;
     }
 
-    const caseTypeId = await findOrCreateCaseCategory(dbClient, caseType);
-
     // case_title has no dedicated input anymore — derive something
     // meaningful so every other part of the app that displays it
     // (lists, headers, timelines) still has a sensible label.
@@ -804,30 +775,31 @@ app.post('/api/cases', requireRole('lawyer', 'secretary'), async (req, res) => {
 
     const { rows } = await dbClient.query(
       `INSERT INTO cases (
-         case_number, client_id, case_title, case_type_id, description, opposing_party, court,
+         case_number, client_id, case_title, description, opposing_party, court, region,
          case_year, parties, remarks, claim_amount, status, created_by
        )
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,COALESCE($12, 'mention'),$13)
        RETURNING *`,
-      [caseNumber.trim(), finalClientId, finalCaseTitle, caseTypeId, description || null,
-       opposingParty || null, court || null,
+      [caseNumber.trim(), finalClientId, finalCaseTitle, description || null,
+       opposingParty || null, court || null, region || null,
        caseYear || null, parties || null, remarks || null, claimAmount || null, status || null, req.user.id]
     );
     const newCase = rows[0];
 
     // The Time Chart is filled out fresh every time the matter is in
     // court — this first pass (taken at intake) becomes hearing #1, using
-    // the same Court Date form fields as every later visit. Proceeding
-    // Date falls back to today if left blank, since hearing_date can't be
-    // null.
+    // the same Court Date form fields as every later visit. The hearing
+    // date itself always defaults to today (no separate "Proceeding Date"
+    // input on the New Case form — the case is created on the day of the
+    // visit it represents).
     await dbClient.query(
       `INSERT INTO hearings (
-         case_id, hearing_date, court, presiding_judge, proceeding_type, counsel_plaintiff, counsel_defendant,
+         case_id, hearing_date, court, region, presiding_judge, proceeding_type, counsel_plaintiff, counsel_defendant,
          court_clerk, last_court_order, prayer_sought, court_order_direction, court_start_time, court_end_time,
          consultation_start_time, consultation_end_time, record_date, recorded_by, next_court_date, created_by
        )
-       VALUES ($1,COALESCE($2, CURRENT_DATE),$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
-      [newCase.id, proceedingDate || null, court || null, presidingJudge || null, proceedingType || null,
+       VALUES ($1,CURRENT_DATE,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
+      [newCase.id, court || null, region || null, presidingJudge || null, proceedingType || null,
        counselPlaintiff || null, counselDefendant || null, courtClerk || null, lastCourtOrder || null,
        prayerSought || null, courtOrderDirection || null, courtStartTime || null, courtEndTime || null,
        consultationStartTime || null, consultationEndTime || null, recordDate || null, recordedBy || null,
@@ -853,8 +825,8 @@ app.post('/api/cases', requireRole('lawyer', 'secretary'), async (req, res) => {
 
 app.put('/api/cases/:id', requireRole('lawyer', 'secretary'), async (req, res) => {
   const {
-    caseTitle, status, description, assignedLawyer, opposingParty, court,
-    caseYear, parties, remarks, claimAmount, clientId, caseNumber, caseType,
+    caseTitle, status, description, assignedLawyer, opposingParty, court, region,
+    caseYear, parties, remarks, claimAmount, clientId, caseNumber,
     // Time Chart & Court Records fields — Edit Case mirrors every field on
     // the New Case form, so saving it updates the case's most recent Court
     // Date entry the same way New Case submission creates the first one.
@@ -882,27 +854,24 @@ app.put('/api/cases/:id', requireRole('lawyer', 'secretary'), async (req, res) =
     const { rows: before } = await dbClient.query('SELECT * FROM cases WHERE id = $1 FOR UPDATE', [req.params.id]);
     if (!before.length) { await dbClient.query('ROLLBACK'); return res.status(404).json({ error: 'Case not found' }); }
 
-    let caseTypeId = null;
-    if (caseType) caseTypeId = await findOrCreateCaseCategory(dbClient, caseType);
-
     const { rows } = await dbClient.query(
       `UPDATE cases SET
         case_number              = COALESCE($1, case_number),
         client_id                = COALESCE($2, client_id),
-        case_type_id             = COALESCE($3, case_type_id),
-        case_title               = COALESCE($4, case_title),
-        status                   = COALESCE($5, status),
-        description              = COALESCE($6, description),
-        assigned_lawyer          = COALESCE($7, assigned_lawyer),
-        opposing_party           = COALESCE($8, opposing_party),
-        court                    = COALESCE($9, court),
+        case_title               = COALESCE($3, case_title),
+        status                   = COALESCE($4, status),
+        description              = COALESCE($5, description),
+        assigned_lawyer          = COALESCE($6, assigned_lawyer),
+        opposing_party           = COALESCE($7, opposing_party),
+        court                    = COALESCE($8, court),
+        region                   = COALESCE($9, region),
         case_year                = COALESCE($10, case_year),
         parties                  = COALESCE($11, parties),
         remarks                  = COALESCE($12, remarks),
         claim_amount             = COALESCE($13, claim_amount)
        WHERE id = $14 RETURNING *`,
-      [caseNumber ? caseNumber.trim() : null, clientIdN, caseTypeId, caseTitle, status, description,
-       assignedLawyer, opposingParty, court, caseYearN, parties, remarks, claimAmountN, req.params.id]
+      [caseNumber ? caseNumber.trim() : null, clientIdN, caseTitle, status, description,
+       assignedLawyer, opposingParty, court, region, caseYearN, parties, remarks, claimAmountN, req.params.id]
     );
     const updatedCase = rows[0];
 
@@ -914,24 +883,25 @@ app.put('/api/cases/:id', requireRole('lawyer', 'secretary'), async (req, res) =
       await dbClient.query(
         `UPDATE hearings SET
           court                    = COALESCE($1, court),
-          hearing_date             = COALESCE($2, hearing_date),
-          presiding_judge          = COALESCE($3, presiding_judge),
-          proceeding_type          = COALESCE($4, proceeding_type),
-          counsel_plaintiff        = COALESCE($5, counsel_plaintiff),
-          counsel_defendant        = COALESCE($6, counsel_defendant),
-          court_clerk              = COALESCE($7, court_clerk),
-          last_court_order         = COALESCE($8, last_court_order),
-          prayer_sought            = COALESCE($9, prayer_sought),
-          court_order_direction    = COALESCE($10, court_order_direction),
-          court_start_time         = COALESCE($11, court_start_time),
-          court_end_time           = COALESCE($12, court_end_time),
-          consultation_start_time  = COALESCE($13, consultation_start_time),
-          consultation_end_time    = COALESCE($14, consultation_end_time),
-          record_date              = COALESCE($15, record_date),
-          recorded_by              = COALESCE($16, recorded_by),
-          next_court_date          = COALESCE($17, next_court_date)
-         WHERE id = $18`,
-        [court, proceedingDateN, presidingJudge, proceedingType, counselPlaintiff, counselDefendant,
+          region                   = COALESCE($2, region),
+          hearing_date             = COALESCE($3, hearing_date),
+          presiding_judge          = COALESCE($4, presiding_judge),
+          proceeding_type          = COALESCE($5, proceeding_type),
+          counsel_plaintiff        = COALESCE($6, counsel_plaintiff),
+          counsel_defendant        = COALESCE($7, counsel_defendant),
+          court_clerk              = COALESCE($8, court_clerk),
+          last_court_order         = COALESCE($9, last_court_order),
+          prayer_sought            = COALESCE($10, prayer_sought),
+          court_order_direction    = COALESCE($11, court_order_direction),
+          court_start_time         = COALESCE($12, court_start_time),
+          court_end_time           = COALESCE($13, court_end_time),
+          consultation_start_time  = COALESCE($14, consultation_start_time),
+          consultation_end_time    = COALESCE($15, consultation_end_time),
+          record_date              = COALESCE($16, record_date),
+          recorded_by              = COALESCE($17, recorded_by),
+          next_court_date          = COALESCE($18, next_court_date)
+         WHERE id = $19`,
+        [court, region, proceedingDateN, presidingJudge, proceedingType, counselPlaintiff, counselDefendant,
          courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTimeN, courtEndTimeN,
          consultationStartTimeN, consultationEndTimeN, recordDateN, recordedBy, nextCourtDateN,
          latestHearingRows[0].id]
@@ -939,12 +909,12 @@ app.put('/api/cases/:id', requireRole('lawyer', 'secretary'), async (req, res) =
     } else {
       await dbClient.query(
         `INSERT INTO hearings (
-           case_id, hearing_date, court, presiding_judge, proceeding_type, counsel_plaintiff, counsel_defendant,
+           case_id, hearing_date, court, region, presiding_judge, proceeding_type, counsel_plaintiff, counsel_defendant,
            court_clerk, last_court_order, prayer_sought, court_order_direction, court_start_time, court_end_time,
            consultation_start_time, consultation_end_time, record_date, recorded_by, next_court_date, created_by
          )
-         VALUES ($1,COALESCE($2, CURRENT_DATE),$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
-        [req.params.id, proceedingDateN, court || null, presidingJudge || null, proceedingType || null,
+         VALUES ($1,COALESCE($2, CURRENT_DATE),$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
+        [req.params.id, proceedingDateN, court || null, region || null, presidingJudge || null, proceedingType || null,
          counselPlaintiff || null, counselDefendant || null, courtClerk || null, lastCourtOrder || null,
          prayerSought || null, courtOrderDirection || null, courtStartTimeN, courtEndTimeN,
          consultationStartTimeN, consultationEndTimeN, recordDateN, recordedBy || null,
@@ -1063,7 +1033,7 @@ app.get('/api/cases/:id/hearings', async (req, res) => {
 
 app.post('/api/cases/:id/hearings', async (req, res) => {
   const {
-    hearingDate, court, presidingJudge, proceedingType, counselPlaintiff, counselDefendant,
+    hearingDate, court, region, presidingJudge, proceedingType, counselPlaintiff, counselDefendant,
     courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTime, courtEndTime,
     consultationStartTime, consultationEndTime, recordDate, recordedBy, nextCourtDate
   } = req.body;
@@ -1071,13 +1041,13 @@ app.post('/api/cases/:id/hearings', async (req, res) => {
   try {
     const { rows } = await pool.query(
       `INSERT INTO hearings (
-         case_id, hearing_date, court, presiding_judge, proceeding_type, counsel_plaintiff, counsel_defendant,
+         case_id, hearing_date, court, region, presiding_judge, proceeding_type, counsel_plaintiff, counsel_defendant,
          court_clerk, last_court_order, prayer_sought, court_order_direction, court_start_time, court_end_time,
          consultation_start_time, consultation_end_time, record_date, recorded_by, next_court_date, created_by
        )
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
        RETURNING *`,
-      [req.params.id, hearingDate, court || null, presidingJudge || null, proceedingType || null,
+      [req.params.id, hearingDate, court || null, region || null, presidingJudge || null, proceedingType || null,
        counselPlaintiff || null, counselDefendant || null, courtClerk || null, lastCourtOrder || null,
        prayerSought || null, courtOrderDirection || null, courtStartTime || null, courtEndTime || null,
        consultationStartTime || null, consultationEndTime || null, recordDate || null, recordedBy || null,
@@ -1093,7 +1063,7 @@ app.post('/api/cases/:id/hearings', async (req, res) => {
 
 app.put('/api/hearings/:id', async (req, res) => {
   const {
-    hearingDate, court, presidingJudge, proceedingType, counselPlaintiff, counselDefendant,
+    hearingDate, court, region, presidingJudge, proceedingType, counselPlaintiff, counselDefendant,
     courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTime, courtEndTime,
     consultationStartTime, consultationEndTime, recordDate, recordedBy, nextCourtDate
   } = req.body;
@@ -1110,23 +1080,24 @@ app.put('/api/hearings/:id', async (req, res) => {
       `UPDATE hearings SET
         hearing_date             = COALESCE($1, hearing_date),
         court                    = COALESCE($2, court),
-        presiding_judge          = COALESCE($3, presiding_judge),
-        proceeding_type          = COALESCE($4, proceeding_type),
-        counsel_plaintiff        = COALESCE($5, counsel_plaintiff),
-        counsel_defendant        = COALESCE($6, counsel_defendant),
-        court_clerk              = COALESCE($7, court_clerk),
-        last_court_order         = COALESCE($8, last_court_order),
-        prayer_sought            = COALESCE($9, prayer_sought),
-        court_order_direction    = COALESCE($10, court_order_direction),
-        court_start_time         = COALESCE($11, court_start_time),
-        court_end_time           = COALESCE($12, court_end_time),
-        consultation_start_time  = COALESCE($13, consultation_start_time),
-        consultation_end_time    = COALESCE($14, consultation_end_time),
-        record_date              = COALESCE($15, record_date),
-        recorded_by              = COALESCE($16, recorded_by),
-        next_court_date          = COALESCE($17, next_court_date)
-       WHERE id = $18 RETURNING *`,
-      [hearingDate, court, presidingJudge, proceedingType, counselPlaintiff, counselDefendant,
+        region                   = COALESCE($3, region),
+        presiding_judge          = COALESCE($4, presiding_judge),
+        proceeding_type          = COALESCE($5, proceeding_type),
+        counsel_plaintiff        = COALESCE($6, counsel_plaintiff),
+        counsel_defendant        = COALESCE($7, counsel_defendant),
+        court_clerk              = COALESCE($8, court_clerk),
+        last_court_order         = COALESCE($9, last_court_order),
+        prayer_sought            = COALESCE($10, prayer_sought),
+        court_order_direction    = COALESCE($11, court_order_direction),
+        court_start_time         = COALESCE($12, court_start_time),
+        court_end_time           = COALESCE($13, court_end_time),
+        consultation_start_time  = COALESCE($14, consultation_start_time),
+        consultation_end_time    = COALESCE($15, consultation_end_time),
+        record_date              = COALESCE($16, record_date),
+        recorded_by              = COALESCE($17, recorded_by),
+        next_court_date          = COALESCE($18, next_court_date)
+       WHERE id = $19 RETURNING *`,
+      [hearingDate, court, region, presidingJudge, proceedingType, counselPlaintiff, counselDefendant,
        courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTimeN, courtEndTimeN,
        consultationStartTimeN, consultationEndTimeN, recordDateN, recordedBy, nextCourtDateN, req.params.id]
     );
@@ -1825,14 +1796,13 @@ app.get('/api/dashboard/summary', async (req, res) => {
 // ════════════════════════════════════════════════════════════════════════════
 
 app.get('/api/reports/cases-summary', requireRole('lawyer'), async (req, res) => {
-  const { from, to, status, case_type_id } = req.query;
+  const { from, to, status } = req.query;
   try {
     const conditions = [];
     const values = [];
     if (from) { values.push(from); conditions.push(`created_at >= $${values.length}`); }
     if (to) { values.push(to); conditions.push(`created_at <= $${values.length}`); }
     if (status) { values.push(status); conditions.push(`status = $${values.length}`); }
-    if (case_type_id) { values.push(case_type_id); conditions.push(`case_type_id = $${values.length}`); }
     const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
     const { rows } = await pool.query(`SELECT status, COUNT(*)::int AS count FROM cases ${where} GROUP BY status`, values);
     res.json(rows);

@@ -174,14 +174,15 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
         <div class="form-group"><label>Court Name</label><input class="form-control" id="hearing-court"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Court Proceeding Type</label>
-          <select class="form-control" id="hearing-proceeding-type">
-            <option value="">— Select —</option>
-            <option>Mention</option><option>1st PTC</option><option>Mediation</option>
-            <option>Hearing</option><option>Final PTC</option><option>Judgment</option><option>Ruling</option>
-          </select>
-        </div>
+        <div class="form-group"><label>Region</label><input class="form-control" id="hearing-region" placeholder="e.g. Dar es Salaam"></div>
         <div class="form-group"><label>Presiding Judge/Magistrate</label><input class="form-control" id="hearing-presiding-judge"></div>
+      </div>
+      <div class="form-group"><label>Court Proceeding Type</label>
+        <select class="form-control" id="hearing-proceeding-type">
+          <option value="">— Select —</option>
+          <option>Mention</option><option>1st PTC</option><option>Mediation</option>
+          <option>Hearing</option><option>Final PTC</option><option>Judgment</option><option>Ruling</option>
+        </select>
       </div>
       <div class="form-row">
         <div class="form-group"><label>Court Start Time</label><input type="time" class="form-control" id="hearing-court-start"></div>
@@ -315,25 +316,23 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
       <div class="form-group"><label>Client</label>
         <select class="form-control" id="edit-case-client-select"></select>
       </div>
-      <div class="form-row">
-        <div class="form-group"><label>Case Number</label><input class="form-control" id="edit-case-number"></div>
-        <div class="form-group"><label>Case Type</label><input class="form-control" id="edit-case-type"></div>
-      </div>
+      <div class="form-group"><label>Case Number</label><input class="form-control" id="edit-case-number"></div>
 
       <div class="tc-section-label"><i class="fas fa-gavel"></i> Court &amp; Proceeding</div>
       <div class="form-row">
         <div class="form-group"><label>Court Name</label><input class="form-control" id="edit-case-court"></div>
-        <div class="form-group"><label>Case Year</label><input type="number" class="form-control" id="edit-case-year"></div>
+        <div class="form-group"><label>Region</label><input class="form-control" id="edit-case-region" placeholder="e.g. Dar es Salaam"></div>
       </div>
       <div class="form-row">
+        <div class="form-group"><label>Case Year</label><input type="number" class="form-control" id="edit-case-year"></div>
         <div class="form-group"><label>Presiding Judge/Magistrate</label><input class="form-control" id="edit-case-presiding-judge"></div>
-        <div class="form-group"><label>Court Proceeding Type</label>
-          <select class="form-control" id="edit-case-proceeding-type">
-            <option value="">— Select —</option>
-            <option>Mention</option><option>1st PTC</option><option>Mediation</option>
-            <option>Hearing</option><option>Final PTC</option><option>Judgment</option><option>Ruling</option>
-          </select>
-        </div>
+      </div>
+      <div class="form-group"><label>Court Proceeding Type</label>
+        <select class="form-control" id="edit-case-proceeding-type">
+          <option value="">— Select —</option>
+          <option>Mention</option><option>1st PTC</option><option>Mediation</option>
+          <option>Hearing</option><option>Final PTC</option><option>Judgment</option><option>Ruling</option>
+        </select>
       </div>
       <div class="form-row">
         <div class="form-group"><label>Proceeding Date</label><input type="date" class="form-control" id="edit-case-proceeding-date"></div>
@@ -435,7 +434,7 @@ function renderCaseHeader() {
     <div class="case-header-top">
       <div>
         <h2>${escapeHtml(c.case_number)} — ${escapeHtml(c.case_title)}</h2>
-        <div class="case-sub"><i class="fas fa-user"></i> ${escapeHtml(c.client_name) || 'No client'} &middot; ${escapeHtml(c.case_type_name)}</div>
+        <div class="case-sub"><i class="fas fa-user"></i> ${escapeHtml(c.client_name) || 'No client'}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <span class="badge ${c.status}" style="font-size:12px;padding:5px 14px;">${statusLabel(c.status)}</span>
@@ -485,10 +484,10 @@ async function renderOverview() {
     <div class="case-meta-grid">
       <div><div class="m-label">Client</div><div class="m-value">${c.client_name ? `<a href="/clients" style="color:inherit;">${escapeHtml(c.client_name)}</a>` : '—'}</div></div>
       <div><div class="m-label">Client Phone</div><div class="m-value">${escapeHtml(c.client_phone) || '—'}</div></div>
-      <div><div class="m-label">Case Type</div><div class="m-value">${escapeHtml(c.case_type_name)}</div></div>
       <div><div class="m-label">Parties</div><div class="m-value">${escapeHtml(c.parties) || '—'}</div></div>
       <div><div class="m-label">Versus (Opponent)</div><div class="m-value">${escapeHtml(c.opposing_party) || '—'}</div></div>
       <div><div class="m-label">Court Name</div><div class="m-value">${escapeHtml(c.court) || '—'}</div></div>
+      <div><div class="m-label">Region</div><div class="m-value">${escapeHtml(c.region) || '—'}</div></div>
       <div><div class="m-label">Case Year</div><div class="m-value">${escapeHtml(c.case_year) || '—'}</div></div>
       <div><div class="m-label">Claim Amount</div><div class="m-value">${c.claim_amount != null ? fmtCurrency(c.claim_amount) : '—'}</div></div>
       <div><div class="m-label">Next Court Date</div><div class="m-value">${nextCourtDateHtml}</div></div>
@@ -552,9 +551,9 @@ async function openEditCaseModal() {
     clientsList.map(c => `<option value="${c.id}" ${currentCase.client_id === c.id ? 'selected' : ''}>${escapeHtml(c.full_name)}${c.phone ? ' (' + c.phone + ')' : ''}</option>`).join('');
 
   document.getElementById('edit-case-number').value = currentCase.case_number || '';
-  document.getElementById('edit-case-type').value = currentCase.case_type_name || '';
   document.getElementById('edit-case-opposing').value = currentCase.opposing_party || '';
   document.getElementById('edit-case-court').value = currentCase.court || '';
+  document.getElementById('edit-case-region').value = currentCase.region || '';
   document.getElementById('edit-case-description').value = currentCase.description || '';
   TIME_CHART_EDIT_FIELDS.forEach(([col, , id, type]) => {
     const el = document.getElementById(id);
@@ -589,9 +588,9 @@ async function saveEditCase() {
   const payload = {
     clientId: document.getElementById('edit-case-client-select').value || null,
     caseNumber: document.getElementById('edit-case-number').value.trim(),
-    caseType: document.getElementById('edit-case-type').value.trim(),
     opposingParty: document.getElementById('edit-case-opposing').value.trim(),
     court: document.getElementById('edit-case-court').value.trim(),
+    region: document.getElementById('edit-case-region').value.trim(),
     description: document.getElementById('edit-case-description').value.trim()
   };
   TIME_CHART_EDIT_FIELDS.forEach(([, key, id]) => {
@@ -621,6 +620,7 @@ let hearingsCache = [];
 // [dbColumn, payloadKey, elementId, type]
 const HEARING_FIELDS = [
   ['court', 'court', 'hearing-court', 'text'],
+  ['region', 'region', 'hearing-region', 'text'],
   ['proceeding_type', 'proceedingType', 'hearing-proceeding-type', 'text'],
   ['presiding_judge', 'presidingJudge', 'hearing-presiding-judge', 'text'],
   ['court_start_time', 'courtStartTime', 'hearing-court-start', 'time'],
@@ -726,7 +726,7 @@ function buildTimeChartFields(h) {
   const c = currentCase;
   return [
     ['Court Name', h.court],
-    ['Case Type', c.case_type_name],
+    ['Region', h.region],
     ['Case Number', c.case_number],
     ['Case Year', c.case_year],
     ['Parties', c.parties],
@@ -843,7 +843,7 @@ function printHearing(id) {
       <h2 class="doc-title">TIME CHART AND COURT RECORDS</h2>
 
       <div class="section">
-        <p>In the ${blank(h.court, 22)} of Tanzania at ${blank(null, 18)}</p>
+        <p>In the ${blank(h.court, 22)} of Tanzania at ${blank(h.region, 18)}</p>
         <p>Civil Case/Civil Appeal/Misc. Civil Cause/Civil Revision/Civil Misc. Land Application/Land/Commercial
         Case/Matrimonial Cause/Criminal Case No. ${blank(c.case_number, 14)} of ${blank(c.case_year, 8)}</p>
         <p>Parties: ${blank(c.parties, 40)}</p>

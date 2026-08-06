@@ -86,19 +86,6 @@
 
   <div class="card">
     <div class="card-header">
-      <h3><i class="fas fa-tags"></i> Case Categories</h3>
-      <button class="btn-primary btn-sm" onclick="openCategoryModal()"><i class="fas fa-plus"></i> Add Category</button>
-    </div>
-    <div class="table-wrap">
-      <table class="data-table">
-        <thead><tr><th>Name</th><th>Code</th><th>Status</th><th></th></tr></thead>
-        <tbody id="categories-body"><tr><td colspan="4" class="empty-state">Loading...</td></tr></tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header">
       <h3><i class="fas fa-list-ol"></i> Case Statuses</h3>
       <button class="btn-primary btn-sm" onclick="openStatusModal()"><i class="fas fa-plus"></i> Add Status</button>
     </div>
@@ -132,18 +119,6 @@
     </div>
   </div>
 </main>
-
-<!-- Category Modal -->
-<div class="modal-overlay" id="category-modal-overlay">
-  <div class="modal">
-    <div class="modal-header"><h3><i class="fas fa-tag"></i> Add Case Category</h3><button onclick="closeModal('category-modal-overlay')"><i class="fas fa-times"></i></button></div>
-    <div class="modal-body">
-      <div class="form-group"><label>Category Name *</label><input class="form-control" id="category-name" placeholder="e.g. Immigration"></div>
-      <div class="form-group"><label>Code (used in case numbers, e.g. "IMM") *</label><input class="form-control" id="category-code" maxlength="5"></div>
-    </div>
-    <div class="modal-footer"><button class="btn-outline" onclick="closeModal('category-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveCategory()">Save</button></div>
-  </div>
-</div>
 
 <!-- Case Status Modal -->
 <div class="modal-overlay" id="status-modal-overlay">
@@ -190,43 +165,6 @@ async function saveSettings() {
     if (el) payload[key] = el.value;
   });
   try { await apiPut('/settings', payload); showToast('Settings saved'); }
-  catch (err) { showToast(err.message, 'error'); }
-}
-
-async function loadCategories() {
-  setLoading('categories-body');
-  try {
-    const cats = await apiGet('/case-categories');
-    const tbody = document.getElementById('categories-body');
-    tbody.innerHTML = cats.map(c => `
-      <tr>
-        <td>${escapeHtml(c.name)}</td>
-        <td><span class="badge neutral">${escapeHtml(c.code)}</span></td>
-        <td><span class="badge ${c.is_active ? 'success' : 'danger'}">${c.is_active ? 'Active' : 'Inactive'}</span></td>
-        <td><button class="btn-icon danger" onclick="deleteCategory(${c.id})" title="Deactivate"><i class="fas fa-ban"></i></button></td>
-      </tr>
-    `).join('');
-  } catch (err) { showToast(err.message, 'error'); }
-}
-function openCategoryModal() {
-  document.getElementById('category-name').value = '';
-  document.getElementById('category-code').value = '';
-  document.getElementById('category-modal-overlay').classList.add('show');
-}
-async function saveCategory() {
-  const name = document.getElementById('category-name').value.trim();
-  const code = document.getElementById('category-code').value.trim();
-  if (!name || !code) { showToast('Name and code are required', 'error'); return; }
-  try {
-    await apiPost('/case-categories', { name, code });
-    closeModal('category-modal-overlay');
-    showToast('Category added');
-    loadCategories();
-  } catch (err) { showToast(err.message, 'error'); }
-}
-async function deleteCategory(id) {
-  if (!confirm('Deactivate this category? It will no longer appear in new case forms.')) return;
-  try { const r = await apiDelete(`/case-categories/${id}`); showToast(r.message || 'Category removed'); loadCategories(); }
   catch (err) { showToast(err.message, 'error'); }
 }
 
@@ -307,7 +245,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
   loadSettings();
-  loadCategories();
   loadStatuses();
   loadExpenseCategories();
 });
