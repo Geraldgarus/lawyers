@@ -171,7 +171,18 @@ async function loadReports() {
     renderFinancialCharts(financial.totalIncome, financial.totalExpenses, financial.netProfit);
 
     document.getElementById('cases-summary').innerHTML = casesSummary.length
-      ? casesSummary.map(s => `<div class="list-row"><span class="badge ${s.status}">${statusLabel(s.status)}</span><span style="font-weight:700;">${s.count}</span></div>`).join('')
+      ? casesSummary.map(s => {
+          const nums = (s.case_numbers || []).map((num, i) =>
+            `<a href="/case-detail?id=${s.case_ids[i]}" style="color:var(--accent-gold);">${escapeHtml(num)}</a>`).join(', ');
+          return `
+            <div class="list-row" style="flex-direction:column;align-items:stretch;gap:4px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="badge ${s.status}">${statusLabel(s.status)}</span>
+                <span style="font-weight:700;">${s.count}</span>
+              </div>
+              <div style="font-size:11.5px;color:var(--text-muted);">${nums}</div>
+            </div>`;
+        }).join('')
       : '<div class="empty-state">No cases in this period</div>';
 
   } catch (err) { showToast(err.message, 'error'); }

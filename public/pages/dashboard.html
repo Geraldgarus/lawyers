@@ -267,8 +267,18 @@ async function loadDashboard() {
       : '<div class="empty-state">No hearings in the next 7 days</div>';
 
     document.getElementById('case-status').innerHTML = data.caseStatusCounts.length
-      ? data.caseStatusCounts.map(s => `
-        <div class="list-row"><span class="badge ${s.status}">${statusLabel(s.status)}</span><span style="font-weight:700;">${s.count}</span></div>`).join('')
+      ? data.caseStatusCounts.map(s => {
+          const nums = (s.case_numbers || []).map((num, i) =>
+            `<a href="/case-detail?id=${s.case_ids[i]}" style="color:var(--accent-gold);">${escapeHtml(num)}</a>`).join(', ');
+          return `
+            <div class="list-row" style="flex-direction:column;align-items:stretch;gap:4px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span class="badge ${s.status}">${statusLabel(s.status)}</span>
+                <span style="font-weight:700;">${s.count}</span>
+              </div>
+              <div style="font-size:11.5px;color:var(--text-muted);">${nums}</div>
+            </div>`;
+        }).join('')
       : '<div class="empty-state">No cases yet</div>';
 
     document.getElementById('recent-activity').innerHTML = data.recentActivity.length

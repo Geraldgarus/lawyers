@@ -1783,7 +1783,9 @@ app.get('/api/dashboard/summary', async (req, res) => {
       ORDER BY latest.next_court_date LIMIT 10
     `);
     const { rows: caseStatusCounts } = await pool.query(`
-      SELECT c.status, COUNT(*)::int AS count, cs.is_closed
+      SELECT c.status, COUNT(*)::int AS count, cs.is_closed,
+        array_agg(c.case_number ORDER BY c.case_number) AS case_numbers,
+        array_agg(c.id ORDER BY c.case_number) AS case_ids
       FROM cases c LEFT JOIN case_statuses cs ON cs.name = c.status
       GROUP BY c.status, cs.is_closed
     `);
@@ -1846,7 +1848,13 @@ app.get('/api/reports/cases-summary', requireRole('lawyer'), async (req, res) =>
     if (to) { values.push(to); conditions.push(`created_at <= $${values.length}`); }
     if (status) { values.push(status); conditions.push(`status = $${values.length}`); }
     const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
-    const { rows } = await pool.query(`SELECT status, COUNT(*)::int AS count FROM cases ${where} GROUP BY status`, values);
+    const { rows } = await pool.query(
+      `SELECT status, COUNT(*)::int AS count,
+         array_agg(case_number ORDER BY case_number) AS case_numbers,
+         array_agg(id ORDER BY case_number) AS case_ids
+       FROM cases ${where} GROUP BY status`,
+      values
+    );
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
