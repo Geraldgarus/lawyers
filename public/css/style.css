@@ -88,11 +88,16 @@ h1, h2, h3, .logo-text, .card-title { font-family: 'Playfair Display', serif; }
   background: var(--sidebar-bg); color: var(--sidebar-text);
   border-right: 1px solid var(--sidebar-border);
   display: flex; flex-direction: column; z-index: 1000;
-  transition: transform 0.3s ease; transform: translateX(-100%);
+  transition: transform 0.3s ease;
   overflow-y: auto;
   box-shadow: 2px 0 12px rgba(0,0,0,0.06);
 }
-.sidebar.open { transform: translateX(0); }
+/* Desktop default: sidebar is pinned open, pushing the navbar/content over
+   (see the min-width rule near .main-content). The hamburger collapses it
+   back to reclaim the width. Below 769px there's no room for both, so it
+   reverts to an off-canvas drawer — see the max-width query at the bottom. */
+.sidebar { transform: translateX(0); }
+.sidebar.collapsed { transform: translateX(-100%); }
 .sidebar-top {
   padding: 22px 20px; border-bottom: 1px solid var(--sidebar-border);
   display: flex; align-items: center; justify-content: space-between;
@@ -153,6 +158,14 @@ h1, h2, h3, .logo-text, .card-title { font-family: 'Playfair Display', serif; }
 
 /* ---- MAIN ---- */
 .main-content { padding: 22px 24px; max-width: 1400px; margin: 0 auto; }
+
+/* Desktop: shift the navbar/content over to make room for the pinned
+   sidebar; collapsing it (via the hamburger) hands the width back. */
+@media (min-width: 769px) {
+  .navbar, .main-content { margin-left: 220px; transition: margin-left 0.3s ease; }
+  body.sidebar-collapsed .navbar, body.sidebar-collapsed .main-content { margin-left: 0; }
+  .overlay-main { display: none !important; }
+}
 
 /* ---- FILTER BAR ---- */
 .filter-bar { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; display: flex; align-items: flex-end; flex-wrap: wrap; gap: 12px; }
@@ -253,6 +266,10 @@ h1, h2, h3, .logo-text, .card-title { font-family: 'Playfair Display', serif; }
   .filter-group input, .filter-group select { min-width: unset; width: 100%; }
   .main-content { padding: 14px; }
   .form-row { grid-template-columns: 1fr; }
+  /* Mobile: back to an off-canvas drawer — hidden by default, hamburger
+     opens it as an overlay over the (still full-width) content. */
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); }
 }
 
 @media print {

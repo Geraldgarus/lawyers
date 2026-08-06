@@ -47,18 +47,24 @@ function initPageChrome() {
 
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('overlay-main');
+  // 'open' controls the mobile off-canvas drawer, 'collapsed' controls the
+  // desktop pinned sidebar — opposite defaults per breakpoint (see
+  // style.css), so a single toggle flips both together and CSS decides
+  // which one actually matters at the current width.
   document.getElementById('hamburger-btn')?.addEventListener('click', () => {
     sidebar.classList.toggle('open');
+    sidebar.classList.toggle('collapsed');
     overlay.classList.toggle('show');
+    document.body.classList.toggle('sidebar-collapsed');
   });
-  document.getElementById('sidebar-close-btn')?.addEventListener('click', () => {
+  const closeSidebar = () => {
     sidebar.classList.remove('open');
+    sidebar.classList.add('collapsed');
     overlay.classList.remove('show');
-  });
-  overlay?.addEventListener('click', () => {
-    sidebar.classList.remove('open');
-    overlay.classList.remove('show');
-  });
+    document.body.classList.add('sidebar-collapsed');
+  };
+  document.getElementById('sidebar-close-btn')?.addEventListener('click', closeSidebar);
+  overlay?.addEventListener('click', closeSidebar);
 
   const userPill = document.getElementById('userPill');
   const dropdownMenu = document.getElementById('dropdownMenu');
