@@ -101,7 +101,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
     <div class="card">
       <div class="card-header"><h3><i class="fas fa-gavel"></i> Court Dates</h3><button class="btn-primary btn-sm" onclick="openHearingModal()"><i class="fas fa-plus"></i> Add Court Date</button></div>
       <div class="table-wrap"><table class="data-table">
-        <thead><tr><th>Court Date</th><th>Proceeding Type</th><th>Presiding Judge</th><th>Court Order/Direction</th><th></th></tr></thead>
+        <thead><tr><th>Record Date</th><th>Proceeding Type</th><th>Presiding Judge</th><th>Court Order/Direction</th><th></th></tr></thead>
         <tbody id="hearings-body"><tr><td colspan="5" class="empty-state">Loading...</td></tr></tbody>
       </table></div>
     </div>
@@ -650,7 +650,7 @@ async function loadHearings() {
   if (!hearingsCache.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No court dates recorded</td></tr>'; return; }
   tbody.innerHTML = hearingsCache.map(h => `
     <tr style="cursor:pointer;" onclick="openHearingModal(${h.id})">
-      <td>${fmtDate(h.hearing_date)}</td>
+      <td>${h.record_date ? fmtDate(h.record_date) : '—'}</td>
       <td>${escapeHtml(h.proceeding_type) || '—'}</td>
       <td>${escapeHtml(h.presiding_judge) || '—'}</td>
       <td>${escapeHtml(h.court_order_direction) || '<span style="color:#94a3b8;">Pending</span>'}</td>
