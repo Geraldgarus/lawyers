@@ -165,7 +165,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 
 <!-- Court Date Modal (Add / Edit) — the Time Chart & Court Records form, filled fresh at every court date -->
 <div class="modal-overlay" id="hearing-modal-overlay">
-  <div class="modal">
+  <div class="modal" style="max-width:760px;">
     <div class="modal-header"><h3><i class="fas fa-gavel"></i> <span id="hearing-modal-title">Add Court Date</span></h3><button onclick="closeModal('hearing-modal-overlay')"><i class="fas fa-times"></i></button></div>
     <div class="modal-body">
       <input type="hidden" id="hearing-id">
@@ -173,22 +173,19 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 
       <div class="tc-section-label"><i class="fas fa-gavel"></i> Court &amp; Proceeding</div>
       <div class="form-row">
-        <div class="form-group"><label>Court Date *</label><input type="date" class="form-control" id="hearing-date"></div>
         <div class="form-group"><label>Court Name</label><input class="form-control" id="hearing-court"></div>
-      </div>
-      <div class="form-row">
         <div class="form-group"><label>Region</label><input class="form-control" id="hearing-region" placeholder="e.g. Dar es Salaam"></div>
-        <div class="form-group"><label>Case Year</label><input type="number" class="form-control" id="hearing-case-year" placeholder="e.g. 2026"></div>
       </div>
       <div class="form-row">
+        <div class="form-group"><label>Case Year</label><input type="number" class="form-control" id="hearing-case-year" placeholder="e.g. 2026"></div>
         <div class="form-group"><label>Presiding Judge/Magistrate</label><input class="form-control" id="hearing-presiding-judge"></div>
-        <div class="form-group"><label>Court Proceeding Type</label>
-          <select class="form-control" id="hearing-proceeding-type">
-            <option value="">— Select —</option>
-            <option>Mention</option><option>1st PTC</option><option>Mediation</option>
-            <option>Hearing</option><option>Final PTC</option><option>Judgment</option><option>Ruling</option>
-          </select>
-        </div>
+      </div>
+      <div class="form-group"><label>Court Proceeding Type</label>
+        <select class="form-control" id="hearing-proceeding-type">
+          <option value="">— Select —</option>
+          <option>Mention</option><option>1st PTC</option><option>Mediation</option>
+          <option>Hearing</option><option>Final PTC</option><option>Judgment</option><option>Ruling</option>
+        </select>
       </div>
       <div class="form-row">
         <div class="form-group"><label>Court Start Time</label><input type="time" class="form-control" id="hearing-court-start"></div>
@@ -671,7 +668,6 @@ function openHearingModal(id) {
   const h = id ? hearingsCache.find(x => x.id === id) : null;
   document.getElementById('hearing-id').value = id || '';
   document.getElementById('hearing-modal-title').textContent = h ? 'Edit Court Date' : 'Add Court Date';
-  document.getElementById('hearing-date').value = h ? dateInputVal(h.hearing_date) : '';
   HEARING_FIELDS.forEach(([col, , elId, type]) => {
     const el = document.getElementById(elId);
     if (!el) return;
@@ -695,10 +691,7 @@ function openHearingModal(id) {
 
 async function saveHearing() {
   const id = document.getElementById('hearing-id').value;
-  const hearingDate = document.getElementById('hearing-date').value;
-  if (!hearingDate) { showToast('Court date is required', 'error'); return; }
   const payload = {
-    hearingDate,
     caseNumber: document.getElementById('hearing-case-number').value.trim() || null,
     caseYear: document.getElementById('hearing-case-year').value.trim() || null,
     parties: document.getElementById('hearing-parties').value.trim() || null,

@@ -1056,19 +1056,21 @@ app.post('/api/cases/:id/hearings', async (req, res) => {
     consultationStartTime, consultationEndTime, recordDate, recordedBy, nextCourtDate,
     caseNumber, caseYear, parties, opposingParty
   } = req.body;
-  if (!hearingDate) return res.status(400).json({ error: 'hearingDate (Court Date) is required' });
   const dbClient = await pool.connect();
   try {
     await dbClient.query('BEGIN');
+    // No Court Date input on this form anymore — every Court Date entry is
+    // recorded on the day it's created, same as the New Case form's first
+    // entry.
     const { rows } = await dbClient.query(
       `INSERT INTO hearings (
          case_id, hearing_date, court, region, presiding_judge, proceeding_type, counsel_plaintiff, counsel_defendant,
          court_clerk, last_court_order, prayer_sought, court_order_direction, court_start_time, court_end_time,
          consultation_start_time, consultation_end_time, record_date, recorded_by, next_court_date, created_by
        )
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+       VALUES ($1,COALESCE($2, CURRENT_DATE),$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
        RETURNING *`,
-      [req.params.id, hearingDate, court || null, region || null, presidingJudge || null, proceedingType || null,
+      [req.params.id, hearingDate || null, court || null, region || null, presidingJudge || null, proceedingType || null,
        counselPlaintiff || null, counselDefendant || null, courtClerk || null, lastCourtOrder || null,
        prayerSought || null, courtOrderDirection || null, courtStartTime || null, courtEndTime || null,
        consultationStartTime || null, consultationEndTime || null, recordDate || null, recordedBy || null,
