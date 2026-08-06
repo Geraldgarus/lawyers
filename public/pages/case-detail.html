@@ -315,7 +315,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 
 <!-- Edit Case Modal -->
 <div class="modal-overlay" id="edit-case-modal-overlay">
-  <div class="modal">
+  <div class="modal" style="max-width:760px;">
     <div class="modal-header"><h3><i class="fas fa-pen"></i> Edit Case</h3><button onclick="closeModal('edit-case-modal-overlay')"><i class="fas fa-times"></i></button></div>
     <div class="modal-body">
       <div class="form-group"><label>Client</label>
@@ -352,14 +352,14 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
       <div class="form-group"><label>Parties</label><input class="form-control" id="edit-case-parties"></div>
       <div class="form-group"><label>Versus (Opponent)</label><input class="form-control" id="edit-case-opposing"></div>
       <div class="form-row">
-        <div class="form-group"><label>Counsel for Plaintiff/Applicant/Petitioner/Objector</label><textarea class="form-control" id="edit-case-counsel-plaintiff" rows="2"></textarea></div>
-        <div class="form-group"><label>Counsel for Defendant/Respondent</label><textarea class="form-control" id="edit-case-counsel-defendant" rows="2"></textarea></div>
+        <div class="form-group"><label>Counsel for Plaintiff/Applicant/Petitioner/Objector</label><textarea class="form-control" id="edit-case-counsel-plaintiff" rows="3"></textarea></div>
+        <div class="form-group"><label>Counsel for Defendant/Respondent</label><textarea class="form-control" id="edit-case-counsel-defendant" rows="3"></textarea></div>
       </div>
 
       <div class="tc-section-label"><i class="fas fa-scroll"></i> Orders &amp; Directions</div>
-      <div class="form-group"><label>Last Court Order</label><textarea class="form-control" id="edit-case-last-order" rows="2"></textarea></div>
-      <div class="form-group"><label>Current Prayer/Order/Direction Sought</label><textarea class="form-control" id="edit-case-prayer" rows="2"></textarea></div>
-      <div class="form-group"><label>Court Order/Direction</label><textarea class="form-control" id="edit-case-order-direction" rows="2"></textarea></div>
+      <div class="form-group"><label>Last Court Order</label><textarea class="form-control" id="edit-case-last-order" rows="3"></textarea></div>
+      <div class="form-group"><label>Current Prayer/Order/Direction Sought</label><textarea class="form-control" id="edit-case-prayer" rows="3"></textarea></div>
+      <div class="form-group"><label>Court Order/Direction</label><textarea class="form-control" id="edit-case-order-direction" rows="3"></textarea></div>
       <div class="form-group">
         <label><i class="fas fa-calendar-check" style="color:var(--accent-gold);"></i> Next Court Date</label>
         <input type="datetime-local" class="form-control" id="edit-case-next-court-date">
@@ -377,8 +377,8 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 
       <div class="tc-section-label"><i class="fas fa-file-lines"></i> Summary &amp; Remarks</div>
       <div class="form-group"><label>Claim Amount</label><input type="number" min="0" step="0.01" class="form-control" id="edit-case-claim-amount"></div>
-      <div class="form-group"><label>Summary / Description</label><textarea class="form-control" id="edit-case-description" rows="3"></textarea></div>
-      <div class="form-group"><label>Remarks</label><textarea class="form-control" id="edit-case-remarks" rows="2"></textarea></div>
+      <div class="form-group"><label>Summary / Description</label><textarea class="form-control" id="edit-case-description" rows="4"></textarea></div>
+      <div class="form-group"><label>Remarks</label><textarea class="form-control" id="edit-case-remarks" rows="3"></textarea></div>
     </div>
     <div class="modal-footer"><button class="btn-outline" onclick="closeModal('edit-case-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveEditCase()">Save Changes</button></div>
   </div>
