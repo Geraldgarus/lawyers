@@ -811,9 +811,7 @@ function printHearing(id) {
     }
     return `<span class="dots" style="min-width:${minCh}ch;"></span>`;
   };
-  const proceedingDateTime = h.proceeding_type || h.hearing_date
-    ? [h.proceeding_type, h.hearing_date ? fmtDate(h.hearing_date) : null].filter(Boolean).join(' — ')
-    : '';
+  const proceedingDateTime = h.proceeding_type || '';
   // From/To are fixed black labels — each time value is blanked
   // independently so a filled start time doesn't turn an unfilled end
   // time blue too (and vice versa).
