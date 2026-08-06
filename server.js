@@ -1031,15 +1031,36 @@ app.get('/api/cases/:id/hearings', async (req, res) => {
   }
 });
 
+// Case Number, Case Year, Parties, and Versus (Opponent) are shown on the
+// Court Date form too (it mirrors the New Case form, minus Client and
+// Summary & Remarks) even though they're case-level, not per-visit —
+// writing them back onto the parent case here keeps that possible, using
+// the same COALESCE-partial-update convention as the rest of the app
+// (blank fields leave the existing value untouched).
+async function syncCaseFieldsFromHearingForm(db, caseId, { caseNumber, caseYear, parties, opposingParty }) {
+  await db.query(
+    `UPDATE cases SET
+      case_number    = COALESCE($1, case_number),
+      case_year      = COALESCE($2, case_year),
+      parties        = COALESCE($3, parties),
+      opposing_party = COALESCE($4, opposing_party)
+     WHERE id = $5`,
+    [caseNumber || null, caseYear || null, parties || null, opposingParty || null, caseId]
+  );
+}
+
 app.post('/api/cases/:id/hearings', async (req, res) => {
   const {
     hearingDate, court, region, presidingJudge, proceedingType, counselPlaintiff, counselDefendant,
     courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTime, courtEndTime,
-    consultationStartTime, consultationEndTime, recordDate, recordedBy, nextCourtDate
+    consultationStartTime, consultationEndTime, recordDate, recordedBy, nextCourtDate,
+    caseNumber, caseYear, parties, opposingParty
   } = req.body;
   if (!hearingDate) return res.status(400).json({ error: 'hearingDate (Court Date) is required' });
+  const dbClient = await pool.connect();
   try {
-    const { rows } = await pool.query(
+    await dbClient.query('BEGIN');
+    const { rows } = await dbClient.query(
       `INSERT INTO hearings (
          case_id, hearing_date, court, region, presiding_judge, proceeding_type, counsel_plaintiff, counsel_defendant,
          court_clerk, last_court_order, prayer_sought, court_order_direction, court_start_time, court_end_time,
@@ -1053,11 +1074,19 @@ app.post('/api/cases/:id/hearings', async (req, res) => {
        consultationStartTime || null, consultationEndTime || null, recordDate || null, recordedBy || null,
        nextCourtDate || null, req.user.id]
     );
-    await syncCaseStatusFromLatestHearing(pool, req.params.id);
+    await syncCaseFieldsFromHearingForm(dbClient, req.params.id, { caseNumber, caseYear, parties, opposingParty });
+    await syncCaseStatusFromLatestHearing(dbClient, req.params.id);
+    await dbClient.query('COMMIT');
     await logActivity(req.user.id, req.user.email, 'CREATE', 'hearing', rows[0].id, null, rows[0], req);
     res.status(201).json(rows[0]);
   } catch (err) {
+    await dbClient.query('ROLLBACK');
+    if (err.code === '23505' && err.constraint && err.constraint.includes('case_number')) {
+      return res.status(400).json({ error: `Case number "${caseNumber}" is already in use` });
+    }
     res.status(500).json({ error: err.message });
+  } finally {
+    dbClient.release();
   }
 });
 
@@ -1065,7 +1094,8 @@ app.put('/api/hearings/:id', async (req, res) => {
   const {
     hearingDate, court, region, presidingJudge, proceedingType, counselPlaintiff, counselDefendant,
     courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTime, courtEndTime,
-    consultationStartTime, consultationEndTime, recordDate, recordedBy, nextCourtDate
+    consultationStartTime, consultationEndTime, recordDate, recordedBy, nextCourtDate,
+    caseNumber, caseYear, parties, opposingParty
   } = req.body;
   // TIME/DATE columns reject '' — an empty (but present) form field must
   // become null so it falls through COALESCE instead of erroring.
@@ -1075,8 +1105,10 @@ app.put('/api/hearings/:id', async (req, res) => {
   const consultationEndTimeN = consultationEndTime || null;
   const recordDateN = recordDate || null;
   const nextCourtDateN = nextCourtDate || null;
+  const dbClient = await pool.connect();
   try {
-    const { rows } = await pool.query(
+    await dbClient.query('BEGIN');
+    const { rows } = await dbClient.query(
       `UPDATE hearings SET
         hearing_date             = COALESCE($1, hearing_date),
         court                    = COALESCE($2, court),
@@ -1101,11 +1133,19 @@ app.put('/api/hearings/:id', async (req, res) => {
        courtClerk, lastCourtOrder, prayerSought, courtOrderDirection, courtStartTimeN, courtEndTimeN,
        consultationStartTimeN, consultationEndTimeN, recordDateN, recordedBy, nextCourtDateN, req.params.id]
     );
-    if (!rows.length) return res.status(404).json({ error: 'Hearing not found' });
-    await syncCaseStatusFromLatestHearing(pool, rows[0].case_id);
+    if (!rows.length) { await dbClient.query('ROLLBACK'); return res.status(404).json({ error: 'Hearing not found' }); }
+    await syncCaseFieldsFromHearingForm(dbClient, rows[0].case_id, { caseNumber, caseYear, parties, opposingParty });
+    await syncCaseStatusFromLatestHearing(dbClient, rows[0].case_id);
+    await dbClient.query('COMMIT');
     res.json(rows[0]);
   } catch (err) {
+    await dbClient.query('ROLLBACK');
+    if (err.code === '23505' && err.constraint && err.constraint.includes('case_number')) {
+      return res.status(400).json({ error: `Case number "${caseNumber}" is already in use` });
+    }
     res.status(500).json({ error: err.message });
+  } finally {
+    dbClient.release();
   }
 });
 
