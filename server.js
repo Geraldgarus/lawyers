@@ -1366,34 +1366,38 @@ app.delete('/api/appointments/:id', requireRole('lawyer', 'secretary'), async (r
 app.get('/api/calendar', async (req, res) => {
   const { from, to } = req.query;
   try {
-    const hConditions = [];
+    // "Next Court Date" is a single field on hearings.next_court_date —
+    // written whether it was set on the New Case form (the case's first
+    // hearing row) or later from the Court Dates tab — so one query here
+    // covers both origins.
+    const cConditions = ['h.next_court_date IS NOT NULL'];
     const aConditions = [];
     const values = [];
-    if (from) { values.push(from); hConditions.push(`h.hearing_date >= $${values.length}`); aConditions.push(`a.appointment_date >= $${values.length}`); }
-    if (to) { values.push(to); hConditions.push(`h.hearing_date <= $${values.length}`); aConditions.push(`a.appointment_date <= $${values.length}`); }
-    const hWhere = hConditions.length ? 'WHERE ' + hConditions.join(' AND ') : '';
+    if (from) { values.push(from); cConditions.push(`h.next_court_date >= $${values.length}`); aConditions.push(`a.appointment_date >= $${values.length}`); }
+    if (to) { values.push(to); cConditions.push(`h.next_court_date <= $${values.length}`); aConditions.push(`a.appointment_date <= $${values.length}`); }
+    const cWhere = 'WHERE ' + cConditions.join(' AND ');
     const aWhere = aConditions.length ? 'WHERE ' + aConditions.join(' AND ') : '';
 
-    const { rows: hearings } = await pool.query(`
-      SELECT h.id, h.hearing_date AS date, 'hearing' AS type, h.court, h.proceeding_type AS purpose,
-             c.id AS case_id, c.case_number, c.case_title, cl.full_name AS client_name
+    const { rows: courtDates } = await pool.query(`
+      SELECT h.id, h.next_court_date AS date,
+             c.id AS case_id, c.case_number, c.case_title, c.status AS case_status
       FROM hearings h
       JOIN cases c ON c.id = h.case_id
-      LEFT JOIN clients cl ON cl.id = c.client_id
-      ${hWhere}
+      ${cWhere}
+      ORDER BY h.next_court_date
     `, values);
 
     const { rows: appointments } = await pool.query(`
-      SELECT a.id, a.appointment_date AS date, 'appointment' AS type, a.purpose,
+      SELECT a.id, a.appointment_date AS date, a.purpose,
              c.id AS case_id, c.case_number, c.case_title, cl.full_name AS client_name
       FROM appointments a
       LEFT JOIN cases c ON c.id = a.case_id
       JOIN clients cl ON cl.id = a.client_id
       ${aWhere}
+      ORDER BY a.appointment_date
     `, values);
 
-    const combined = [...hearings, ...appointments].sort((x, y) => new Date(x.date) - new Date(y.date));
-    res.json(combined);
+    res.json({ courtDates, appointments });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

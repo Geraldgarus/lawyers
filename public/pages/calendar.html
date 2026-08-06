@@ -21,6 +21,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 .cal-event .cal-details { flex:1; }
 .cal-event .cal-title { font-size:13.5px; font-weight:600; }
 .cal-event .cal-sub { font-size:11.5px; color:var(--text-muted); }
+.cal-event .badge { flex-shrink:0; }
 </style>
 <script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>
 </head>
@@ -88,7 +89,15 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
     <button class="btn-primary" onclick="openApptModal()"><i class="fas fa-plus"></i> Add Appointment</button>
   </div>
 
-  <div id="calendar-list"><div class="empty-state">Loading...</div></div>
+  <div class="card">
+    <div class="card-header"><h3><i class="fas fa-gavel"></i> Court Dates</h3></div>
+    <div class="card-body" id="court-dates-list"><div class="empty-state">Loading...</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3><i class="fas fa-user-clock"></i> Appointments</h3></div>
+    <div class="card-body" id="appointments-list"><div class="empty-state">Loading...</div></div>
+  </div>
 </main>
 
 <!-- Appointment Modal -->
@@ -126,43 +135,72 @@ function setThisWeek() {
 }
 
 async function loadCalendar() {
-  const list = document.getElementById('calendar-list');
-  list.innerHTML = '<div class="empty-state">Loading...</div>';
+  const courtList = document.getElementById('court-dates-list');
+  const apptList = document.getElementById('appointments-list');
+  courtList.innerHTML = '<div class="empty-state">Loading...</div>';
+  apptList.innerHTML = '<div class="empty-state">Loading...</div>';
   const from = document.getElementById('filter-from').value;
   const to = document.getElementById('filter-to').value;
   const params = new URLSearchParams();
   if (from) params.set('from', from);
   if (to) params.set('to', to);
   try {
-    const events = await apiGet('/calendar?' + params.toString());
-    renderCalendar(events);
+    const { courtDates, appointments } = await apiGet('/calendar?' + params.toString());
+    renderCourtDates(courtDates);
+    renderAppointments(appointments);
   } catch (err) {
-    list.innerHTML = '<div class="empty-state">Failed to load calendar</div>';
+    courtList.innerHTML = '<div class="empty-state">Failed to load</div>';
+    apptList.innerHTML = '<div class="empty-state">Failed to load</div>';
     showToast(err.message, 'error');
   }
 }
 
-function renderCalendar(events) {
-  const list = document.getElementById('calendar-list');
-  if (!events.length) { list.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-days"></i>Nothing scheduled in this range</div>'; return; }
-
+function groupByDay(items) {
   const groups = {};
-  events.forEach(e => {
+  items.forEach(e => {
     const day = isoDate(e.date);
     if (!groups[day]) groups[day] = [];
     groups[day].push(e);
   });
+  return groups;
+}
 
+function renderCourtDates(items) {
+  const list = document.getElementById('court-dates-list');
+  if (!items.length) { list.innerHTML = '<div class="empty-state"><i class="fas fa-gavel"></i>No court dates in this range</div>'; return; }
+  const groups = groupByDay(items);
   list.innerHTML = Object.keys(groups).sort().map(day => `
     <div class="day-group">
       <div class="day-group-label">${fmtDate(day)}</div>
       ${groups[day].map(e => `
-        <div class="cal-event ${e.type}" ${e.case_number ? `style="cursor:pointer;" onclick="window.location.href='/case-detail?id=${e.case_id || ''}'"` : ''}>
-          <div class="cal-icon"><i class="fas ${e.type === 'hearing' ? 'fa-gavel' : 'fa-user-clock'}"></i></div>
+        <div class="cal-event hearing" style="cursor:pointer;" onclick="window.location.href='/case-detail?id=${e.case_id}'">
+          <div class="cal-icon"><i class="fas fa-gavel"></i></div>
           <div class="cal-time">${new Date(e.date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</div>
           <div class="cal-details">
-            <div class="cal-title">${e.type === 'hearing' ? 'Hearing' : 'Appointment'} — ${escapeHtml(e.client_name)}</div>
-            <div class="cal-sub">${e.case_number ? escapeHtml(e.case_number) + ' — ' : ''}${escapeHtml(e.purpose) || (e.type === 'hearing' ? 'Court date' : 'Meeting')}</div>
+            <div class="cal-title">${escapeHtml(e.case_number)}</div>
+            <div class="cal-sub">${escapeHtml(e.case_title || '')}</div>
+          </div>
+          <span class="badge ${e.case_status}">${statusLabel(e.case_status)}</span>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+function renderAppointments(items) {
+  const list = document.getElementById('appointments-list');
+  if (!items.length) { list.innerHTML = '<div class="empty-state"><i class="fas fa-user-clock"></i>No appointments in this range</div>'; return; }
+  const groups = groupByDay(items);
+  list.innerHTML = Object.keys(groups).sort().map(day => `
+    <div class="day-group">
+      <div class="day-group-label">${fmtDate(day)}</div>
+      ${groups[day].map(e => `
+        <div class="cal-event appointment" ${e.case_number ? `style="cursor:pointer;" onclick="window.location.href='/case-detail?id=${e.case_id}'"` : ''}>
+          <div class="cal-icon"><i class="fas fa-user-clock"></i></div>
+          <div class="cal-time">${new Date(e.date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</div>
+          <div class="cal-details">
+            <div class="cal-title">${escapeHtml(e.client_name)}</div>
+            <div class="cal-sub">${e.case_number ? escapeHtml(e.case_number) + ' — ' : ''}${escapeHtml(e.purpose) || 'Meeting'}</div>
           </div>
         </div>
       `).join('')}
