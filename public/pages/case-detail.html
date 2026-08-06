@@ -468,10 +468,20 @@ async function renderOverview() {
       const tc = (label, value) => `<div><div class="m-label">${label}</div><div class="m-value">${value ? escapeHtml(String(value)) : '—'}</div></div>`;
       lastAppearanceHtml = `
         <div class="case-meta-grid">
-          ${tc('Court Date', fmtDate(latest.hearing_date))}
+          ${tc('Record Date', latest.record_date ? fmtDate(latest.record_date) : null)}
           ${tc('Court Proceeding Type', latest.proceeding_type)}
           ${tc('Presiding Judge/Magistrate', latest.presiding_judge)}
+          ${tc('Court Clerk', latest.court_clerk)}
+          ${tc('Court Start Time', latest.court_start_time ? fmtTimeStr(latest.court_start_time) : null)}
+          ${tc('Court End Time', latest.court_end_time ? fmtTimeStr(latest.court_end_time) : null)}
+          ${tc('Counsel for Plaintiff/Applicant/Petitioner/Objector', latest.counsel_plaintiff)}
+          ${tc('Counsel for Defendant/Respondent', latest.counsel_defendant)}
+          ${tc('Last Court Order', latest.last_court_order)}
+          ${tc('Current Prayer/Order/Direction Sought', latest.prayer_sought)}
           ${tc('Court Order/Direction', latest.court_order_direction)}
+          ${tc('Consultation Start Time', latest.consultation_start_time ? fmtTimeStr(latest.consultation_start_time) : null)}
+          ${tc('Consultation End Time', latest.consultation_end_time ? fmtTimeStr(latest.consultation_end_time) : null)}
+          ${tc('Recorded By / Advocate Signature', latest.recorded_by)}
         </div>`;
     }
   } catch (e) {}
@@ -496,7 +506,6 @@ async function renderOverview() {
       <div><div class="m-label">Case Year</div><div class="m-value">${escapeHtml(c.case_year) || '—'}</div></div>
       <div><div class="m-label">Claim Amount</div><div class="m-value">${c.claim_amount != null ? fmtCurrency(c.claim_amount) : '—'}</div></div>
       <div><div class="m-label">Next Court Date</div><div class="m-value">${nextCourtDateHtml}</div></div>
-      <div><div class="m-label">Case Opened</div><div class="m-value">${fmtDate(c.created_at)}</div></div>
       ${balanceHtml}
     </div>
     ${c.description ? `<hr style="margin:18px 0;border:none;border-top:1px solid var(--border);"><div class="m-label">Summary</div><div style="margin-top:6px;font-size:13.5px;">${escapeHtml(c.description)}</div>` : ''}
