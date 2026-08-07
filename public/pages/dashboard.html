@@ -261,7 +261,7 @@ async function loadDashboard() {
           <span><a href="/case-detail?id=${h.case_id}" style="color:var(--accent-gold);font-weight:600;">${escapeHtml(h.case_number)}</a> — ${escapeHtml(h.client_name)}</span>
           <span>${fmtDateTime(h.next_court_date)}</span>
         </div>`).join('')
-      : '<div class="empty-state">No hearings in the next 7 days</div>';
+      : '<div class="empty-state">No upcoming hearings</div>';
 
     document.getElementById('case-status').innerHTML = data.caseStatusCounts.length
       ? data.caseStatusCounts.map(s => {

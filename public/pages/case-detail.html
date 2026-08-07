@@ -168,55 +168,55 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
     <div class="modal-header"><h3><i class="fas fa-gavel"></i> <span id="hearing-modal-title">Add Court Date</span></h3><button onclick="closeModal('hearing-modal-overlay')"><i class="fas fa-times"></i></button></div>
     <div class="modal-body">
       <input type="hidden" id="hearing-id">
-      <div class="form-group"><label>Case Number</label><input class="form-control" id="hearing-case-number"></div>
+      <div class="form-group"><label>Case Number *</label><input class="form-control" id="hearing-case-number" required></div>
 
       <div class="tc-section-label"><i class="fas fa-gavel"></i> Court &amp; Proceeding</div>
       <div class="form-row">
-        <div class="form-group"><label>Court Name</label><input class="form-control" id="hearing-court"></div>
-        <div class="form-group"><label>Region</label><input class="form-control" id="hearing-region" placeholder="e.g. Dar es Salaam"></div>
+        <div class="form-group"><label>Court Name *</label><input class="form-control" id="hearing-court" required></div>
+        <div class="form-group"><label>Region *</label><input class="form-control" id="hearing-region" placeholder="e.g. Dar es Salaam" required></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Case Year</label><input type="number" class="form-control" id="hearing-case-year" placeholder="e.g. 2026"></div>
-        <div class="form-group"><label>Presiding Judge/Magistrate</label><input class="form-control" id="hearing-presiding-judge"></div>
+        <div class="form-group"><label>Case Year *</label><input type="number" class="form-control" id="hearing-case-year" placeholder="e.g. 2026" required></div>
+        <div class="form-group"><label>Presiding Judge/Magistrate *</label><input class="form-control" id="hearing-presiding-judge" required></div>
       </div>
-      <div class="form-group"><label>Court Proceeding Type</label>
-        <select class="form-control" id="hearing-proceeding-type">
+      <div class="form-group"><label>Court Proceeding Type *</label>
+        <select class="form-control" id="hearing-proceeding-type" required>
           <option value="">— Select —</option>
           <option>Mention</option><option>1st PTC</option><option>Mediation</option>
           <option>Hearing</option><option>Final PTC</option><option>Judgment</option><option>Ruling</option>
         </select>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Court Start Time</label><input type="time" class="form-control" id="hearing-court-start"></div>
-        <div class="form-group"><label>Court End Time</label><input type="time" class="form-control" id="hearing-court-end"></div>
+        <div class="form-group"><label>Court Start Time *</label><input type="time" class="form-control" id="hearing-court-start" required></div>
+        <div class="form-group"><label>Court End Time *</label><input type="time" class="form-control" id="hearing-court-end" required></div>
       </div>
 
       <div class="tc-section-label"><i class="fas fa-users"></i> Parties &amp; Counsel</div>
-      <div class="form-group"><label>Parties</label><input class="form-control" id="hearing-parties" placeholder="Names of all parties involved"></div>
-      <div class="form-group"><label>Versus (Opponent)</label><input class="form-control" id="hearing-opposing"></div>
+      <div class="form-group"><label>Parties *</label><input class="form-control" id="hearing-parties" placeholder="Names of all parties involved" required></div>
+      <div class="form-group"><label>Versus (Opponent) *</label><input class="form-control" id="hearing-opposing" required></div>
       <div class="form-row">
-        <div class="form-group"><label>Counsel for Plaintiff/Applicant/Petitioner/Objector</label><textarea class="form-control" id="hearing-counsel-plaintiff" rows="3"></textarea></div>
-        <div class="form-group"><label>Counsel for Defendant/Respondent</label><textarea class="form-control" id="hearing-counsel-defendant" rows="3"></textarea></div>
+        <div class="form-group"><label>Counsel for Plaintiff/Applicant/Petitioner/Objector *</label><textarea class="form-control" id="hearing-counsel-plaintiff" rows="3" required></textarea></div>
+        <div class="form-group"><label>Counsel for Defendant/Respondent *</label><textarea class="form-control" id="hearing-counsel-defendant" rows="3" required></textarea></div>
       </div>
-      <div class="form-group"><label>Court Clerk</label><input class="form-control" id="hearing-court-clerk"></div>
+      <div class="form-group"><label>Court Clerk *</label><input class="form-control" id="hearing-court-clerk" required></div>
 
       <div class="tc-section-label"><i class="fas fa-scroll"></i> Orders &amp; Directions</div>
-      <div class="form-group"><label>Last Court Order</label><textarea class="form-control" id="hearing-last-order" rows="3"></textarea></div>
-      <div class="form-group"><label>Current Prayer/Order/Direction Sought</label><textarea class="form-control" id="hearing-prayer" rows="3"></textarea></div>
-      <div class="form-group"><label>Court Order/Direction</label><textarea class="form-control" id="hearing-order-direction" rows="3" placeholder="e.g. Case adjourned to 15 Aug"></textarea></div>
+      <div class="form-group"><label>Last Court Order *</label><textarea class="form-control" id="hearing-last-order" rows="3" required></textarea></div>
+      <div class="form-group"><label>Current Prayer/Order/Direction Sought *</label><textarea class="form-control" id="hearing-prayer" rows="3" required></textarea></div>
+      <div class="form-group"><label>Court Order/Direction *</label><textarea class="form-control" id="hearing-order-direction" rows="3" placeholder="e.g. Case adjourned to 15 Aug" required></textarea></div>
       <div class="form-group">
-        <label><i class="fas fa-calendar-check" style="color:var(--accent-gold);"></i> Next Court Date</label>
-        <input type="datetime-local" class="form-control" id="hearing-next-court-date">
+        <label><i class="fas fa-calendar-check" style="color:var(--accent-gold);"></i> Next Court Date *</label>
+        <input type="datetime-local" class="form-control" id="hearing-next-court-date" required>
       </div>
 
       <div class="tc-section-label"><i class="fas fa-clock"></i> Consultation &amp; Record</div>
       <div class="form-row">
-        <div class="form-group"><label>Consultation Start Time</label><input type="time" class="form-control" id="hearing-consult-start"></div>
-        <div class="form-group"><label>Consultation End Time</label><input type="time" class="form-control" id="hearing-consult-end"></div>
+        <div class="form-group"><label>Consultation Start Time *</label><input type="time" class="form-control" id="hearing-consult-start" required></div>
+        <div class="form-group"><label>Consultation End Time *</label><input type="time" class="form-control" id="hearing-consult-end" required></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Record Date</label><input type="date" class="form-control" id="hearing-record-date"></div>
-        <div class="form-group"><label>Recorded By / Advocate Signature</label><input class="form-control" id="hearing-recorded-by"></div>
+        <div class="form-group"><label>Record Date *</label><input type="date" class="form-control" id="hearing-record-date" required></div>
+        <div class="form-group"><label>Recorded By / Advocate Signature *</label><input class="form-control" id="hearing-recorded-by" required></div>
       </div>
     </div>
     <div class="modal-footer"><button class="btn-outline" onclick="closeModal('hearing-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveHearing()">Save</button></div>
@@ -379,6 +379,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 <script src="../js/api.js"></script>
 <script src="../js/utils.js"></script>
 <script src="../js/auth.js"></script>
+<script src="../js/print-timechart.js"></script>
 <script>
 const CASE_ID = new URLSearchParams(window.location.search).get('id');
 let currentCase = null;
@@ -674,7 +675,30 @@ function openHearingModal(id) {
   document.getElementById('hearing-modal-overlay').classList.add('show');
 }
 
+// Every field on this form is required — [elementId, display label for the error toast].
+const REQUIRED_HEARING_FIELDS = [
+  ['hearing-case-number', 'Case Number'], ['hearing-court', 'Court Name'], ['hearing-region', 'Region'],
+  ['hearing-case-year', 'Case Year'], ['hearing-presiding-judge', 'Presiding Judge/Magistrate'],
+  ['hearing-proceeding-type', 'Court Proceeding Type'], ['hearing-court-start', 'Court Start Time'],
+  ['hearing-court-end', 'Court End Time'], ['hearing-parties', 'Parties'], ['hearing-opposing', 'Versus (Opponent)'],
+  ['hearing-counsel-plaintiff', 'Counsel for Plaintiff/Applicant/Petitioner/Objector'],
+  ['hearing-counsel-defendant', 'Counsel for Defendant/Respondent'], ['hearing-court-clerk', 'Court Clerk'],
+  ['hearing-last-order', 'Last Court Order'], ['hearing-prayer', 'Current Prayer/Order/Direction Sought'],
+  ['hearing-order-direction', 'Court Order/Direction'], ['hearing-next-court-date', 'Next Court Date'],
+  ['hearing-consult-start', 'Consultation Start Time'], ['hearing-consult-end', 'Consultation End Time'],
+  ['hearing-record-date', 'Record Date'], ['hearing-recorded-by', 'Recorded By / Advocate Signature'],
+];
+
 async function saveHearing() {
+  for (const [elId, label] of REQUIRED_HEARING_FIELDS) {
+    const el = document.getElementById(elId);
+    if (!el.value || !el.value.trim()) {
+      showToast(`${label} is required`, 'error');
+      el.focus();
+      return;
+    }
+  }
+
   const id = document.getElementById('hearing-id').value;
   const payload = {
     caseNumber: document.getElementById('hearing-case-number').value.trim() || null,
@@ -773,121 +797,7 @@ function viewHearing(id) {
 function printHearing(id) {
   const h = hearingsCache.find(x => x.id === id);
   if (!h) return;
-  const c = currentCase;
-  const win = window.open('', '_blank', 'width=850,height=1000');
-  if (!win) { showToast('Please allow popups to print', 'error'); return; }
-
-  // A filled-in blank shows the value (underlined, like ink on the printed
-  // line); an empty one stays a dotted line, exactly like the blank paper
-  // form when a field hasn't been recorded yet.
-  const blank = (value, minCh) => {
-    minCh = minCh || 14;
-    if (value !== null && value !== undefined && value !== '') {
-      return `<span class="fill">${escapeHtml(String(value))}</span>`;
-    }
-    return `<span class="dots" style="min-width:${minCh}ch;"></span>`;
-  };
-  const proceedingDateTime = h.proceeding_type || '';
-  // From/To are fixed black labels — each time value is blanked
-  // independently so a filled start time doesn't turn an unfilled end
-  // time blue too (and vice versa).
-  const timeRange = (startVal, endVal) =>
-    `From ${blank(startVal ? fmtTimeStr(startVal) : null, 10)} To ${blank(endVal ? fmtTimeStr(endVal) : null, 10)}`;
-
-  win.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>Time Chart and Court Records — ${escapeHtml(c.case_number)}</title>
-      <style>
-        @page { size: A4; margin: 16mm 18mm; }
-        * { box-sizing: border-box; }
-        body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; padding: 0; font-size: 13px; line-height: 1.9; }
-        .letterhead { text-align: center; border-bottom: 2px solid #1a1a1a; padding-bottom: 10px; margin-bottom: 18px; }
-        .letterhead .swash { font-size: 11px; letter-spacing: 3px; color: #444; }
-        .letterhead h1 { font-family: 'Playfair Display', Georgia, serif; font-size: 34px; font-weight: 700; margin: 4px 0 2px; letter-spacing: 0.5px; }
-        .letterhead .tagline { font-size: 13px; font-style: italic; margin-bottom: 10px; }
-        .letterhead .addr { font-size: 11.5px; line-height: 1.5; }
-        h2.doc-title { font-size: 16px; text-decoration: underline; text-align: center; margin: 18px 0 16px; }
-        .dots { display: inline-block; border-bottom: 1px dotted #1a1a1a; height: 1px; vertical-align: -3px; }
-        .fill { font-weight: 700; color: #1D4ED8; border-bottom: 1px solid #1a1a1a; padding: 0 2px; }
-        .field-label { font-weight: 700; }
-        p { margin: 6px 0; }
-        .versus { text-align: center; font-weight: 700; margin: 4px 0; }
-        .section { border-top: 1px solid #ddd; padding-top: 12px; margin-top: 16px; }
-        .section:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
-        .sig-row { display: flex; justify-content: space-between; margin-top: 46px; }
-        .sig-box { width: 45%; text-align: center; }
-        .sig-box .line { border-bottom: 1px dotted #1a1a1a; height: 26px; margin-bottom: 4px; text-align: center; font-weight: 700; color: #1D4ED8; }
-        @media print { body { -webkit-print-color-adjust: exact; } .fill { color: #1D4ED8 !important; } }
-      </style>
-    </head>
-    <body>
-      <div class="letterhead">
-        <div class="swash">~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</div>
-        <h1>Tanscar Attorneys</h1>
-        <div class="tagline">Commissioners for Oaths and Notaries Public</div>
-        <div class="addr">
-          Tanscar House, Plot no. 502, Block 42.<br>
-          Bwawani/Mkandu Street,<br>
-          Kinondoni District.<br>
-          P.O.Box 72144,<br>
-          Dar-Es-Salaam, Tanzania<br>
-          Telephone: +255-222-922207 &nbsp; Fax: +255-222-922207<br>
-          Email: info@tanscarattorneys.co.tz &nbsp; Website: http://www.tanscarattorneys.co.tz/
-        </div>
-      </div>
-
-      <h2 class="doc-title">TIME CHART AND COURT RECORDS</h2>
-
-      <div class="section">
-        <p>In the ${blank(h.court, 22)} of Tanzania at ${blank(h.region, 18)}</p>
-        <p>Civil Case/Civil Appeal/Misc. Civil Cause/Civil Revision/Civil Misc. Land Application/Land/Commercial
-        Case/Matrimonial Cause/Criminal Case No. ${blank(c.case_number, 14)} of ${blank(c.case_year, 8)}</p>
-        <p>Parties: ${blank(c.parties, 40)}</p>
-        <p class="versus">Versus</p>
-        <p>${blank(c.opposing_party, 60)}</p>
-      </div>
-
-      <div class="section">
-        <p><span class="field-label">Presiding Judge/Magistrate:</span> ${blank(h.presiding_judge, 40)}</p>
-        <p><span class="field-label">Date of Mention/1<sup>st</sup> PTC/Mediation/Hearing/Final PTC/Judgment/Ruling:</span> ${blank(proceedingDateTime, 30)}</p>
-      </div>
-
-      <div class="section">
-        <p><span class="field-label">Counsel for the Plaintiff(s)/Applicant(s)/Petitioner(s)/Objector(s):</span> ${blank(h.counsel_plaintiff, 30)}</p>
-        <p><span class="field-label">Counsel for the Defendant(s)/Respondent(s):</span> ${blank(h.counsel_defendant, 34)}</p>
-        <p><span class="field-label">Court Clerk:</span> ${blank(h.court_clerk, 40)}</p>
-      </div>
-
-      <div class="section">
-        <p><span class="field-label">Last Order of the Court:</span> ${blank(h.last_court_order, 40)}</p>
-        <p><span class="field-label">Current Prayer/Order/Direction being sought:</span> ${blank(h.prayer_sought, 30)}</p>
-        <p style="margin-top:10px;"><span class="field-label">Court Order/Direction:</span> ${blank(h.court_order_direction, 40)}</p>
-      </div>
-
-      <div class="section">
-        <p><span class="field-label">Time spent: In Court:</span> &nbsp; ${timeRange(h.court_start_time, h.court_end_time)}</p>
-        <p style="margin-left:70px;"><span class="field-label">For Office Consultation:</span> ${timeRange(h.consultation_start_time, h.consultation_end_time)}</p>
-      </div>
-
-      <div class="sig-row">
-        <div class="sig-box">
-          <div class="line">${h.record_date ? fmtDate(h.record_date) : ''}</div>
-          Date
-        </div>
-        <div class="sig-box">
-          <div class="line">${h.recorded_by ? escapeHtml(h.recorded_by) : ''}</div>
-          Name &amp; Signature
-        </div>
-      </div>
-
-      <script>window.onload = function() { setTimeout(function(){ window.print(); }, 300); };<\/script>
-    </body>
-    </html>
-  `);
-  win.document.close();
+  printTimeChart(currentCase, h);
 }
 
 // ---------- DOCUMENTS ----------
@@ -1104,6 +1014,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   try { expenseCategoriesList = await apiGet('/expense-categories'); } catch (e) { expenseCategoriesList = []; }
   await loadCase();
+
+  // Lets other pages (e.g. Case Status Report's Edit button) land straight
+  // on the Edit Case form instead of just the read-only Overview.
+  if (currentCase && new URLSearchParams(window.location.search).get('edit') === '1') {
+    openEditCaseModal();
+  }
 });
 </script>
 </body>

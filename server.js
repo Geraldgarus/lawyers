@@ -1992,13 +1992,15 @@ app.get('/api/dashboard/summary', async (req, res) => {
       WHERE a.appointment_date::date >= CURRENT_DATE AND a.appointment_date::date <= CURRENT_DATE + INTERVAL '7 days'
       ORDER BY a.appointment_date LIMIT 10
     `);
+    // Any future next_court_date counts as upcoming — no 7/30-day cutoff,
+    // since a court date further out is still something to show, not hide.
     const { rows: upcomingHearings } = await pool.query(`
       SELECT * FROM (
         SELECT DISTINCT ON (h.case_id) h.*, c.case_number, c.case_title, cl.full_name AS client_name
         FROM hearings h JOIN cases c ON c.id = h.case_id LEFT JOIN clients cl ON cl.id = c.client_id
         ORDER BY h.case_id, h.hearing_date DESC, h.id DESC
       ) latest
-      WHERE latest.next_court_date::date > CURRENT_DATE AND latest.next_court_date::date <= CURRENT_DATE + INTERVAL '7 days'
+      WHERE latest.next_court_date::date > CURRENT_DATE
       ORDER BY latest.next_court_date LIMIT 10
     `);
     const { rows: caseStatusCounts } = await pool.query(`
