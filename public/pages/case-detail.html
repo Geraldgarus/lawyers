@@ -36,7 +36,6 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
     <div class="nav-section-label">Dashboard</div>
     <a href="/dashboard" class="nav-item" data-page="dashboard"><i class="fas fa-table-columns"></i> Dashboard</a>
     <div class="nav-section-label">Practice</div>
-    <a href="/clients" class="nav-item" data-page="clients"><i class="fas fa-address-book"></i> Clients</a>
     <a href="/cases" class="nav-item" data-page="cases"><i class="fas fa-suitcase"></i> Time Chart and Court Records</a>
     <a href="/calendar" class="nav-item" data-page="calendar"><i class="fas fa-calendar-days"></i> Calendar</a>
     <a href="/documents" class="nav-item" data-page="documents"><i class="fas fa-folder-open"></i> Documents</a>
@@ -318,9 +317,6 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
   <div class="modal" style="max-width:760px;">
     <div class="modal-header"><h3><i class="fas fa-pen"></i> Edit Case</h3><button onclick="closeModal('edit-case-modal-overlay')"><i class="fas fa-times"></i></button></div>
     <div class="modal-body">
-      <div class="form-group"><label>Client</label>
-        <select class="form-control" id="edit-case-client-select"></select>
-      </div>
       <div class="form-group"><label>Case Number</label><input class="form-control" id="edit-case-number"></div>
 
       <div class="tc-section-label"><i class="fas fa-gavel"></i> Court &amp; Proceeding</div>
@@ -375,10 +371,6 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
         <div class="form-group"><label>Recorded By / Advocate Signature</label><input class="form-control" id="edit-case-recorded-by"></div>
       </div>
 
-      <div class="tc-section-label"><i class="fas fa-file-lines"></i> Summary &amp; Remarks</div>
-      <div class="form-group"><label>Claim Amount</label><input type="number" min="0" step="0.01" class="form-control" id="edit-case-claim-amount"></div>
-      <div class="form-group"><label>Summary / Description</label><textarea class="form-control" id="edit-case-description" rows="4"></textarea></div>
-      <div class="form-group"><label>Remarks</label><textarea class="form-control" id="edit-case-remarks" rows="3"></textarea></div>
     </div>
     <div class="modal-footer"><button class="btn-outline" onclick="closeModal('edit-case-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveEditCase()">Save Changes</button></div>
   </div>
@@ -392,7 +384,6 @@ const CASE_ID = new URLSearchParams(window.location.search).get('id');
 let currentCase = null;
 let currentUser = null;
 let expenseCategoriesList = [];
-let clientsList = [];
 
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 
@@ -439,7 +430,6 @@ function renderCaseHeader() {
     <div class="case-header-top">
       <div>
         <h2>${escapeHtml(c.case_number)} — ${escapeHtml(c.case_title)}</h2>
-        <div class="case-sub"><i class="fas fa-user"></i> ${escapeHtml(c.client_name) || 'No client'}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <span class="badge ${c.status}" style="font-size:12px;padding:5px 14px;">${statusLabel(c.status)}</span>
@@ -497,19 +487,14 @@ async function renderOverview() {
 
   document.getElementById('overview-body').innerHTML = `
     <div class="case-meta-grid">
-      <div><div class="m-label">Client</div><div class="m-value">${c.client_name ? `<a href="/clients" style="color:inherit;">${escapeHtml(c.client_name)}</a>` : '—'}</div></div>
-      <div><div class="m-label">Client Phone</div><div class="m-value">${escapeHtml(c.client_phone) || '—'}</div></div>
       <div><div class="m-label">Parties</div><div class="m-value">${escapeHtml(c.parties) || '—'}</div></div>
       <div><div class="m-label">Versus (Opponent)</div><div class="m-value">${escapeHtml(c.opposing_party) || '—'}</div></div>
       <div><div class="m-label">Court Name</div><div class="m-value">${escapeHtml(c.court) || '—'}</div></div>
       <div><div class="m-label">Region</div><div class="m-value">${escapeHtml(c.region) || '—'}</div></div>
       <div><div class="m-label">Case Year</div><div class="m-value">${escapeHtml(c.case_year) || '—'}</div></div>
-      <div><div class="m-label">Claim Amount</div><div class="m-value">${c.claim_amount != null ? fmtCurrency(c.claim_amount) : '—'}</div></div>
       <div><div class="m-label">Next Court Date</div><div class="m-value">${nextCourtDateHtml}</div></div>
       ${balanceHtml}
     </div>
-    ${c.description ? `<hr style="margin:18px 0;border:none;border-top:1px solid var(--border);"><div class="m-label">Summary</div><div style="margin-top:6px;font-size:13.5px;">${escapeHtml(c.description)}</div>` : ''}
-    ${c.remarks ? `<div style="margin-top:14px;"><div class="m-label">Remarks</div><div style="margin-top:6px;font-size:13.5px;">${escapeHtml(c.remarks)}</div></div>` : ''}
 
     <div class="tc-section-label" style="margin-top:22px;"><i class="fas fa-gavel"></i> Last Court Appearance</div>
     ${lastAppearanceHtml}
@@ -521,8 +506,6 @@ async function renderOverview() {
 const TIME_CHART_EDIT_FIELDS = [
   ['case_year', 'caseYear', 'edit-case-year', 'text'],
   ['parties', 'parties', 'edit-case-parties', 'text'],
-  ['claim_amount', 'claimAmount', 'edit-case-claim-amount', 'text'],
-  ['remarks', 'remarks', 'edit-case-remarks', 'text'],
 ];
 
 // Every Time Chart & Court Records field the New Case form has, beyond the
@@ -560,15 +543,10 @@ function datetimeInputVal(d) {
 let latestHearingForEdit = null;
 
 async function openEditCaseModal() {
-  const clientSel = document.getElementById('edit-case-client-select');
-  clientSel.innerHTML = '<option value="">— No client —</option>' +
-    clientsList.map(c => `<option value="${c.id}" ${currentCase.client_id === c.id ? 'selected' : ''}>${escapeHtml(c.full_name)}${c.phone ? ' (' + c.phone + ')' : ''}</option>`).join('');
-
   document.getElementById('edit-case-number').value = currentCase.case_number || '';
   document.getElementById('edit-case-opposing').value = currentCase.opposing_party || '';
   document.getElementById('edit-case-court').value = currentCase.court || '';
   document.getElementById('edit-case-region').value = currentCase.region || '';
-  document.getElementById('edit-case-description').value = currentCase.description || '';
   TIME_CHART_EDIT_FIELDS.forEach(([col, , id, type]) => {
     const el = document.getElementById(id);
     if (!el) return;
@@ -600,12 +578,10 @@ async function openEditCaseModal() {
 
 async function saveEditCase() {
   const payload = {
-    clientId: document.getElementById('edit-case-client-select').value || null,
     caseNumber: document.getElementById('edit-case-number').value.trim(),
     opposingParty: document.getElementById('edit-case-opposing').value.trim(),
     court: document.getElementById('edit-case-court').value.trim(),
-    region: document.getElementById('edit-case-region').value.trim(),
-    description: document.getElementById('edit-case-description').value.trim()
+    region: document.getElementById('edit-case-region').value.trim()
   };
   TIME_CHART_EDIT_FIELDS.forEach(([, key, id]) => {
     const el = document.getElementById(id);
@@ -1127,7 +1103,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   try { expenseCategoriesList = await apiGet('/expense-categories'); } catch (e) { expenseCategoriesList = []; }
-  try { clientsList = await apiGet('/clients'); } catch (e) { clientsList = []; }
   await loadCase();
 });
 </script>

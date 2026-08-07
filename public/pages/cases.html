@@ -27,7 +27,6 @@
     <div class="nav-section-label">Dashboard</div>
     <a href="/dashboard" class="nav-item" data-page="dashboard"><i class="fas fa-table-columns"></i> Dashboard</a>
     <div class="nav-section-label">Practice</div>
-    <a href="/clients" class="nav-item" data-page="clients"><i class="fas fa-address-book"></i> Clients</a>
     <a href="/cases" class="nav-item" data-page="cases"><i class="fas fa-suitcase"></i> Time Chart and Court Records</a>
     <a href="/calendar" class="nav-item" data-page="calendar"><i class="fas fa-calendar-days"></i> Calendar</a>
     <a href="/documents" class="nav-item" data-page="documents"><i class="fas fa-folder-open"></i> Documents</a>
@@ -103,21 +102,6 @@
       <button onclick="closeCaseModal()"><i class="fas fa-times"></i></button>
     </div>
     <div class="modal-body">
-      <div class="form-group">
-        <label>Client</label>
-        <select class="form-control" id="case-client-select">
-          <option value="">— Search or add new below —</option>
-        </select>
-      </div>
-      <div id="new-client-fields" style="display:none;border:1px dashed var(--border);border-radius:10px;padding:14px;margin-bottom:16px;">
-        <div class="form-group" style="margin-bottom:10px;"><label>New Client Full Name *</label><input class="form-control" id="new-client-name"></div>
-        <div class="form-row">
-          <div class="form-group" style="margin-bottom:0;"><label>Phone</label><input class="form-control" id="new-client-phone"></div>
-          <div class="form-group" style="margin-bottom:0;"><label>Email</label><input class="form-control" id="new-client-email"></div>
-        </div>
-      </div>
-      <button type="button" class="btn-outline btn-sm" id="toggle-new-client-btn" style="margin-bottom:16px;" onclick="toggleNewClient()"><i class="fas fa-user-plus"></i> Add New Client Instead</button>
-
       <div class="form-group"><label>Case Number *</label><input class="form-control" id="case-number" placeholder="e.g. CV-2026-001"></div>
       <div class="tc-section-label"><i class="fas fa-gavel"></i> Court &amp; Proceeding</div>
       <div class="form-row">
@@ -170,10 +154,6 @@
         <div class="form-group"><label>Recorded By / Advocate Signature</label><input class="form-control" id="case-recorded-by"></div>
       </div>
 
-      <div class="tc-section-label"><i class="fas fa-file-lines"></i> Summary &amp; Remarks</div>
-      <div class="form-group"><label>Claim Amount</label><input type="number" min="0" step="0.01" class="form-control" id="case-claim-amount"></div>
-      <div class="form-group"><label>Summary / Description</label><textarea class="form-control" id="case-description" rows="4" placeholder="A narrative summary of the matter — what happened, what is being claimed, and against whom"></textarea></div>
-      <div class="form-group"><label>Remarks</label><textarea class="form-control" id="case-remarks" rows="3" placeholder="Additional comments or observations"></textarea></div>
     </div>
     <div class="modal-footer">
       <button class="btn-outline" onclick="closeCaseModal()">Cancel</button>
@@ -187,18 +167,13 @@
 <script src="../js/auth.js"></script>
 <script>
 let casesData = [];
-let clientsList = [];
 let statusesList = [];
 
 async function loadLookups() {
-  [clientsList, statusesList] = await Promise.all([apiGet('/clients'), apiGet('/case-statuses')]);
+  statusesList = await apiGet('/case-statuses');
 
   const statusSel = document.getElementById('filter-status');
   statusSel.innerHTML = '<option value="">All Statuses</option>' + statusesList.map(s => `<option value="${s.name}">${escapeHtml(s.label)}</option>`).join('');
-
-  const clientSel = document.getElementById('case-client-select');
-  clientSel.innerHTML = '<option value="">— Select existing client —</option>' +
-    clientsList.map(c => `<option value="${c.id}">${escapeHtml(c.full_name)}${c.phone ? ' (' + c.phone + ')' : ''}</option>`).join('');
 }
 
 async function loadCases() {
@@ -254,24 +229,12 @@ function clearFilters() {
   loadCases();
 }
 
-function toggleNewClient() {
-  const fields = document.getElementById('new-client-fields');
-  const select = document.getElementById('case-client-select');
-  const btn = document.getElementById('toggle-new-client-btn');
-  const showing = fields.style.display !== 'none';
-  fields.style.display = showing ? 'none' : 'block';
-  select.disabled = !showing;
-  if (!showing) select.value = '';
-  btn.innerHTML = showing ? '<i class="fas fa-user-plus"></i> Add New Client Instead' : '<i class="fas fa-arrow-left"></i> Use Existing Client Instead';
-}
-
 // Every Time Chart & Court Records field on the New Case form — this first
 // pass also becomes the case's first Court Date entry (see server.js), so
 // it mirrors HEARING_FIELDS on case-detail.html plus the case-only fields
-// (Case Year, Parties, Claim Amount, Remarks).
+// (Case Year, Parties).
 const TIME_CHART_FIELDS = [
-  ['case-year', 'caseYear'], ['case-parties', 'parties'], ['case-claim-amount', 'claimAmount'],
-  ['case-remarks', 'remarks'], ['case-region', 'region'],
+  ['case-year', 'caseYear'], ['case-parties', 'parties'], ['case-region', 'region'],
   ['case-presiding-judge', 'presidingJudge'], ['case-proceeding-type', 'proceedingType'],
   ['case-court-clerk', 'courtClerk'],
   ['case-court-start', 'courtStartTime'], ['case-court-end', 'courtEndTime'],
@@ -283,25 +246,17 @@ const TIME_CHART_FIELDS = [
 ];
 
 function openCaseModal() {
-  document.getElementById('new-client-fields').style.display = 'none';
-  document.getElementById('case-client-select').disabled = false;
-  document.getElementById('toggle-new-client-btn').innerHTML = '<i class="fas fa-user-plus"></i> Add New Client Instead';
-  ['case-client-select','case-number','case-opposing','case-court','case-description','new-client-name','new-client-phone','new-client-email'].forEach(id => document.getElementById(id).value = '');
+  ['case-number','case-opposing','case-court'].forEach(id => document.getElementById(id).value = '');
   TIME_CHART_FIELDS.forEach(([id]) => { const el = document.getElementById(id); if (el) el.value = ''; });
   document.getElementById('case-modal-overlay').classList.add('show');
 }
 function closeCaseModal() { document.getElementById('case-modal-overlay').classList.remove('show'); }
 
 async function saveCase() {
-  const clientId = document.getElementById('case-client-select').value;
-  const newClientName = document.getElementById('new-client-name').value.trim();
-  const usingNewClient = document.getElementById('new-client-fields').style.display !== 'none';
-
   const payload = {
     caseNumber: document.getElementById('case-number').value.trim(),
     opposingParty: document.getElementById('case-opposing').value.trim(),
-    court: document.getElementById('case-court').value.trim(),
-    description: document.getElementById('case-description').value.trim()
+    court: document.getElementById('case-court').value.trim()
   };
   TIME_CHART_FIELDS.forEach(([id, key]) => {
     const el = document.getElementById(id);
@@ -309,20 +264,6 @@ async function saveCase() {
     const v = el.value.trim ? el.value.trim() : el.value;
     payload[key] = v === '' ? null : v;
   });
-
-  // Client is optional — if nothing was selected/typed, the case is just
-  // created without one.
-  if (usingNewClient) {
-    if (newClientName) {
-      payload.newClient = {
-        fullName: newClientName,
-        phone: document.getElementById('new-client-phone').value.trim(),
-        email: document.getElementById('new-client-email').value.trim()
-      };
-    }
-  } else if (clientId) {
-    payload.clientId = clientId;
-  }
 
   if (!payload.caseNumber) { showToast('Case number is required', 'error'); return; }
 
