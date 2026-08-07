@@ -1392,9 +1392,9 @@ app.get('/api/appointments', async (req, res) => {
     if (client_id) { values.push(client_id); conditions.push(`a.client_id = $${values.length}`); }
     const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
     const { rows } = await pool.query(`
-      SELECT a.*, cl.full_name AS client_name, c.case_number
+      SELECT a.*, COALESCE(a.client_name, cl.full_name) AS client_name, c.case_number
       FROM appointments a
-      JOIN clients cl ON cl.id = a.client_id
+      LEFT JOIN clients cl ON cl.id = a.client_id
       LEFT JOIN cases c ON c.id = a.case_id
       ${where}
       ORDER BY a.appointment_date ASC
@@ -1415,15 +1415,15 @@ app.get('/api/cases/:id/appointments', async (req, res) => {
 });
 
 app.post('/api/appointments', requireCapability('log_hearing_appointment'), async (req, res) => {
-  const { caseId, clientId, appointmentDate, purpose, consultationFee } = req.body;
-  if (!clientId || !appointmentDate) {
-    return res.status(400).json({ error: 'clientId and appointmentDate are required' });
+  const { caseId, clientName, appointmentDate, purpose, consultationFee } = req.body;
+  if (!clientName || !appointmentDate) {
+    return res.status(400).json({ error: 'clientName and appointmentDate are required' });
   }
   try {
     const { rows } = await pool.query(
-      `INSERT INTO appointments (case_id, client_id, appointment_date, purpose, consultation_fee, created_by)
+      `INSERT INTO appointments (case_id, client_name, appointment_date, purpose, consultation_fee, created_by)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [caseId || null, clientId, appointmentDate, purpose || null, consultationFee || null, req.user.id]
+      [caseId || null, clientName.trim(), appointmentDate, purpose || null, consultationFee || null, req.user.id]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -1486,10 +1486,10 @@ app.get('/api/calendar', async (req, res) => {
 
     const { rows: appointments } = await pool.query(`
       SELECT a.id, a.appointment_date AS date, a.purpose,
-             c.id AS case_id, c.case_number, c.case_title, cl.full_name AS client_name
+             c.id AS case_id, c.case_number, c.case_title, COALESCE(a.client_name, cl.full_name) AS client_name
       FROM appointments a
       LEFT JOIN cases c ON c.id = a.case_id
-      JOIN clients cl ON cl.id = a.client_id
+      LEFT JOIN clients cl ON cl.id = a.client_id
       ${aWhere}
       ORDER BY a.appointment_date
     `, values);
@@ -1987,8 +1987,8 @@ app.get('/api/dashboard/summary', async (req, res) => {
       ORDER BY latest.next_court_date
     `);
     const { rows: upcomingAppointments } = await pool.query(`
-      SELECT a.*, cl.full_name AS client_name
-      FROM appointments a JOIN clients cl ON cl.id = a.client_id
+      SELECT a.*, COALESCE(a.client_name, cl.full_name) AS client_name
+      FROM appointments a LEFT JOIN clients cl ON cl.id = a.client_id
       WHERE a.appointment_date::date >= CURRENT_DATE AND a.appointment_date::date <= CURRENT_DATE + INTERVAL '7 days'
       ORDER BY a.appointment_date LIMIT 10
     `);

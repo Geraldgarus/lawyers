@@ -355,12 +355,13 @@ CREATE INDEX IF NOT EXISTS idx_hearings_date ON hearings(hearing_date);
 CREATE INDEX IF NOT EXISTS idx_hearings_next_court_date ON hearings(next_court_date);
 
 -- ============================================================
--- APPOINTMENTS (client meetings — case optional, client required)
+-- APPOINTMENTS (client meetings — case optional; the client is now just a
+-- typed name, not a link to the clients table, see client_name below)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS appointments (
   id               SERIAL PRIMARY KEY,
   case_id          INT REFERENCES cases(id) ON DELETE SET NULL,
-  client_id        INT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  client_id        INT REFERENCES clients(id) ON DELETE CASCADE,
   appointment_date TIMESTAMP NOT NULL,
   purpose          VARCHAR(255),
   consultation_fee NUMERIC(12,2),
@@ -371,6 +372,10 @@ CREATE TABLE IF NOT EXISTS appointments (
 CREATE INDEX IF NOT EXISTS idx_appointments_case   ON appointments(case_id);
 CREATE INDEX IF NOT EXISTS idx_appointments_client ON appointments(client_id);
 CREATE INDEX IF NOT EXISTS idx_appointments_date   ON appointments(appointment_date);
+-- client_id is no longer required — the Add Appointment form now takes a
+-- typed client name instead of picking from the clients table.
+ALTER TABLE appointments ALTER COLUMN client_id DROP NOT NULL;
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS client_name VARCHAR(200);
 
 -- ============================================================
 -- DOCUMENTS (physical files live under /uploads, not /public)

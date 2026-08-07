@@ -106,7 +106,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
     <div class="modal-body">
       <div class="form-group">
         <label>Client *</label>
-        <select class="form-control" id="appt-client"></select>
+        <input class="form-control" id="appt-client-name" placeholder="Type client name">
       </div>
       <div class="form-group">
         <label>Related Case (optional)</label>
@@ -208,13 +208,12 @@ function renderAppointments(items) {
 }
 
 async function openApptModal() {
-  const clientSel = document.getElementById('appt-client');
   const caseSel = document.getElementById('appt-case');
   try {
-    const [clients, cases] = await Promise.all([apiGet('/clients'), apiGet('/cases')]);
-    clientSel.innerHTML = '<option value="">— Select client —</option>' + clients.map(c => `<option value="${c.id}">${escapeHtml(c.full_name)}</option>`).join('');
+    const cases = await apiGet('/cases');
     caseSel.innerHTML = '<option value="">— No case, general consultation —</option>' + cases.map(c => `<option value="${c.id}">${escapeHtml(c.case_number)} — ${escapeHtml(c.case_title)}</option>`).join('');
   } catch (err) { showToast(err.message, 'error'); }
+  document.getElementById('appt-client-name').value = '';
   document.getElementById('appt-date').value = '';
   document.getElementById('appt-purpose').value = '';
   document.getElementById('appt-fee').value = '';
@@ -223,12 +222,12 @@ async function openApptModal() {
 function closeApptModal() { document.getElementById('appt-modal-overlay').classList.remove('show'); }
 
 async function saveAppointment() {
-  const clientId = document.getElementById('appt-client').value;
+  const clientName = document.getElementById('appt-client-name').value.trim();
   const appointmentDate = document.getElementById('appt-date').value;
-  if (!clientId || !appointmentDate) { showToast('Client and date/time are required', 'error'); return; }
+  if (!clientName || !appointmentDate) { showToast('Client name and date/time are required', 'error'); return; }
   try {
     await apiPost('/appointments', {
-      clientId, appointmentDate,
+      clientName, appointmentDate,
       caseId: document.getElementById('appt-case').value || null,
       purpose: document.getElementById('appt-purpose').value.trim(),
       consultationFee: document.getElementById('appt-fee').value || null
@@ -241,7 +240,7 @@ async function saveAppointment() {
 
 document.addEventListener('DOMContentLoaded', () => {
   initPageChrome();
-  setThisWeek();
+  loadCalendar();
 });
 </script>
 </body>
