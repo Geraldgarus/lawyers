@@ -88,7 +88,7 @@
     <div class="card-header"><h3><i class="fas fa-briefcase"></i> All Cases</h3></div>
     <div class="table-wrap">
       <table class="data-table">
-        <thead><tr><th>Case Number</th><th>Client</th><th>Parties</th><th>Next Action</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Case Number</th><th>Parties</th><th>Versus</th><th>Next Action</th><th>Actions</th></tr></thead>
         <tbody id="cases-body"><tr><td colspan="5" class="empty-state">Loading...</td></tr></tbody>
       </table>
     </div>
@@ -198,8 +198,7 @@ function nextActionBadge(c) {
     return `<span style="color:var(--danger);font-weight:600;font-size:12px;"><i class="fas fa-triangle-exclamation"></i> ${c.overdue_task_count} task(s) overdue</span>`;
   }
   if (c.next_hearing_date) {
-    const days = Math.ceil((new Date(c.next_hearing_date) - new Date()) / 86400000);
-    return `<span style="color:var(--info);font-size:12px;"><i class="fas fa-gavel"></i> Court date in ${days}d</span>`;
+    return `<span style="color:var(--info);font-size:12px;"><i class="fas fa-gavel"></i> Court date: ${fmtDateTime(c.next_hearing_date)}</span>`;
   }
   return '<span style="color:#94a3b8;font-size:12px;">—</span>';
 }
@@ -213,8 +212,8 @@ function renderCases() {
   tbody.innerHTML = casesData.map(c => `
     <tr style="cursor:pointer;" onclick="window.location.href='/case-detail?id=${c.id}'">
       <td><strong>${escapeHtml(c.case_number)}</strong></td>
-      <td>${escapeHtml(c.client_name) || '—'}</td>
       <td>${escapeHtml(c.parties) || '—'}</td>
+      <td>${escapeHtml(c.opposing_party) || '—'}</td>
       <td>${nextActionBadge(c)}</td>
       <td onclick="event.stopPropagation()">
         <button class="btn-icon" onclick="window.location.href='/case-detail?id=${c.id}'" title="View"><i class="fas fa-eye"></i></button>
