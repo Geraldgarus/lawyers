@@ -737,13 +737,7 @@ async function deleteHearing(id) {
 }
 
 // ---------- VIEW / PRINT — Time Chart and Court Records, full detail ----------
-function fmtTimeStr(t) {
-  if (!t) return '—';
-  const [h, m] = String(t).split(':').map(Number);
-  const period = h >= 12 ? 'PM' : 'AM';
-  const h12 = h % 12 || 12;
-  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
-}
+// fmtTimeStr() now lives in utils.js (shared with print-timechart.js).
 
 // Exact field names from the firm's Time Chart and Court Records sheet —
 // case-level fields come from currentCase, per-visit fields from the

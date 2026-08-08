@@ -29,6 +29,17 @@ function fmtCurrency(n) {
   return 'TSh ' + Number(n || 0).toLocaleString();
 }
 
+// Formats a "HH:MM[:SS]" time-only string (e.g. a court/consultation
+// start/end time) as "h:MM AM/PM" — shared because print-timechart.js
+// (used on both case-detail.html and case-status-report.html) needs it.
+function fmtTimeStr(t) {
+  if (!t) return '—';
+  const [h, m] = String(t).split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${period}`;
+}
+
 function isPastDate(d) {
   if (!d) return false;
   return new Date(d) < new Date(new Date().toDateString());

@@ -107,6 +107,26 @@
   </div>
 </main>
 
+<!-- Edit Status Note Modal -->
+<div class="modal-overlay" id="note-modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h3><i class="fas fa-pen"></i> Edit Case Status Notes — <span id="note-modal-case-number"></span></h3>
+      <button onclick="closeNoteModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="note-case-id">
+      <div class="form-group"><label>Claim Amount</label><input type="number" min="0" step="0.01" class="form-control" id="note-claim-amount"></div>
+      <div class="form-group"><label>Summary</label><textarea class="form-control" id="note-summary" rows="4" placeholder="A narrative summary of the matter"></textarea></div>
+      <div class="form-group"><label>Remarks</label><textarea class="form-control" id="note-remarks" rows="3" placeholder="Additional comments or observations"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-outline" onclick="closeNoteModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveNote()"><i class="fas fa-save"></i> Save</button>
+    </div>
+  </div>
+</div>
+
 <script src="../js/api.js"></script>
 <script src="../js/utils.js"></script>
 <script src="../js/auth.js"></script>
@@ -117,6 +137,8 @@ function clearFilters() {
   document.getElementById('filter-q').value = '';
   loadCaseStatusReport();
 }
+
+let csrData = []; // cases merged with their case_status_notes row, keyed for the edit modal
 
 async function loadCaseStatusReport() {
   const tbody = document.getElementById('csr-body');
@@ -129,23 +151,30 @@ async function loadCaseStatusReport() {
   if (q) params.set('q', q);
 
   try {
-    const cases = await apiGet('/cases?' + params.toString());
-    if (!cases.length) {
+    const [cases, notes] = await Promise.all([
+      apiGet('/cases?' + params.toString()),
+      apiGet('/case-status-notes')
+    ]);
+    const notesByCase = {};
+    notes.forEach(n => { notesByCase[n.case_id] = n; });
+    csrData = cases.map(c => ({ ...c, note: notesByCase[c.id] || null }));
+
+    if (!csrData.length) {
       tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><i class="fas fa-list-check"></i>No cases found</td></tr>';
       return;
     }
-    tbody.innerHTML = cases.map((c, i) => `
+    tbody.innerHTML = csrData.map((c, i) => `
       <tr>
         <td>${i + 1}</td>
         <td><strong>${escapeHtml(c.case_number)}</strong></td>
         <td>${escapeHtml(c.parties) || '—'}${c.opposing_party ? `<br><span style="color:var(--text-muted);font-size:11.5px;">vs ${escapeHtml(c.opposing_party)}</span>` : ''}</td>
         <td>${escapeHtml(c.court) || '—'}</td>
-        <td class="csr-summary">${escapeHtml(c.description) || '—'}</td>
-        <td>${c.claim_amount != null ? fmtCurrency(c.claim_amount) : '—'}</td>
+        <td class="csr-summary">${escapeHtml(c.note && c.note.summary) || '—'}</td>
+        <td>${c.note && c.note.claim_amount != null ? fmtCurrency(c.note.claim_amount) : '—'}</td>
         <td><span class="badge ${c.status}">${statusLabel(c.status)}</span></td>
-        <td class="csr-summary">${escapeHtml(c.remarks) || '—'}</td>
+        <td class="csr-summary">${escapeHtml(c.note && c.note.remarks) || '—'}</td>
         <td style="white-space:nowrap;">
-          <button class="btn-icon" onclick="window.location.href='/case-detail?id=${c.id}&edit=1'" title="Edit"><i class="fas fa-pen"></i></button>
+          <button class="btn-icon" onclick="openNoteModal(${c.id})" title="Edit"><i class="fas fa-pen"></i></button>
           <button class="btn-icon" onclick="printCase(${c.id})" title="Print"><i class="fas fa-print"></i></button>
           <button class="btn-icon danger" onclick="deleteCase(${c.id}, '${escapeHtml(c.case_number).replace(/'/g, "\\'")}')" title="Delete"><i class="fas fa-trash"></i></button>
         </td>
@@ -155,6 +184,32 @@ async function loadCaseStatusReport() {
     tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Failed to load</td></tr>';
     showToast(err.message, 'error');
   }
+}
+
+function openNoteModal(caseId) {
+  const c = csrData.find(x => x.id === caseId);
+  if (!c) return;
+  document.getElementById('note-case-id').value = caseId;
+  document.getElementById('note-modal-case-number').textContent = c.case_number;
+  document.getElementById('note-claim-amount').value = c.note && c.note.claim_amount != null ? c.note.claim_amount : '';
+  document.getElementById('note-summary').value = (c.note && c.note.summary) || '';
+  document.getElementById('note-remarks').value = (c.note && c.note.remarks) || '';
+  document.getElementById('note-modal-overlay').classList.add('show');
+}
+function closeNoteModal() { document.getElementById('note-modal-overlay').classList.remove('show'); }
+
+async function saveNote() {
+  const caseId = document.getElementById('note-case-id').value;
+  try {
+    await apiPut(`/case-status-notes/${caseId}`, {
+      claimAmount: document.getElementById('note-claim-amount').value || null,
+      summary: document.getElementById('note-summary').value.trim() || null,
+      remarks: document.getElementById('note-remarks').value.trim() || null
+    });
+    closeNoteModal();
+    showToast('Notes saved');
+    loadCaseStatusReport();
+  } catch (err) { showToast(err.message, 'error'); }
 }
 
 // Prints the same Time Chart form as the per-Court-Date print button on

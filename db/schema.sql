@@ -300,6 +300,21 @@ CREATE TRIGGER trg_cases_updated_at BEFORE UPDATE ON cases
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================================
+-- CASE STATUS NOTES (Claim Amount / Summary / Remarks shown on the Case
+-- Status Report) — its own table, one row per case, linked by case_id
+-- rather than reusing cases.claim_amount/description/remarks, which
+-- stopped being editable anywhere once those fields left the case forms.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS case_status_notes (
+  case_id      INT PRIMARY KEY REFERENCES cases(id) ON DELETE CASCADE,
+  claim_amount NUMERIC(12,2),
+  summary      TEXT,
+  remarks      TEXT,
+  updated_by   INT REFERENCES users(id) ON DELETE SET NULL,
+  updated_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ============================================================
 -- HEARINGS (court dates — created only from inside a case)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS hearings (

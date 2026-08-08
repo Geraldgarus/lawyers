@@ -1177,6 +1177,44 @@ app.delete('/api/cases/:id', requireCapability('delete_case'), async (req, res) 
 });
 
 // ════════════════════════════════════════════════════════════════════════════
+//  CASE STATUS NOTES (Claim Amount / Summary / Remarks on the Case Status
+//  Report — own table, not the dormant cases.claim_amount/description/
+//  remarks columns, which have had no editable form since those left the
+//  case forms)
+// ════════════════════════════════════════════════════════════════════════════
+
+app.get('/api/case-status-notes', requireCapability('view_reports'), async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM case_status_notes');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/case-status-notes/:caseId', requireCapability('view_reports'), async (req, res) => {
+  const { claimAmount, summary, remarks } = req.body;
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO case_status_notes (case_id, claim_amount, summary, remarks, updated_by, updated_at)
+       VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+       ON CONFLICT (case_id) DO UPDATE SET
+         claim_amount = EXCLUDED.claim_amount,
+         summary      = EXCLUDED.summary,
+         remarks      = EXCLUDED.remarks,
+         updated_by   = EXCLUDED.updated_by,
+         updated_at   = CURRENT_TIMESTAMP
+       RETURNING *`,
+      [req.params.caseId, claimAmount || null, summary || null, remarks || null, req.user.id]
+    );
+    await logActivity(req.user.id, req.user.email, 'UPDATE', 'case_status_note', req.params.caseId, null, rows[0], req);
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
 //  TIMELINE (computed, not stored)
 // ════════════════════════════════════════════════════════════════════════════
 
