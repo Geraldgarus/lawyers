@@ -114,7 +114,7 @@
         <div class="form-group"><label>Presiding Judge/Magistrate *</label><input class="form-control" id="case-presiding-judge" required></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Court Proceeding Type *</label>
+        <div class="form-group"><label>Court Proceeding Type/Status *</label>
           <select class="form-control" id="case-proceeding-type" required>
             <option value="">— Select —</option>
             <option>Mention</option><option>1st PTC</option><option>Mediation</option>
@@ -151,8 +151,8 @@
         <div class="form-group"><label>Consultation End Time *</label><input type="time" class="form-control" id="case-consult-end" required></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Record Date *</label><input type="date" class="form-control" id="case-record-date" required></div>
-        <div class="form-group"><label>Recorded By / Advocate Signature *</label><input class="form-control" id="case-recorded-by" required></div>
+        <div class="form-group"><label>Date *</label><input type="date" class="form-control" id="case-record-date" required></div>
+        <div class="form-group"><label>Recorded By / Advocate Signature</label><input class="form-control" id="case-recorded-by"></div>
       </div>
 
     </div>
@@ -256,7 +256,7 @@ function closeCaseModal() { document.getElementById('case-modal-overlay').classL
 const REQUIRED_CASE_FIELDS = [
   ['case-number', 'Case Number'], ['case-court', 'Court Name'], ['case-region', 'Region'],
   ['case-year', 'Case Year'], ['case-presiding-judge', 'Presiding Judge/Magistrate'],
-  ['case-proceeding-type', 'Court Proceeding Type'], ['case-court-clerk', 'Court Clerk'],
+  ['case-proceeding-type', 'Court Proceeding Type/Status'], ['case-court-clerk', 'Court Clerk'],
   ['case-court-start', 'Court Start Time'], ['case-court-end', 'Court End Time'],
   ['case-parties', 'Parties'], ['case-opposing', 'Versus (Opponent)'],
   ['case-counsel-plaintiff', 'Counsel for Plaintiff/Applicant/Petitioner/Objector'],
@@ -264,7 +264,7 @@ const REQUIRED_CASE_FIELDS = [
   ['case-last-order', 'Last Court Order'], ['case-prayer', 'Current Prayer/Order/Direction Sought'],
   ['case-order-direction', 'Court Order/Direction'], ['case-next-court-date', 'Next Court Date'],
   ['case-consult-start', 'Consultation Start Time'], ['case-consult-end', 'Consultation End Time'],
-  ['case-record-date', 'Record Date'], ['case-recorded-by', 'Recorded By / Advocate Signature'],
+  ['case-record-date', 'Date'],
 ];
 
 async function saveCase() {

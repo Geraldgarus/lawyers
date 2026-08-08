@@ -174,7 +174,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
     <div class="modal-header"><h3><i class="fas fa-gavel"></i> <span id="hearing-modal-title">Add Court Date</span></h3><button onclick="closeModal('hearing-modal-overlay')"><i class="fas fa-times"></i></button></div>
     <div class="modal-body">
       <input type="hidden" id="hearing-id">
-      <div class="form-group"><label>Case Number *</label><input class="form-control" id="hearing-case-number" required></div>
+      <div class="form-group"><label>Case Number *</label><input class="form-control" id="hearing-case-number" readonly style="background:var(--surface-tint);cursor:not-allowed;" required></div>
 
       <div class="tc-section-label"><i class="fas fa-gavel"></i> Court &amp; Proceeding</div>
       <div class="form-row">
@@ -185,7 +185,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
         <div class="form-group"><label>Case Year *</label><input type="number" class="form-control" id="hearing-case-year" placeholder="e.g. 2026" required></div>
         <div class="form-group"><label>Presiding Judge/Magistrate *</label><input class="form-control" id="hearing-presiding-judge" required></div>
       </div>
-      <div class="form-group"><label>Court Proceeding Type *</label>
+      <div class="form-group"><label>Court Proceeding Type/Status *</label>
         <select class="form-control" id="hearing-proceeding-type" required>
           <option value="">— Select —</option>
           <option>Mention</option><option>1st PTC</option><option>Mediation</option>
@@ -221,8 +221,8 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
         <div class="form-group"><label>Consultation End Time *</label><input type="time" class="form-control" id="hearing-consult-end" required></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Record Date *</label><input type="date" class="form-control" id="hearing-record-date" required></div>
-        <div class="form-group"><label>Recorded By / Advocate Signature *</label><input class="form-control" id="hearing-recorded-by" required></div>
+        <div class="form-group"><label>Date *</label><input type="date" class="form-control" id="hearing-record-date" required></div>
+        <div class="form-group"><label>Recorded By / Advocate Signature</label><input class="form-control" id="hearing-recorded-by"></div>
       </div>
     </div>
     <div class="modal-footer"><button class="btn-outline" onclick="closeModal('hearing-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveHearing()">Save</button></div>
@@ -687,14 +687,14 @@ function openHearingModal(id) {
 const REQUIRED_HEARING_FIELDS = [
   ['hearing-case-number', 'Case Number'], ['hearing-court', 'Court Name'], ['hearing-region', 'Region'],
   ['hearing-case-year', 'Case Year'], ['hearing-presiding-judge', 'Presiding Judge/Magistrate'],
-  ['hearing-proceeding-type', 'Court Proceeding Type'], ['hearing-court-start', 'Court Start Time'],
+  ['hearing-proceeding-type', 'Court Proceeding Type/Status'], ['hearing-court-start', 'Court Start Time'],
   ['hearing-court-end', 'Court End Time'], ['hearing-parties', 'Parties'], ['hearing-opposing', 'Versus (Opponent)'],
   ['hearing-counsel-plaintiff', 'Counsel for Plaintiff/Applicant/Petitioner/Objector'],
   ['hearing-counsel-defendant', 'Counsel for Defendant/Respondent'], ['hearing-court-clerk', 'Court Clerk'],
   ['hearing-last-order', 'Last Court Order'], ['hearing-prayer', 'Current Prayer/Order/Direction Sought'],
   ['hearing-order-direction', 'Court Order/Direction'], ['hearing-next-court-date', 'Next Court Date'],
   ['hearing-consult-start', 'Consultation Start Time'], ['hearing-consult-end', 'Consultation End Time'],
-  ['hearing-record-date', 'Record Date'], ['hearing-recorded-by', 'Recorded By / Advocate Signature'],
+  ['hearing-record-date', 'Date'],
 ];
 
 async function saveHearing() {
