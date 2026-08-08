@@ -1215,6 +1215,71 @@ app.put('/api/case-status-notes/:caseId', requireCapability('view_reports'), asy
 });
 
 // ════════════════════════════════════════════════════════════════════════════
+//  CASE STATUS ENTRIES (the manual "Status of Cases Handled" report — every
+//  field typed in directly, not linked to a real case)
+// ════════════════════════════════════════════════════════════════════════════
+
+app.get('/api/case-status-entries', requireCapability('view_reports'), async (req, res) => {
+  const { q } = req.query;
+  try {
+    const conditions = [];
+    const values = [];
+    if (q) {
+      values.push(`%${q}%`);
+      conditions.push(`(case_no ILIKE $${values.length} OR parties ILIKE $${values.length} OR court ILIKE $${values.length} OR status ILIKE $${values.length} OR summary ILIKE $${values.length} OR remarks ILIKE $${values.length})`);
+    }
+    const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
+    const { rows } = await pool.query(`SELECT * FROM case_status_entries ${where} ORDER BY id`, values);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/case-status-entries', requireCapability('view_reports'), async (req, res) => {
+  const { caseNo, parties, court, summary, claimAmount, status, remarks } = req.body;
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO case_status_entries (case_no, parties, court, summary, claim_amount, status, remarks, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      [caseNo || null, parties || null, court || null, summary || null, claimAmount || null, status || null, remarks || null, req.user.id]
+    );
+    await logActivity(req.user.id, req.user.email, 'CREATE', 'case_status_entry', rows[0].id, null, rows[0], req);
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/case-status-entries/:id', requireCapability('view_reports'), async (req, res) => {
+  const { caseNo, parties, court, summary, claimAmount, status, remarks } = req.body;
+  try {
+    const { rows } = await pool.query(
+      `UPDATE case_status_entries SET
+        case_no = $1, parties = $2, court = $3, summary = $4, claim_amount = $5, status = $6, remarks = $7
+       WHERE id = $8 RETURNING *`,
+      [caseNo || null, parties || null, court || null, summary || null, claimAmount || null, status || null, remarks || null, req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Entry not found' });
+    await logActivity(req.user.id, req.user.email, 'UPDATE', 'case_status_entry', req.params.id, null, rows[0], req);
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/case-status-entries/:id', requireCapability('view_reports'), async (req, res) => {
+  try {
+    const { rows } = await pool.query('DELETE FROM case_status_entries WHERE id = $1 RETURNING *', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ error: 'Entry not found' });
+    await logActivity(req.user.id, req.user.email, 'DELETE', 'case_status_entry', req.params.id, rows[0], null, req);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
 //  TIMELINE (computed, not stored)
 // ════════════════════════════════════════════════════════════════════════════
 

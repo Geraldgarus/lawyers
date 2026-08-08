@@ -315,6 +315,32 @@ CREATE TABLE IF NOT EXISTS case_status_notes (
 );
 
 -- ============================================================
+-- CASE STATUS ENTRIES — the Case Status Report is now a fully manual
+-- record (matching the firm's paper "Status of Cases Handled" sheet sent
+-- to clients/insurers), not a view onto the cases table — every field is
+-- typed in directly and isn't tied to a real case_id. Supersedes
+-- case_status_notes above for this page; that table is left in place
+-- (dormant) rather than dropped, same convention as this app's other
+-- superseded columns/tables.
+-- ============================================================
+CREATE TABLE IF NOT EXISTS case_status_entries (
+  id           SERIAL PRIMARY KEY,
+  case_no      VARCHAR(150),
+  parties      TEXT,
+  court        VARCHAR(255),
+  summary      TEXT,
+  claim_amount NUMERIC(14,2),
+  status       TEXT,
+  remarks      TEXT,
+  created_by   INT REFERENCES users(id) ON DELETE SET NULL,
+  created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+DROP TRIGGER IF EXISTS trg_case_status_entries_updated_at ON case_status_entries;
+CREATE TRIGGER trg_case_status_entries_updated_at BEFORE UPDATE ON case_status_entries
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================
 -- HEARINGS (court dates — created only from inside a case)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS hearings (

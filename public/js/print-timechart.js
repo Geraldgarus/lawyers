@@ -1,7 +1,7 @@
-// Shared "Time Chart and Court Records" print template — used by the
-// per-Court-Date print button on case-detail.html and the per-case print
-// button on case-status-report.html, so both stay in sync with one
-// template instead of two copies drifting apart.
+// "Time Chart and Court Records" print template, used by the per-Court-Date
+// print button on case-detail.html. (Case Status Report used to reuse this
+// too, before it became a fully manual report unlinked from real cases —
+// it now prints its own table via window.print() instead.)
 // `win` is optional — pass an already-open window when the caller had to
 // await data first (e.g. an API fetch), since opening the window only
 // after an await breaks the direct-user-gesture chain most browsers

@@ -10,14 +10,19 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
-.csr-table td { vertical-align: top; }
-.csr-summary { max-width: 260px; font-size: 12.5px; color: var(--text-muted); }
+.csr-table td { vertical-align: top; white-space: pre-wrap; }
+.csr-summary { max-width: 240px; font-size: 12.5px; color: var(--text-muted); white-space: pre-wrap; }
 .print-header { display: none; }
 @media print {
   .print-header { display: block !important; text-align: center; margin-bottom: 18px; }
-  .print-header h1 { font-size: 20px; margin-bottom: 2px; }
-  .print-header p { font-size: 12px; color: #64748b; }
+  .print-header h1 { font-size: 16px; text-decoration: underline; margin-bottom: 4px; }
+  .print-header p { font-size: 12px; color: #000; }
+  .csr-table, .csr-table th, .csr-table td { border: 1px solid #000 !important; }
+  .csr-table th, .csr-table td { padding: 6px 8px !important; font-size: 11px !important; color: #000 !important; }
+  .csr-table th { background: #eee !important; -webkit-print-color-adjust: exact; }
   .csr-table th:last-child, .csr-table td:last-child { display: none; }
+  .card { border: none !important; box-shadow: none !important; }
+  .card-header { display: none !important; }
 }
 </style>
 <script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>
@@ -60,7 +65,7 @@
 <nav class="navbar">
   <div class="navbar-left">
     <button class="hamburger" id="hamburger-btn"><span class="hb-bar"></span><span class="hb-bar"></span><span class="hb-bar"></span></button>
-    <div><div class="page-title">Case Status Report</div><div class="page-subtitle">Running summary of every case handled by the firm</div></div>
+    <div><div class="page-title">Case Status Report</div><div class="page-subtitle">Manually recorded status of cases handled</div></div>
   </div>
   <div class="navbar-right">
     <button class="theme-toggle-btn" onclick="toggleTheme()" title="Switch to dark theme"><i class="fas fa-moon"></i></button>
@@ -79,16 +84,17 @@
 
 <main class="main-content" id="main-content">
   <div class="print-header">
-    <h1>Tanscar Attorneys</h1>
-    <p>Status of Cases Handled &middot; Generated <span id="print-date"></span></p>
+    <h1 id="print-title">STATUS OF CASES HANDLED BY TANSCAR ATTORNEYS</h1>
+    <p>AS AT <span id="print-date"></span></p>
   </div>
 
   <div class="filter-bar">
-    <div class="filter-group"><label>Status</label><select id="filter-status"><option value="">All Statuses</option></select></div>
-    <div class="filter-group" style="flex:1;"><label>Search</label><input type="text" id="filter-q" placeholder="Case number, parties, or court..."></div>
+    <div class="filter-group" style="flex:1;"><label>Search</label><input type="text" id="filter-q" placeholder="Case number, parties, court, status, or remarks..."></div>
+    <div class="filter-group" style="flex:1;"><label>Report Title (for print)</label><input type="text" id="print-title-input" placeholder="e.g. Strategis Insurance (T) Limited" oninput="updatePrintTitle()"></div>
     <button class="btn-gold" onclick="loadCaseStatusReport()"><i class="fas fa-search"></i> Apply</button>
     <button class="btn-outline" onclick="clearFilters()"><i class="fas fa-times"></i> Clear</button>
     <button class="btn-outline" onclick="window.print()"><i class="fas fa-print"></i> Print</button>
+    <button class="btn-primary" onclick="openEntryModal()"><i class="fas fa-plus"></i> Add Entry</button>
   </div>
 
   <div class="card">
@@ -107,22 +113,28 @@
   </div>
 </main>
 
-<!-- Edit Status Note Modal -->
-<div class="modal-overlay" id="note-modal-overlay">
-  <div class="modal">
+<!-- Add / Edit Entry Modal -->
+<div class="modal-overlay" id="entry-modal-overlay">
+  <div class="modal" style="max-width:640px;">
     <div class="modal-header">
-      <h3><i class="fas fa-pen"></i> Edit Case Status Notes — <span id="note-modal-case-number"></span></h3>
-      <button onclick="closeNoteModal()"><i class="fas fa-times"></i></button>
+      <h3><i class="fas fa-list-check"></i> <span id="entry-modal-title">Add Entry</span></h3>
+      <button onclick="closeEntryModal()"><i class="fas fa-times"></i></button>
     </div>
     <div class="modal-body">
-      <input type="hidden" id="note-case-id">
-      <div class="form-group"><label>Claim Amount</label><input type="number" min="0" step="0.01" class="form-control" id="note-claim-amount"></div>
-      <div class="form-group"><label>Summary</label><textarea class="form-control" id="note-summary" rows="4" placeholder="A narrative summary of the matter"></textarea></div>
-      <div class="form-group"><label>Remarks</label><textarea class="form-control" id="note-remarks" rows="3" placeholder="Additional comments or observations"></textarea></div>
+      <input type="hidden" id="entry-id">
+      <div class="form-row">
+        <div class="form-group"><label>Case No.</label><input class="form-control" id="entry-case-no" placeholder="e.g. Civil Case No. 12 of 2026"></div>
+        <div class="form-group"><label>Court</label><input class="form-control" id="entry-court" placeholder="e.g. In the District Court of Temeke"></div>
+      </div>
+      <div class="form-group"><label>Parties</label><input class="form-control" id="entry-parties" placeholder="e.g. A vs B"></div>
+      <div class="form-group"><label>Summary</label><textarea class="form-control" id="entry-summary" rows="5" placeholder="Narrative summary of the matter"></textarea></div>
+      <div class="form-group"><label>Claim Amount</label><input type="number" min="0" step="0.01" class="form-control" id="entry-claim-amount"></div>
+      <div class="form-group"><label>Status</label><textarea class="form-control" id="entry-status" rows="6" placeholder="Chronological progress notes, e.g.&#10;- On 16th October 2025, the matter was scheduled for mention.&#10;- On 18th December 2025, matter was scheduled for mediation."></textarea></div>
+      <div class="form-group"><label>Remarks</label><textarea class="form-control" id="entry-remarks" rows="3" placeholder="Additional comments or observations"></textarea></div>
     </div>
     <div class="modal-footer">
-      <button class="btn-outline" onclick="closeNoteModal()">Cancel</button>
-      <button class="btn-primary" onclick="saveNote()"><i class="fas fa-save"></i> Save</button>
+      <button class="btn-outline" onclick="closeEntryModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveEntry()"><i class="fas fa-save"></i> Save</button>
     </div>
   </div>
 </div>
@@ -130,53 +142,48 @@
 <script src="../js/api.js"></script>
 <script src="../js/utils.js"></script>
 <script src="../js/auth.js"></script>
-<script src="../js/print-timechart.js"></script>
 <script>
+let csrData = [];
+
 function clearFilters() {
-  document.getElementById('filter-status').value = '';
   document.getElementById('filter-q').value = '';
   loadCaseStatusReport();
 }
 
-let csrData = []; // cases merged with their case_status_notes row, keyed for the edit modal
+function updatePrintTitle() {
+  const title = document.getElementById('print-title-input').value.trim();
+  document.getElementById('print-title').textContent = title
+    ? `STATUS OF ${title.toUpperCase()} CASES HANDLED BY TANSCAR ATTORNEYS`
+    : 'STATUS OF CASES HANDLED BY TANSCAR ATTORNEYS';
+}
 
 async function loadCaseStatusReport() {
   const tbody = document.getElementById('csr-body');
   tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Loading...</td></tr>';
 
-  const status = document.getElementById('filter-status').value;
   const q = document.getElementById('filter-q').value.trim();
   const params = new URLSearchParams();
-  if (status) params.set('status', status);
   if (q) params.set('q', q);
 
   try {
-    const [cases, notes] = await Promise.all([
-      apiGet('/cases?' + params.toString()),
-      apiGet('/case-status-notes')
-    ]);
-    const notesByCase = {};
-    notes.forEach(n => { notesByCase[n.case_id] = n; });
-    csrData = cases.map(c => ({ ...c, note: notesByCase[c.id] || null }));
-
+    csrData = await apiGet('/case-status-entries?' + params.toString());
     if (!csrData.length) {
-      tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><i class="fas fa-list-check"></i>No cases found</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><i class="fas fa-list-check"></i>No entries yet — click "Add Entry" to record one</td></tr>';
       return;
     }
     tbody.innerHTML = csrData.map((c, i) => `
       <tr>
         <td>${i + 1}</td>
-        <td><strong>${escapeHtml(c.case_number)}</strong></td>
-        <td>${escapeHtml(c.parties) || '—'}${c.opposing_party ? `<br><span style="color:var(--text-muted);font-size:11.5px;">vs ${escapeHtml(c.opposing_party)}</span>` : ''}</td>
+        <td><strong>${escapeHtml(c.case_no) || '—'}</strong></td>
+        <td>${escapeHtml(c.parties) || '—'}</td>
         <td>${escapeHtml(c.court) || '—'}</td>
-        <td class="csr-summary">${escapeHtml(c.note && c.note.summary) || '—'}</td>
-        <td>${c.note && c.note.claim_amount != null ? fmtCurrency(c.note.claim_amount) : '—'}</td>
-        <td><span class="badge ${c.status}">${statusLabel(c.status)}</span></td>
-        <td class="csr-summary">${escapeHtml(c.note && c.note.remarks) || '—'}</td>
+        <td class="csr-summary">${escapeHtml(c.summary) || '—'}</td>
+        <td>${c.claim_amount != null ? fmtCurrency(c.claim_amount) : '—'}</td>
+        <td class="csr-summary">${escapeHtml(c.status) || '—'}</td>
+        <td class="csr-summary">${escapeHtml(c.remarks) || '—'}</td>
         <td style="white-space:nowrap;">
-          <button class="btn-icon" onclick="openNoteModal(${c.id})" title="Edit"><i class="fas fa-pen"></i></button>
-          <button class="btn-icon" onclick="printCase(${c.id})" title="Print"><i class="fas fa-print"></i></button>
-          <button class="btn-icon danger" onclick="deleteCase(${c.id}, '${escapeHtml(c.case_number).replace(/'/g, "\\'")}')" title="Delete"><i class="fas fa-trash"></i></button>
+          <button class="btn-icon" onclick="openEntryModal(${c.id})" title="Edit"><i class="fas fa-pen"></i></button>
+          <button class="btn-icon danger" onclick="deleteEntry(${c.id}, '${escapeHtml(c.case_no || 'this entry').replace(/'/g, "\\'")}')" title="Delete"><i class="fas fa-trash"></i></button>
         </td>
       </tr>
     `).join('');
@@ -186,58 +193,50 @@ async function loadCaseStatusReport() {
   }
 }
 
-function openNoteModal(caseId) {
-  const c = csrData.find(x => x.id === caseId);
-  if (!c) return;
-  document.getElementById('note-case-id').value = caseId;
-  document.getElementById('note-modal-case-number').textContent = c.case_number;
-  document.getElementById('note-claim-amount').value = c.note && c.note.claim_amount != null ? c.note.claim_amount : '';
-  document.getElementById('note-summary').value = (c.note && c.note.summary) || '';
-  document.getElementById('note-remarks').value = (c.note && c.note.remarks) || '';
-  document.getElementById('note-modal-overlay').classList.add('show');
+function openEntryModal(id) {
+  const c = id ? csrData.find(x => x.id === id) : null;
+  document.getElementById('entry-id').value = id || '';
+  document.getElementById('entry-modal-title').textContent = c ? 'Edit Entry' : 'Add Entry';
+  document.getElementById('entry-case-no').value = c ? (c.case_no || '') : '';
+  document.getElementById('entry-court').value = c ? (c.court || '') : '';
+  document.getElementById('entry-parties').value = c ? (c.parties || '') : '';
+  document.getElementById('entry-summary').value = c ? (c.summary || '') : '';
+  document.getElementById('entry-claim-amount').value = c && c.claim_amount != null ? c.claim_amount : '';
+  document.getElementById('entry-status').value = c ? (c.status || '') : '';
+  document.getElementById('entry-remarks').value = c ? (c.remarks || '') : '';
+  document.getElementById('entry-modal-overlay').classList.add('show');
 }
-function closeNoteModal() { document.getElementById('note-modal-overlay').classList.remove('show'); }
+function closeEntryModal() { document.getElementById('entry-modal-overlay').classList.remove('show'); }
 
-async function saveNote() {
-  const caseId = document.getElementById('note-case-id').value;
+async function saveEntry() {
+  const id = document.getElementById('entry-id').value;
+  const payload = {
+    caseNo: document.getElementById('entry-case-no').value.trim() || null,
+    court: document.getElementById('entry-court').value.trim() || null,
+    parties: document.getElementById('entry-parties').value.trim() || null,
+    summary: document.getElementById('entry-summary').value.trim() || null,
+    claimAmount: document.getElementById('entry-claim-amount').value || null,
+    status: document.getElementById('entry-status').value.trim() || null,
+    remarks: document.getElementById('entry-remarks').value.trim() || null
+  };
   try {
-    await apiPut(`/case-status-notes/${caseId}`, {
-      claimAmount: document.getElementById('note-claim-amount').value || null,
-      summary: document.getElementById('note-summary').value.trim() || null,
-      remarks: document.getElementById('note-remarks').value.trim() || null
-    });
-    closeNoteModal();
-    showToast('Notes saved');
+    if (id) {
+      await apiPut(`/case-status-entries/${id}`, payload);
+      showToast('Entry updated');
+    } else {
+      await apiPost('/case-status-entries', payload);
+      showToast('Entry added');
+    }
+    closeEntryModal();
     loadCaseStatusReport();
   } catch (err) { showToast(err.message, 'error'); }
 }
 
-// Prints the same Time Chart form as the per-Court-Date print button on
-// the case detail page, using that case's most recent Court Date entry
-// (same "latest" convention Overview's Last Court Appearance uses).
-// The window is opened synchronously, before the data is fetched — doing
-// it after an await would break the direct-user-gesture chain browsers
-// require to avoid treating it as a blocked popup.
-async function printCase(id) {
-  const win = window.open('', '_blank', 'width=850,height=1000');
-  if (!win) { showToast('Please allow popups to print', 'error'); return; }
+async function deleteEntry(id, label) {
+  if (!confirm(`Delete the entry for "${label}"? This cannot be undone.`)) return;
   try {
-    const [c, hearings] = await Promise.all([
-      apiGet(`/cases/${id}`),
-      apiGet(`/cases/${id}/hearings`)
-    ]);
-    printTimeChart(c, hearings[0] || null, win);
-  } catch (err) {
-    win.close();
-    showToast(err.message, 'error');
-  }
-}
-
-async function deleteCase(id, caseNumber) {
-  if (!confirm(`Delete case ${caseNumber}? This permanently removes the case and everything in it (hearings, documents, tasks, expenses, invoices, notes). This cannot be undone.`)) return;
-  try {
-    await apiDelete(`/cases/${id}`);
-    showToast('Case deleted');
+    await apiDelete(`/case-status-entries/${id}`);
+    showToast('Entry deleted');
     loadCaseStatusReport();
   } catch (err) { showToast(err.message, 'error'); }
 }
@@ -249,11 +248,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
   document.getElementById('print-date').textContent = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
-  try {
-    const statuses = await apiGet('/case-statuses');
-    document.getElementById('filter-status').innerHTML = '<option value="">All Statuses</option>' +
-      statuses.map(s => `<option value="${s.name}">${escapeHtml(s.label)}</option>`).join('');
-  } catch (e) {}
   loadCaseStatusReport();
 });
 </script>

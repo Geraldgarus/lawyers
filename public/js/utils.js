@@ -30,8 +30,8 @@ function fmtCurrency(n) {
 }
 
 // Formats a "HH:MM[:SS]" time-only string (e.g. a court/consultation
-// start/end time) as "h:MM AM/PM" — shared because print-timechart.js
-// (used on both case-detail.html and case-status-report.html) needs it.
+// start/end time) as "h:MM AM/PM" — lives here (not case-detail.html)
+// because print-timechart.js needs it too.
 function fmtTimeStr(t) {
   if (!t) return '—';
   const [h, m] = String(t).split(':').map(Number);
