@@ -149,7 +149,7 @@ async function logActivity(userId, username, action, entityType, entityId, oldDa
 // ============================================================
 const pages = [
   'dashboard', 'clients', 'cases', 'case-detail', 'calendar', 'documents',
-  'tasks', 'billing', 'expenses', 'reports', 'case-status-report', 'settings', 'users',
+  'tasks', 'billing', 'expenses', 'reports', 'case-status-report', 'recent-activity', 'settings', 'users',
   'permissions', 'user-guide'
 ];
 pages.forEach(page => {
@@ -530,7 +530,7 @@ app.put('/api/role-capabilities/:roleName', requireCapability('manage_users'), a
 // isn't listed because it's always reachable (nowhere to land otherwise).
 const GRANTABLE_PAGES = [
   'clients', 'cases', 'calendar', 'documents', 'tasks', 'billing', 'expenses',
-  'reports', 'case-status-report', 'settings', 'users', 'permissions', 'user-guide'
+  'reports', 'case-status-report', 'recent-activity', 'settings', 'users', 'permissions', 'user-guide'
 ];
 
 async function getUserPageAccess(userId) {
@@ -2074,6 +2074,32 @@ app.get('/api/reports/cases-summary', requireCapability('view_reports'), async (
          array_agg(case_number ORDER BY case_number) AS case_numbers,
          array_agg(id ORDER BY case_number) AS case_ids
        FROM cases ${where} GROUP BY status`,
+      values
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Full audit trail — the Dashboard's own recentActivity (in
+// GET /api/dashboard/summary) is capped to the latest 15 rows for a quick
+// glance; this is the same activity_logs table with real filtering and a
+// higher cap, for the dedicated Recent Activities page.
+app.get('/api/activity-log', requireCapability('view_reports'), async (req, res) => {
+  const { from, to, q } = req.query;
+  try {
+    const conditions = [];
+    const values = [];
+    if (from) { values.push(from); conditions.push(`created_at >= $${values.length}`); }
+    if (to) { values.push(to + ' 23:59:59'); conditions.push(`created_at <= $${values.length}`); }
+    if (q) {
+      values.push(`%${q}%`);
+      conditions.push(`(username ILIKE $${values.length} OR action ILIKE $${values.length} OR entity_type ILIKE $${values.length})`);
+    }
+    const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
+    const { rows } = await pool.query(
+      `SELECT * FROM activity_logs ${where} ORDER BY created_at DESC LIMIT 500`,
       values
     );
     res.json(rows);

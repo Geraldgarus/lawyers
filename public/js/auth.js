@@ -22,7 +22,7 @@ async function logout() {
 // who isn't a lawyer or admin — purely a UX nicety, every one of these is
 // independently enforced server-side via requireCapability() so this is not
 // the real security boundary.
-const LAWYER_ONLY_PAGES = ['billing', 'reports', 'case-status-report', 'users', 'permissions'];
+const LAWYER_ONLY_PAGES = ['billing', 'reports', 'case-status-report', 'recent-activity', 'users', 'permissions'];
 const hasFullAccessUI = user => user.role === 'lawyer' || user.role === 'admin';
 
 function initPageChrome() {

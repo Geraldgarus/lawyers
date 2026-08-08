@@ -3,13 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Billing &amp; Payments - Tanscar Attorneys</title>
+<title>Recent Activities - Tanscar Attorneys</title>
 <link rel="stylesheet" href="../css/style.css">
 <script src="../js/theme.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<style>body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}</style>
+<style>
+body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
+.activity-item { display:flex; gap:12px; align-items:flex-start; padding:12px 0; border-bottom:1px solid var(--border); font-size:13px; }
+.activity-item:last-child { border-bottom:none; }
+.activity-icon { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:12px; margin-top:1px; }
+.activity-icon.create { background:var(--success-light); color:var(--success-text); }
+.activity-icon.update { background:var(--info-light); color:var(--info-text); }
+.activity-icon.delete { background:var(--danger-light); color:var(--danger-text); }
+.activity-icon.auth { background:var(--neutral-bg); color:var(--neutral-text); }
+.activity-text { color:var(--text-dark); }
+.activity-text b { font-weight:600; }
+.activity-time { color:var(--text-muted); font-size:11.5px; margin-top:2px; }
+</style>
 <script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>
 </head>
 <body>
@@ -50,7 +62,7 @@
 <nav class="navbar">
   <div class="navbar-left">
     <button class="hamburger" id="hamburger-btn"><span class="hb-bar"></span><span class="hb-bar"></span><span class="hb-bar"></span></button>
-    <div><div class="page-title">Billing &amp; Payments</div><div class="page-subtitle">Invoices across all cases</div></div>
+    <div><div class="page-title">Recent Activities</div><div class="page-subtitle">Full activity log across the system</div></div>
   </div>
   <div class="navbar-right">
     <button class="theme-toggle-btn" onclick="toggleTheme()" title="Switch to dark theme"><i class="fas fa-moon"></i></button>
@@ -69,35 +81,16 @@
 
 <main class="main-content" id="main-content">
   <div class="filter-bar">
-    <div class="filter-group"><label>From</label><input type="date" id="filter-from"></div>
-    <div class="filter-group"><label>To</label><input type="date" id="filter-to"></div>
-    <div class="filter-group">
-      <label>Status</label>
-      <select id="filter-status">
-        <option value="">All</option><option value="unpaid">Unpaid</option>
-        <option value="partial">Partial</option><option value="paid">Paid</option>
-      </select>
-    </div>
-    <button class="btn-gold" onclick="loadInvoices()"><i class="fas fa-search"></i> Filter</button>
+    <div class="filter-group"><label>From Date</label><input type="date" id="filter-from"></div>
+    <div class="filter-group"><label>To Date</label><input type="date" id="filter-to"></div>
+    <div class="filter-group" style="flex:1;"><label>Search</label><input type="text" id="filter-q" placeholder="User, action, or record type..."></div>
+    <button class="btn-gold" onclick="loadActivityLog()"><i class="fas fa-search"></i> Apply</button>
     <button class="btn-outline" onclick="clearFilters()"><i class="fas fa-times"></i> Clear</button>
-    <div style="flex:1;"></div>
-    <span style="font-size:12px;color:var(--text-muted);align-self:center;"><i class="fas fa-circle-info"></i> To create an invoice, open the relevant case &rarr; Payments tab</span>
-  </div>
-
-  <div class="stats-row">
-    <div class="stat-card"><div class="stat-label">Total Billed</div><div class="stat-value" id="stat-billed">—</div></div>
-    <div class="stat-card"><div class="stat-label">Total Collected</div><div class="stat-value" id="stat-collected">—</div></div>
-    <div class="stat-card"><div class="stat-label">Outstanding Balance</div><div class="stat-value" id="stat-outstanding" style="color:var(--danger);">—</div></div>
   </div>
 
   <div class="card">
-    <div class="card-header"><h3><i class="fas fa-file-invoice-dollar"></i> All Invoices</h3></div>
-    <div class="table-wrap">
-      <table class="data-table">
-        <thead><tr><th>Invoice #</th><th>Case</th><th>Client</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
-        <tbody id="invoices-body"><tr><td colspan="7" class="empty-state">Loading...</td></tr></tbody>
-      </table>
-    </div>
+    <div class="card-header"><h3><i class="fas fa-clock-rotate-left"></i> Recent Activities</h3></div>
+    <div class="card-body" id="activity-list"><div class="empty-state">Loading...</div></div>
   </div>
 </main>
 
@@ -105,62 +98,76 @@
 <script src="../js/utils.js"></script>
 <script src="../js/auth.js"></script>
 <script>
-async function loadInvoices() {
-  setLoading('invoices-body');
-  const params = new URLSearchParams();
-  const status = document.getElementById('filter-status').value;
-  const from = document.getElementById('filter-from').value;
-  const to = document.getElementById('filter-to').value;
-  if (status) params.set('status', status);
-  if (from) params.set('from', from);
-  if (to) params.set('to', to);
-  try {
-    const invoices = await apiGet('/invoices?' + params.toString());
-    renderInvoices(invoices);
-  } catch (err) {
-    document.getElementById('invoices-body').innerHTML = '<tr><td colspan="7" class="empty-state">Failed to load invoices</td></tr>';
-    showToast(err.message, 'error');
+const ACTIVITY_ICONS = {
+  case: 'fa-briefcase', client: 'fa-address-book', hearing: 'fa-gavel',
+  expense: 'fa-receipt', payment: 'fa-money-bill-wave', invoice: 'fa-file-invoice-dollar',
+  note: 'fa-note-sticky', document: 'fa-file', task: 'fa-list-check', user: 'fa-user',
+  appointment: 'fa-calendar-check'
+};
+function activityIcon(entityType) { return ACTIVITY_ICONS[entityType] || 'fa-circle-dot'; }
+function activityClass(action) {
+  if (action === 'CREATE') return 'create';
+  if (action === 'UPDATE') return 'update';
+  if (action === 'DELETE') return 'delete';
+  return 'auth';
+}
+function activityText(a) {
+  const who = `<b>${escapeHtml(a.username)}</b>`;
+  const entity = escapeHtml(String(a.entity_type || '').replace(/_/g, ' '));
+  switch (a.action) {
+    case 'CREATE': return `${who} created a ${entity}`;
+    case 'UPDATE': return `${who} updated a ${entity}`;
+    case 'DELETE': return `${who} deleted a ${entity}`;
+    case 'LOGIN': return `${who} logged in`;
+    case 'LOGOUT': return `${who} logged out`;
+    default: return `${who} ${escapeHtml(a.action.toLowerCase())} a ${entity}`;
   }
 }
 
 function clearFilters() {
-  document.getElementById('filter-status').value = '';
   document.getElementById('filter-from').value = '';
   document.getElementById('filter-to').value = '';
-  loadInvoices();
+  document.getElementById('filter-q').value = '';
+  loadActivityLog();
 }
 
-function renderInvoices(invoices) {
-  const tbody = document.getElementById('invoices-body');
-  const totalBilled = invoices.reduce((s, i) => s + parseFloat(i.total_amount), 0);
-  const totalCollected = invoices.reduce((s, i) => s + parseFloat(i.amount_paid), 0);
-  document.getElementById('stat-billed').innerText = fmtCurrency(totalBilled);
-  document.getElementById('stat-collected').innerText = fmtCurrency(totalCollected);
-  document.getElementById('stat-outstanding').innerText = fmtCurrency(totalBilled - totalCollected);
+async function loadActivityLog() {
+  const list = document.getElementById('activity-list');
+  list.innerHTML = '<div class="empty-state">Loading...</div>';
 
-  if (!invoices.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-file-invoice-dollar"></i>No invoices found</td></tr>'; return; }
-  tbody.innerHTML = invoices.map(i => {
-    const balance = parseFloat(i.total_amount) - parseFloat(i.amount_paid);
-    return `
-    <tr>
-      <td><strong>${escapeHtml(i.invoice_number)}</strong></td>
-      <td><a href="/case-detail?id=${i.case_id}" style="color:var(--accent-gold);">${escapeHtml(i.case_number)}</a></td>
-      <td>${escapeHtml(i.client_name)}</td>
-      <td>${fmtCurrency(i.total_amount)}</td>
-      <td>${fmtCurrency(i.amount_paid)}</td>
-      <td style="color:${balance > 0 ? 'var(--danger)' : 'var(--success)'};font-weight:600;">${fmtCurrency(balance)}</td>
-      <td><span class="badge ${i.status}">${statusLabel(i.status)}</span></td>
-    </tr>`;
-  }).join('');
+  const from = document.getElementById('filter-from').value;
+  const to = document.getElementById('filter-to').value;
+  const q = document.getElementById('filter-q').value.trim();
+  const params = new URLSearchParams();
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  if (q) params.set('q', q);
+
+  try {
+    const activity = await apiGet('/activity-log?' + params.toString());
+    list.innerHTML = activity.length
+      ? activity.map(a => `
+        <div class="activity-item">
+          <div class="activity-icon ${activityClass(a.action)}"><i class="fas ${activityIcon(a.entity_type)}"></i></div>
+          <div style="flex:1;">
+            <div class="activity-text">${activityText(a)}</div>
+            <div class="activity-time">${fmtDateTime(a.created_at)}</div>
+          </div>
+        </div>`).join('')
+      : '<div class="empty-state"><i class="fas fa-clock-rotate-left"></i>No activity found</div>';
+  } catch (err) {
+    list.innerHTML = '<div class="empty-state">Failed to load activity</div>';
+    showToast(err.message, 'error');
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   const user = initPageChrome();
   if (user && !hasFullAccessUI(user)) {
-    document.getElementById('main-content').innerHTML = '<div class="empty-state"><i class="fas fa-lock"></i>You do not have permission to view billing</div>';
+    document.getElementById('main-content').innerHTML = '<div class="empty-state"><i class="fas fa-lock"></i>You do not have permission to view this page</div>';
     return;
   }
-  loadInvoices();
+  loadActivityLog();
 });
 </script>
 </body>

@@ -24,17 +24,6 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 @media (max-width:700px) { .fin-charts-row { grid-template-columns:1fr; } }
 .fin-chart-box { position:relative; height:220px; }
 
-.activity-item { display:flex; gap:10px; align-items:flex-start; padding:9px 0; border-bottom:1px solid var(--border); font-size:12.5px; }
-.activity-item:last-child { border-bottom:none; }
-.activity-icon { width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:11px; margin-top:1px; }
-.activity-icon.create { background:var(--success-light); color:var(--success-text); }
-.activity-icon.update { background:var(--info-light); color:var(--info-text); }
-.activity-icon.delete { background:var(--danger-light); color:var(--danger-text); }
-.activity-icon.auth { background:var(--neutral-bg); color:var(--neutral-text); }
-.activity-text { color:var(--text-dark); }
-.activity-text b { font-weight:600; }
-.activity-time { color:var(--text-muted); font-size:11px; margin-top:1px; }
-
 .notif-wrap { position:relative; }
 .notif-btn { position:relative; background:none; border:1px solid var(--border); border-radius:8px; padding:8px 10px; cursor:pointer; color:var(--text-dark); font-size:15px; }
 .notif-btn:hover { background:var(--hover-tint); }
@@ -75,6 +64,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
     <div class="nav-section-label">Reports</div>
     <a href="/reports" class="nav-item" data-page="reports"><i class="fas fa-square-poll-vertical"></i> Reports</a>
     <a href="/case-status-report" class="nav-item" data-page="case-status-report"><i class="fas fa-list-check"></i> Case Status Report</a>
+    <a href="/recent-activity" class="nav-item" data-page="recent-activity"><i class="fas fa-clock-rotate-left"></i> Recent Activities</a>
     <div class="nav-section-label">Admin</div>
     <a href="/settings" class="nav-item" data-page="settings"><i class="fas fa-gear"></i> Settings</a>
     <a href="/users" class="nav-item" data-page="users"><i class="fas fa-user-shield"></i> User Management</a>
@@ -119,18 +109,18 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 
   <div class="stats-row" id="stats-row">
     <div class="stat-card"><div class="stat-label">Active Cases</div><div class="stat-value" id="stat-active">—</div></div>
-    <div class="stat-card"><div class="stat-label">Today's Hearings</div><div class="stat-value" id="stat-hearings">—</div></div>
-    <div class="stat-card"><div class="stat-label">Upcoming Hearings</div><div class="stat-value" id="stat-upcoming-hearings">—</div></div>
+    <div class="stat-card"><div class="stat-label">Today's Court Hearings</div><div class="stat-value" id="stat-hearings">—</div></div>
+    <div class="stat-card"><div class="stat-label">Upcoming Court Dates</div><div class="stat-value" id="stat-upcoming-hearings">—</div></div>
     <div class="stat-card" id="stat-outstanding-card" style="display:none;"><div class="stat-label">Outstanding Invoices</div><div class="stat-value" id="stat-outstanding" style="color:var(--danger);">—</div></div>
   </div>
 
   <div class="dash-grid">
     <div class="card">
-      <div class="card-header"><h3><i class="fas fa-gavel"></i> Today's Hearings</h3></div>
+      <div class="card-header"><h3><i class="fas fa-gavel"></i> Today's Court Hearings</h3></div>
       <div class="card-body" id="today-hearings"><div class="empty-state">Loading...</div></div>
     </div>
     <div class="card">
-      <div class="card-header"><h3><i class="fas fa-calendar-check"></i> Upcoming Hearings</h3></div>
+      <div class="card-header"><h3><i class="fas fa-calendar-check"></i> Upcoming Court Dates</h3></div>
       <div class="card-body" id="upcoming-hearings"><div class="empty-state">Loading...</div></div>
     </div>
   </div>
@@ -154,43 +144,12 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
     <div class="card-header"><h3><i class="fas fa-chart-pie"></i> Case Status</h3></div>
     <div class="card-body" id="case-status"><div class="empty-state">Loading...</div></div>
   </div>
-
-  <div class="card">
-    <div class="card-header"><h3><i class="fas fa-clock-rotate-left"></i> Recent Activity</h3></div>
-    <div class="card-body" id="recent-activity"><div class="empty-state">Loading...</div></div>
-  </div>
 </main>
 
 <script src="../js/api.js"></script>
 <script src="../js/utils.js"></script>
 <script src="../js/auth.js"></script>
 <script>
-const ACTIVITY_ICONS = {
-  case: 'fa-briefcase', client: 'fa-address-book', hearing: 'fa-gavel',
-  expense: 'fa-receipt', payment: 'fa-money-bill-wave', invoice: 'fa-file-invoice-dollar',
-  note: 'fa-note-sticky', document: 'fa-file', task: 'fa-list-check', user: 'fa-user',
-  appointment: 'fa-calendar-check'
-};
-function activityIcon(entityType) { return ACTIVITY_ICONS[entityType] || 'fa-circle-dot'; }
-function activityClass(action) {
-  if (action === 'CREATE') return 'create';
-  if (action === 'UPDATE') return 'update';
-  if (action === 'DELETE') return 'delete';
-  return 'auth';
-}
-function activityText(a) {
-  const who = `<b>${escapeHtml(a.username)}</b>`;
-  const entity = escapeHtml(String(a.entity_type || '').replace(/_/g, ' '));
-  switch (a.action) {
-    case 'CREATE': return `${who} created a ${entity}`;
-    case 'UPDATE': return `${who} updated a ${entity}`;
-    case 'DELETE': return `${who} deleted a ${entity}`;
-    case 'LOGIN': return `${who} logged in`;
-    case 'LOGOUT': return `${who} logged out`;
-    default: return `${who} ${escapeHtml(a.action.toLowerCase())} a ${entity}`;
-  }
-}
-
 let finDoughnutChart, finBarChart;
 function renderFinancialCharts(revenue, expenses, profit) {
   const doughnutCtx = document.getElementById('fin-doughnut-chart').getContext('2d');
@@ -253,7 +212,7 @@ async function loadDashboard() {
           <span><a href="/case-detail?id=${h.case_id}" style="color:var(--accent-gold);font-weight:600;">${escapeHtml(h.case_number)}</a> — ${escapeHtml(h.client_name)}</span>
           <span>${h.next_court_date ? new Date(h.next_court_date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : 'Today'}</span>
         </div>`).join('')
-      : '<div class="empty-state">No hearings today</div>';
+      : '<div class="empty-state">No court hearings today</div>';
 
     document.getElementById('upcoming-hearings').innerHTML = data.upcomingHearings.length
       ? data.upcomingHearings.map(h => `
@@ -261,7 +220,7 @@ async function loadDashboard() {
           <span><a href="/case-detail?id=${h.case_id}" style="color:var(--accent-gold);font-weight:600;">${escapeHtml(h.case_number)}</a> — ${escapeHtml(h.client_name)}</span>
           <span>${fmtDateTime(h.next_court_date)}</span>
         </div>`).join('')
-      : '<div class="empty-state">No upcoming hearings</div>';
+      : '<div class="empty-state">No upcoming court dates</div>';
 
     document.getElementById('case-status').innerHTML = data.caseStatusCounts.length
       ? data.caseStatusCounts.map(s => {
@@ -277,17 +236,6 @@ async function loadDashboard() {
             </div>`;
         }).join('')
       : '<div class="empty-state">No cases yet</div>';
-
-    document.getElementById('recent-activity').innerHTML = data.recentActivity.length
-      ? data.recentActivity.map(a => `
-        <div class="activity-item">
-          <div class="activity-icon ${activityClass(a.action)}"><i class="fas ${activityIcon(a.entity_type)}"></i></div>
-          <div style="flex:1;">
-            <div class="activity-text">${activityText(a)}</div>
-            <div class="activity-time">${fmtDateTime(a.created_at)}</div>
-          </div>
-        </div>`).join('')
-      : '<div class="empty-state">No activity yet</div>';
 
     renderNotifications(data.todayHearings, data.upcomingAppointments);
 
@@ -310,7 +258,7 @@ function renderNotifications(todayHearings, upcomingAppointments) {
 
   let html = '';
   if (todayHearings.length) {
-    html += `<div class="notif-section-label">Today's Hearings (${todayHearings.length})</div>`;
+    html += `<div class="notif-section-label">Today's Court Hearings (${todayHearings.length})</div>`;
     html += todayHearings.map(h => `
       <div class="notif-item">
         <i class="fas fa-gavel"></i>
