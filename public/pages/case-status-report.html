@@ -183,6 +183,7 @@ async function loadCaseStatusReport() {
         <td class="csr-summary">${escapeHtml(c.remarks) || '—'}</td>
         <td style="white-space:nowrap;">
           <button class="btn-icon" onclick="openEntryModal(${c.id})" title="Edit"><i class="fas fa-pen"></i></button>
+          <button class="btn-icon" onclick="printEntry(${c.id})" title="Print this entry"><i class="fas fa-print"></i></button>
           <button class="btn-icon danger" onclick="deleteEntry(${c.id}, '${escapeHtml(c.case_no || 'this entry').replace(/'/g, "\\'")}')" title="Delete"><i class="fas fa-trash"></i></button>
         </td>
       </tr>
@@ -219,6 +220,14 @@ async function saveEntry() {
     status: document.getElementById('entry-status').value.trim() || null,
     remarks: document.getElementById('entry-remarks').value.trim() || null
   };
+
+  // Same case number can't be recorded twice — checked here for instant
+  // feedback; the server enforces it for real via a unique constraint.
+  if (payload.caseNo) {
+    const dupe = csrData.find(x => x.case_no && x.case_no.trim().toLowerCase() === payload.caseNo.toLowerCase() && String(x.id) !== id);
+    if (dupe) { showToast(`An entry for case number "${payload.caseNo}" already exists`, 'error'); return; }
+  }
+
   try {
     if (id) {
       await apiPut(`/case-status-entries/${id}`, payload);
@@ -230,6 +239,66 @@ async function saveEntry() {
     closeEntryModal();
     loadCaseStatusReport();
   } catch (err) { showToast(err.message, 'error'); }
+}
+
+// Prints just this one entry as its own copy of the paper form — a client
+// or insurer is usually sent the status of their own case, not the whole
+// firm-wide table. Opened synchronously (no data to await, csrData is
+// already loaded) so it isn't treated as a blocked popup.
+function printEntry(id) {
+  const c = csrData.find(x => x.id === id);
+  if (!c) return;
+  const win = window.open('', '_blank', 'width=850,height=1000');
+  if (!win) { showToast('Please allow popups to print', 'error'); return; }
+
+  const title = document.getElementById('print-title-input').value.trim();
+  const heading = title
+    ? `STATUS OF ${title.toUpperCase()} CASES HANDLED BY TANSCAR ATTORNEYS`
+    : 'STATUS OF CASES HANDLED BY TANSCAR ATTORNEYS';
+  const asAt = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
+  const cell = v => (v || '—').toString().replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
+
+  win.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Case Status — ${cell(c.case_no)}</title>
+      <style>
+        @page { size: A4 landscape; margin: 14mm; }
+        body { font-family: Georgia, 'Times New Roman', serif; color: #000; padding: 0; }
+        h1 { font-size: 16px; text-decoration: underline; text-align: center; margin-bottom: 4px; }
+        p.as-at { text-align: center; font-size: 12px; margin-bottom: 18px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #000; padding: 8px 10px; font-size: 12px; text-align: left; vertical-align: top; white-space: pre-wrap; }
+        th { background: #eee; -webkit-print-color-adjust: exact; }
+      </style>
+    </head>
+    <body>
+      <h1>${heading}</h1>
+      <p class="as-at">AS AT ${asAt}</p>
+      <table>
+        <thead>
+          <tr><th>S/No.</th><th>Case No.</th><th>Parties</th><th>Court</th><th>Summary</th><th>Claim Amount</th><th>Status</th><th>Remarks</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>${cell(c.case_no)}</td>
+            <td>${cell(c.parties)}</td>
+            <td>${cell(c.court)}</td>
+            <td>${cell(c.summary)}</td>
+            <td>${c.claim_amount != null ? fmtCurrency(c.claim_amount) : '—'}</td>
+            <td>${cell(c.status)}</td>
+            <td>${cell(c.remarks)}</td>
+          </tr>
+        </tbody>
+      </table>
+      <script>window.onload = function() { setTimeout(function(){ window.print(); }, 300); };<\/script>
+    </body>
+    </html>
+  `);
+  win.document.close();
 }
 
 async function deleteEntry(id, label) {

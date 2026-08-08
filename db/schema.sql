@@ -339,6 +339,16 @@ CREATE TABLE IF NOT EXISTS case_status_entries (
 DROP TRIGGER IF EXISTS trg_case_status_entries_updated_at ON case_status_entries;
 CREATE TRIGGER trg_case_status_entries_updated_at BEFORE UPDATE ON case_status_entries
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- Same case number can't be recorded twice (blank case numbers are exempt —
+-- Postgres treats every NULL as distinct, so several blank entries are
+-- fine). ADD CONSTRAINT has no IF NOT EXISTS form, hence the DO block —
+-- and re-adding a named UNIQUE constraint raises duplicate_table (42P07),
+-- not duplicate_object, because it's really the backing index's name that
+-- collides.
+DO $$ BEGIN
+  ALTER TABLE case_status_entries ADD CONSTRAINT case_status_entries_case_no_key UNIQUE (case_no);
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
 
 -- ============================================================
 -- HEARINGS (court dates — created only from inside a case)

@@ -1237,7 +1237,8 @@ app.get('/api/case-status-entries', requireCapability('view_reports'), async (re
 });
 
 app.post('/api/case-status-entries', requireCapability('view_reports'), async (req, res) => {
-  const { caseNo, parties, court, summary, claimAmount, status, remarks } = req.body;
+  let { caseNo, parties, court, summary, claimAmount, status, remarks } = req.body;
+  caseNo = caseNo ? caseNo.trim() : null;
   try {
     const { rows } = await pool.query(
       `INSERT INTO case_status_entries (case_no, parties, court, summary, claim_amount, status, remarks, created_by)
@@ -1247,12 +1248,17 @@ app.post('/api/case-status-entries', requireCapability('view_reports'), async (r
     await logActivity(req.user.id, req.user.email, 'CREATE', 'case_status_entry', rows[0].id, null, rows[0], req);
     res.status(201).json(rows[0]);
   } catch (err) {
+    // 23505 = unique_violation — this case number is already recorded.
+    if (err.code === '23505') {
+      return res.status(409).json({ error: `An entry for case number "${caseNo}" already exists` });
+    }
     res.status(500).json({ error: err.message });
   }
 });
 
 app.put('/api/case-status-entries/:id', requireCapability('view_reports'), async (req, res) => {
-  const { caseNo, parties, court, summary, claimAmount, status, remarks } = req.body;
+  let { caseNo, parties, court, summary, claimAmount, status, remarks } = req.body;
+  caseNo = caseNo ? caseNo.trim() : null;
   try {
     const { rows } = await pool.query(
       `UPDATE case_status_entries SET
@@ -1264,6 +1270,9 @@ app.put('/api/case-status-entries/:id', requireCapability('view_reports'), async
     await logActivity(req.user.id, req.user.email, 'UPDATE', 'case_status_entry', req.params.id, null, rows[0], req);
     res.json(rows[0]);
   } catch (err) {
+    if (err.code === '23505') {
+      return res.status(409).json({ error: `An entry for case number "${caseNo}" already exists` });
+    }
     res.status(500).json({ error: err.message });
   }
 });
