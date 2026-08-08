@@ -18,6 +18,11 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 .case-meta-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; }
 .case-meta-grid .m-label { font-size:10.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
 .case-meta-grid .m-value { font-size:13.5px; font-weight:600; color:var(--text-dark); }
+/* The View Court Date modal renders the exact same markup as the print
+   button (buildTimeChartHtml in print-timechart.js), scoped under this
+   wrapper — see the injected <style> below for the shared rule text.
+   Explicit white/black regardless of theme, matching the printed page. */
+.tc-doc { background:#fff; color:#1a1a1a; font-family:Georgia,'Times New Roman',serif; font-size:13px; line-height:1.9; padding:22px; border-radius:8px; }
 </style>
 <script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>
 </head>
@@ -226,7 +231,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 
 <!-- View Court Date Modal — full Time Chart & Court Records detail, read-only -->
 <div class="modal-overlay" id="view-hearing-modal-overlay">
-  <div class="modal" style="max-width:640px;">
+  <div class="modal" style="max-width:760px;">
     <div class="modal-header"><h3><i class="fas fa-file-lines"></i> Time Chart and Court Records</h3><button onclick="closeModal('view-hearing-modal-overlay')"><i class="fas fa-times"></i></button></div>
     <div class="modal-body" id="view-hearing-body"></div>
     <div class="modal-footer">
@@ -382,6 +387,8 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 <script src="../js/auth.js"></script>
 <script src="../js/print-timechart.js"></script>
 <script>
+document.head.insertAdjacentHTML('beforeend', `<style>${timeChartStyles('.tc-doc')}</style>`);
+
 const CASE_ID = new URLSearchParams(window.location.search).get('id');
 let currentCase = null;
 let currentUser = null;
@@ -738,53 +745,15 @@ async function deleteHearing(id) {
 
 // ---------- VIEW / PRINT — Time Chart and Court Records, full detail ----------
 // fmtTimeStr() now lives in utils.js (shared with print-timechart.js).
-
-// Exact field names from the firm's Time Chart and Court Records sheet —
-// case-level fields come from currentCase, per-visit fields from the
-// selected court date (hearing) record.
-function buildTimeChartFields(h) {
-  const c = currentCase;
-  return [
-    ['Court Name', h.court],
-    ['Region', h.region],
-    ['Case Number', c.case_number],
-    ['Case Year', c.case_year],
-    ['Parties', c.parties],
-    ['Versus (Opponent)', c.opposing_party],
-    ['Presiding Judge/Magistrate', h.presiding_judge],
-    ['Court Proceeding Type', h.proceeding_type],
-    ['Proceeding Date', h.hearing_date ? fmtDate(h.hearing_date) : null],
-    ['Counsel for Plaintiff/Applicant/Petitioner/Objector', h.counsel_plaintiff],
-    ['Counsel for Defendant/Respondent', h.counsel_defendant],
-    ['Court Clerk', h.court_clerk],
-    ['Last Court Order', h.last_court_order],
-    ['Current Prayer/Order/Direction Sought', h.prayer_sought],
-    ['Court Order/Direction', h.court_order_direction],
-    ['Next Court Date', h.next_court_date ? fmtDateTime(h.next_court_date) : null],
-    ['Court Start Time', h.court_start_time ? fmtTimeStr(h.court_start_time) : null],
-    ['Court End Time', h.court_end_time ? fmtTimeStr(h.court_end_time) : null],
-    ['Consultation Start Time', h.consultation_start_time ? fmtTimeStr(h.consultation_start_time) : null],
-    ['Consultation End Time', h.consultation_end_time ? fmtTimeStr(h.consultation_end_time) : null],
-    ['Record Date', h.record_date ? fmtDate(h.record_date) : null],
-    ['Recorded By / Advocate Signature', h.recorded_by],
-    ['Case Status', c.status ? statusLabel(c.status) : null],
-    ['Remarks', c.remarks],
-    ['Created By', c.created_by_name],
-    ['Created Date', c.created_at ? fmtDate(c.created_at) : null],
-    ['Last Updated', c.updated_at ? fmtDate(c.updated_at) : null],
-  ];
-}
+// buildTimeChartHtml() (in print-timechart.js) renders the exact same
+// letterhead-style document for both View and Print, so what you see on
+// screen always matches what prints.
 
 function viewHearing(id) {
   const h = hearingsCache.find(x => x.id === id);
   if (!h) return;
-  const fields = buildTimeChartFields(h);
-  document.getElementById('view-hearing-body').innerHTML = fields.map(([label, value]) => `
-    <div style="display:flex;justify-content:space-between;gap:16px;padding:9px 0;border-bottom:1px solid var(--border);">
-      <div style="color:var(--text-muted);font-size:12.5px;">${escapeHtml(label)}</div>
-      <div style="font-weight:600;font-size:13.5px;text-align:right;">${value ? escapeHtml(String(value)) : '—'}</div>
-    </div>
-  `).join('');
+  document.getElementById('view-hearing-body').innerHTML =
+    `<div class="tc-doc">${buildTimeChartHtml(currentCase, h)}</div>`;
   document.getElementById('view-hearing-print-btn').onclick = () => printHearing(id);
   document.getElementById('view-hearing-modal-overlay').classList.add('show');
 }
