@@ -16,8 +16,8 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 .case-header h2 { font-size:20px; font-weight:700; }
 .case-header .case-sub { color:var(--text-muted); font-size:13px; margin-top:2px; }
 .case-meta-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; }
-.case-meta-grid .m-label { font-size:10.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
-.case-meta-grid .m-value { font-size:13.5px; font-weight:600; color:var(--text-dark); }
+.case-meta-grid .m-label { font-size:10.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; overflow-wrap:break-word; }
+.case-meta-grid .m-value { font-size:13.5px; font-weight:600; color:var(--text-dark); overflow-wrap:break-word; }
 /* The View Court Date modal renders the exact same markup as the print
    button (buildTimeChartHtml in print-timechart.js), scoped under this
    wrapper — see the injected <style> below for the shared rule text.
@@ -468,7 +468,7 @@ async function renderOverview() {
       const tc = (label, value) => `<div><div class="m-label">${label}</div><div class="m-value">${value ? escapeHtml(String(value)) : '—'}</div></div>`;
       lastAppearanceHtml = `
         <div class="case-meta-grid">
-          ${tc('Record Date', latest.record_date ? fmtDate(latest.record_date) : null)}
+          ${tc('Date', latest.record_date ? fmtDate(latest.record_date) : null)}
           ${tc('Court Proceeding Type', latest.proceeding_type)}
           ${tc('Presiding Judge/Magistrate', latest.presiding_judge)}
           ${tc('Court Clerk', latest.court_clerk)}
