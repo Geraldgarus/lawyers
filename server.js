@@ -490,6 +490,23 @@ app.get('/api/role-capabilities', requireCapability('manage_users'), async (req,
   }
 });
 
+// What the *logged-in* user themselves can do — unlike GET
+// /role-capabilities above (which returns the whole editable matrix and
+// requires manage_users), this is gated only by base auth so any signed-in
+// user can ask "what am I allowed to do" and the frontend can gate pages,
+// nav items, and buttons off the same source of truth the matrix writes to.
+app.get('/api/my-capabilities', async (req, res) => {
+  try {
+    if (req.user.role === 'admin') {
+      return res.json({ role: req.user.role, capabilities: CAPABILITY_KEYS });
+    }
+    const { rows } = await pool.query('SELECT capability_key FROM role_capabilities WHERE role_name = $1', [req.user.role]);
+    res.json({ role: req.user.role, capabilities: rows.map(r => r.capability_key) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Replaces the full capability set for one role in a single save (mirrors
 // the per-user page-access picker) — 'admin' is rejected since it always
 // has everything and isn't stored in this table.

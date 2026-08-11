@@ -392,6 +392,7 @@ document.head.insertAdjacentHTML('beforeend', `<style>${timeChartStyles('.tc-doc
 const CASE_ID = new URLSearchParams(window.location.search).get('id');
 let currentCase = null;
 let currentUser = null;
+let myCaps = [];
 let expenseCategoriesList = [];
 
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
@@ -486,7 +487,7 @@ async function renderOverview() {
   } catch (e) {}
 
   let balanceHtml = '';
-  if (hasFullAccessUI(currentUser)) {
+  if (myCaps.includes('view_billing')) {
     try {
       const invoices = await apiGet(`/cases/${CASE_ID}/invoices`);
       const balance = invoices.reduce((s, i) => s + (parseFloat(i.total_amount) - parseFloat(i.amount_paid)), 0);
@@ -967,12 +968,12 @@ async function loadTimeline() {
 document.addEventListener('DOMContentLoaded', async () => {
   currentUser = initPageChrome();
   if (!currentUser) return;
+  myCaps = await getMyCapabilities();
 
-  if (currentUser.role === 'assistant') {
+  if (!myCaps.includes('view_record_expenses')) {
     document.getElementById('tab-btn-expenses').style.display = 'none';
-    document.getElementById('tab-btn-payments').style.display = 'none';
   }
-  if (!hasFullAccessUI(currentUser)) {
+  if (!myCaps.includes('view_billing')) {
     document.getElementById('tab-btn-payments').style.display = 'none';
   }
 

@@ -217,7 +217,7 @@ function renderCases() {
       <td>${nextActionBadge(c)}</td>
       <td onclick="event.stopPropagation()">
         <button class="btn-icon" onclick="window.location.href='/case-detail?id=${c.id}'" title="View"><i class="fas fa-eye"></i></button>
-        ${currentUser && hasFullAccessUI(currentUser) ? `<button class="btn-icon danger" onclick="deleteCase(${c.id}, '${escapeHtml(c.case_number).replace(/'/g, "\\'")}')" title="Delete"><i class="fas fa-trash"></i></button>` : ''}
+        ${myCaps.includes('delete_case') ? `<button class="btn-icon danger" onclick="deleteCase(${c.id}, '${escapeHtml(c.case_number).replace(/'/g, "\\'")}')" title="Delete"><i class="fas fa-trash"></i></button>` : ''}
       </td>
     </tr>
   `).join('');
@@ -298,9 +298,12 @@ async function saveCase() {
 }
 
 let currentUser = null;
+let myCaps = [];
 document.addEventListener('DOMContentLoaded', async () => {
   currentUser = initPageChrome();
-  if (currentUser && currentUser.role === 'assistant') document.getElementById('new-case-btn').style.display = 'none';
+  if (!currentUser) return;
+  myCaps = await getMyCapabilities();
+  if (!myCaps.includes('create_edit_case')) document.getElementById('new-case-btn').style.display = 'none';
   await loadLookups();
   await loadCases();
 });

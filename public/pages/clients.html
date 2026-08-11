@@ -225,7 +225,7 @@ async function viewProfile(id) {
             <td><strong>${escapeHtml(cs.case_number)}</strong></td>
             <td>${escapeHtml(cs.case_title)}</td>
             <td><span class="badge ${cs.status}">${statusLabel(cs.status)}</span></td>
-            <td onclick="event.stopPropagation()">${currentUser && hasFullAccessUI(currentUser) ? `<button class="btn-icon danger" onclick="deleteCaseFromProfile(${cs.id}, '${escapeHtml(cs.case_number).replace(/'/g, "\\'")}', ${id})" title="Delete"><i class="fas fa-trash"></i></button>` : ''}</td>
+            <td onclick="event.stopPropagation()">${myCaps.includes('delete_case') ? `<button class="btn-icon danger" onclick="deleteCaseFromProfile(${cs.id}, '${escapeHtml(cs.case_number).replace(/'/g, "\\'")}', ${id})" title="Delete"><i class="fas fa-trash"></i></button>` : ''}</td>
           </tr>`).join('')}</tbody>
       </table></div>` : '<div class="empty-state">No cases yet for this client</div>'}
     `;
@@ -244,8 +244,11 @@ async function deleteCaseFromProfile(id, caseNumber, clientId) {
 }
 
 let currentUser = null;
-document.addEventListener('DOMContentLoaded', () => {
+let myCaps = [];
+document.addEventListener('DOMContentLoaded', async () => {
   currentUser = initPageChrome();
+  if (!currentUser) return;
+  myCaps = await getMyCapabilities();
   loadClients();
   document.getElementById('search-input').addEventListener('keydown', e => { if (e.key === 'Enter') loadClients(); });
 });

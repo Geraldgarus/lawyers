@@ -154,9 +154,11 @@ function renderInvoices(invoices) {
   }).join('');
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const user = initPageChrome();
-  if (user && !hasFullAccessUI(user)) {
+  if (!user) return;
+  const caps = await getMyCapabilities();
+  if (!caps.includes('view_billing')) {
     document.getElementById('main-content').innerHTML = '<div class="empty-state"><i class="fas fa-lock"></i>You do not have permission to view billing</div>';
     return;
   }

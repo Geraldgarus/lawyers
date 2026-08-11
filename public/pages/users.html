@@ -322,9 +322,11 @@ async function deleteUser(id) {
   catch (err) { showToast(err.message, 'error'); }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const user = initPageChrome();
-  if (user && !hasFullAccessUI(user)) {
+  if (!user) return;
+  const caps = await getMyCapabilities();
+  if (!caps.includes('manage_users')) {
     document.getElementById('main-content').innerHTML = '<div class="empty-state"><i class="fas fa-lock"></i>You do not have permission to manage users</div>';
     return;
   }

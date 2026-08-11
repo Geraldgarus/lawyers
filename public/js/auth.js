@@ -18,12 +18,32 @@ async function logout() {
   window.location.href = '/';
 }
 
-// Nav items whose href matches one of these page names are hidden for anyone
-// who isn't a lawyer or admin — purely a UX nicety, every one of these is
-// independently enforced server-side via requireCapability() so this is not
-// the real security boundary.
-const LAWYER_ONLY_PAGES = ['billing', 'reports', 'case-status-report', 'recent-activity', 'users', 'permissions'];
-const hasFullAccessUI = user => user.role === 'lawyer' || user.role === 'admin';
+// The logged-in user's granted capabilities, fetched once per page load and
+// cached — every page/button gate should check against this (via
+// getMyCapabilities()) rather than the user's role string, so a role's
+// capabilities as saved on Permissions & Access actually take effect. This
+// is a UX nicety only; every one of these is independently enforced
+// server-side via requireCapability() so it's not the real security
+// boundary, but it must stay in sync with it or granted access looks broken.
+let __capabilitiesPromise = null;
+function getMyCapabilities() {
+  if (!__capabilitiesPromise) {
+    __capabilitiesPromise = apiGet('/my-capabilities').then(r => r.capabilities || []).catch(() => []);
+  }
+  return __capabilitiesPromise;
+}
+
+// Which capability a sidebar nav item requires to be shown at all. Pages not
+// listed here have no capability gate (open to every authenticated role).
+const PAGE_CAPABILITY = {
+  billing: 'view_billing',
+  reports: 'view_reports',
+  'case-status-report': 'view_reports',
+  'recent-activity': 'view_reports',
+  users: 'manage_users',
+  permissions: 'manage_users',
+  settings: 'manage_settings',
+};
 
 function initPageChrome() {
   const user = requireAuth();
@@ -36,11 +56,12 @@ function initPageChrome() {
   if (roleEl) roleEl.innerText = user.role.charAt(0).toUpperCase() + user.role.slice(1);
   if (avatarEl) avatarEl.innerText = (user.fullName || user.username || 'U').charAt(0).toUpperCase();
 
-  if (!hasFullAccessUI(user)) {
+  getMyCapabilities().then(caps => {
     document.querySelectorAll('.nav-item[data-page]').forEach(item => {
-      if (LAWYER_ONLY_PAGES.includes(item.dataset.page)) item.style.display = 'none';
+      const needed = PAGE_CAPABILITY[item.dataset.page];
+      if (needed && !caps.includes(needed)) item.style.display = 'none';
     });
-  }
+  });
 
   const currentPage = window.location.pathname.replace('/', '') || 'dashboard';
   document.querySelectorAll('.nav-item[data-page]').forEach(item => {

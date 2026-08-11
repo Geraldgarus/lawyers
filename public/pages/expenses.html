@@ -129,6 +129,7 @@
 <script src="../js/auth.js"></script>
 <script>
 let currentUser = null;
+let myCaps = [];
 let casesList = [];
 let expenseCategoriesList = [];
 
@@ -164,7 +165,7 @@ function renderExpenses(expenses) {
       <td>${escapeHtml(e.description)}</td>
       <td><span class="badge neutral">${e.category.replace('_',' ')}</span></td>
       <td>${fmtCurrency(e.amount)}</td>
-      <td>${currentUser && hasFullAccessUI(currentUser) ? `<button class="btn-icon danger" onclick="deleteExpense(${e.id})" title="Delete"><i class="fas fa-trash"></i></button>` : ''}</td>
+      <td>${myCaps.includes('delete_expense') ? `<button class="btn-icon danger" onclick="deleteExpense(${e.id})" title="Delete"><i class="fas fa-trash"></i></button>` : ''}</td>
     </tr>
   `).join('');
 }
@@ -253,7 +254,9 @@ async function saveExpense() {
 
 document.addEventListener('DOMContentLoaded', async () => {
   currentUser = initPageChrome();
-  if (currentUser && currentUser.role === 'assistant') {
+  if (!currentUser) return;
+  myCaps = await getMyCapabilities();
+  if (!myCaps.includes('view_record_expenses')) {
     document.querySelector('.main-content').innerHTML = '<div class="empty-state"><i class="fas fa-lock"></i>You do not have permission to view expenses</div>';
     return;
   }
