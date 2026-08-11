@@ -43,7 +43,6 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
     <div class="nav-section-label">Reports</div>
     <a href="/reports" class="nav-item" data-page="reports"><i class="fas fa-square-poll-vertical"></i> Reports</a>
     <a href="/case-status-report" class="nav-item" data-page="case-status-report"><i class="fas fa-list-check"></i> Case Status Report</a>
-    <a href="/recent-activity" class="nav-item" data-page="recent-activity"><i class="fas fa-clock-rotate-left"></i> Recent Activities</a>
     <div class="nav-section-label">Admin</div>
     <a href="/settings" class="nav-item" data-page="settings"><i class="fas fa-gear"></i> Settings</a>
     <a href="/users" class="nav-item" data-page="users"><i class="fas fa-user-shield"></i> User Management</a>
@@ -79,57 +78,101 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 
     <div class="guide-section">
       <h4><i class="fas fa-lightbulb"></i> The Core Idea: Everything Lives Inside a Case</h4>
-      <p>A <strong>Case</strong> is the hub for one legal matter. Hearings, documents, tasks, expenses, invoices, and notes are
-      all created from <em>inside</em> that case — never anywhere else. The Calendar, Documents, Tasks, Expenses, and
-      Billing menus are just <em>views</em> that pull everything together across all cases so you can search and browse —
-      they are not separate places you enter new data.</p>
+      <p>A <strong>Case</strong> is the hub for one legal matter — its Parties, the Versus (opponent), and every Court
+      Date, document, expense, invoice, and note tied to it. All of that is created from <em>inside</em> the case, on
+      <strong>Time Chart and Court Records</strong> → open a case. The Calendar, Documents, Expenses, Billing &amp;
+      Payments, and Reports menus are just <em>views</em> that pull everything together across every case so you can
+      search and browse — they are not separate places you enter new data (Expenses is the one exception; see below).</p>
     </div>
 
     <div class="guide-section">
-      <h4><i class="fas fa-user-plus"></i> Registering a Client &amp; Opening a Case</h4>
+      <h4><i class="fas fa-briefcase"></i> Opening a New Case</h4>
       <ol>
-        <li>Go to <strong>Cases</strong> and click <strong>+ New Case</strong>.</li>
-        <li>Search for the client by name. If they're new, click <strong>Add New Client Instead</strong> and fill in their details right there — no need to visit the Clients page first.</li>
-        <li>Fill in the case title, type, and any known details, then click <strong>Create Case</strong>.</li>
-        <li>You're taken straight to the new case's page, where everything else happens.</li>
+        <li>Go to <strong>Time Chart and Court Records</strong> in the sidebar and click <strong>+ New Case</strong>.</li>
+        <li>Give it a <strong>Case Number</strong>, then fill in the full Time Chart form: the court and region, the
+        presiding judge, the parties and their counsel, the court's last order and current prayer, and the next
+        court date. This first entry doubles as the case's opening Court Date record.</li>
+        <li>Click <strong>Create Case</strong> — you're taken straight to the case page, where everything else happens.</li>
       </ol>
-      <div class="guide-note">If the same client returns later for a different matter, search for their existing name instead of adding them again — this keeps their full case history in one place under <strong>Clients</strong>.</div>
+      <div class="guide-note">There's no separate client database to register someone in first — the parties' names are typed straight into the case.</div>
     </div>
 
     <div class="guide-section">
-      <h4><i class="fas fa-gavel"></i> Scheduling a Hearing</h4>
+      <h4><i class="fas fa-gavel"></i> Recording a Court Date</h4>
       <ol>
-        <li>Open the case, go to the <strong>Hearings</strong> tab, click <strong>Add Hearing</strong>.</li>
-        <li>It automatically appears on the <strong>Calendar</strong> and on the Dashboard as the date approaches.</li>
-        <li>After the hearing happens, come back and click the clipboard icon to record the <strong>outcome</strong> (e.g. "Adjourned to 15 Aug"), then add the next hearing date if there is one.</li>
+        <li>Open the case and go to its <strong>Court Dates</strong> tab, then click <strong>Add Court Date</strong>.</li>
+        <li>Fill in that visit's Time Chart form the same way as a new case — presiding judge, court order, next court date, and so on.</li>
+        <li>The most recent one shows on the case's <strong>Overview</strong> tab as "Last Court Appearance," and its Next Court Date automatically appears on the <strong>Calendar</strong> and the <strong>Dashboard</strong> as it approaches.</li>
+        <li>Use <strong>View</strong> or <strong>Print</strong> on any entry to see it laid out as the formal Time Chart and Court Records document.</li>
       </ol>
     </div>
 
     <div class="guide-section">
-      <h4><i class="fas fa-money-bill-wave"></i> Billing a Client</h4>
+      <h4><i class="fas fa-calendar-days"></i> Calendar</h4>
+      <p>Shows every case's Court Dates and any <strong>Appointments</strong> you've logged, grouped by day. Court Dates come
+      from the cases themselves; to add an appointment (e.g. a client consultation), click <strong>Add Appointment</strong> — you
+      can optionally link it to an existing case, or leave it as a general consultation.</p>
+    </div>
+
+    <div class="guide-section">
+      <h4><i class="fas fa-folder-open"></i> Documents</h4>
+      <p>To upload a document, open the relevant case → <strong>Documents</strong> tab → <strong>Upload</strong>, and pick a
+      category (Contract, Court Order, Evidence, Judgment, Correspondence, or Other). The <strong>Documents</strong> page in
+      the sidebar is a read-only view across every case — filter it by case or category, then download from there.</p>
+    </div>
+
+    <div class="guide-section">
+      <h4><i class="fas fa-money-bill-wave"></i> Expenses</h4>
+      <p>Unlike documents and invoices, expenses can be logged two ways: from inside a case's <strong>Expenses</strong> tab
+      (tied to that case), or directly from the <strong>Expenses</strong> page in the sidebar using <strong>Add Expense</strong> and
+      leaving the case field as "No case" for a general office expense. Either way it shows up in both places and in Reports.</p>
+    </div>
+
+    <div class="guide-section">
+      <h4><i class="fas fa-file-invoice-dollar"></i> Billing a Client</h4>
       <ol>
-        <li>Open the case, go to the <strong>Payments</strong> tab, click <strong>New Invoice</strong>.</li>
-        <li>When the client pays (in full or partially), click the money icon next to the invoice to <strong>Record Payment</strong>.</li>
+        <li>Open the case, go to its <strong>Payments</strong> tab, and click <strong>New Invoice</strong>.</li>
+        <li>When the client pays (in full or partially), click the money icon next to the invoice to <strong>record the payment</strong>.</li>
         <li>The outstanding balance updates automatically and shows on the case Overview.</li>
       </ol>
-      <div class="guide-note">Billing &amp; Payments is only visible to the Lawyer role.</div>
+      <div class="guide-note">The <strong>Billing &amp; Payments</strong> page in the sidebar is a read-only view across every case's invoices — new invoices are only created from inside a case.</div>
     </div>
 
     <div class="guide-section">
-      <h4><i class="fas fa-timeline"></i> The Timeline Tab</h4>
-      <p>The <strong>Timeline</strong> tab on every case is automatically generated — every hearing, document, completed
-      task, expense, payment, and note you add shows up there in order, with no extra effort. Use the
-      <strong>Notes</strong> tab instead for private thoughts or meeting summaries that don't belong anywhere else.</p>
+      <h4><i class="fas fa-timeline"></i> Notes &amp; the Timeline Tab</h4>
+      <p>Use a case's <strong>Notes</strong> tab for private thoughts or meeting summaries that don't belong anywhere else.
+      Its <strong>Timeline</strong> tab is generated automatically — every Court Date, document, expense, payment, and note
+      you add to the case shows up there in order, with no extra effort.</p>
     </div>
 
     <div class="guide-section">
-      <h4><i class="fas fa-users-gear"></i> Roles</h4>
+      <h4><i class="fas fa-square-poll-vertical"></i> Reports &amp; Case Status Report</h4>
+      <p><strong>Reports</strong> gives a financial overview (income, expenses, net profit) and a breakdown of cases by
+      status, over a date range you choose. <strong>Case Status Report</strong> is a separate, manually maintained record —
+      it does not pull from the cases above. Use <strong>Add Entry</strong> to type in a case's number, parties, court, a
+      narrative summary, claim amount, status notes, and remarks, matching the firm's paper "Status of Cases Handled"
+      form; each entry has its own <strong>Print</strong> button, and a case number can only be recorded once.</p>
+    </div>
+
+    <div class="guide-section">
+      <h4><i class="fas fa-gear"></i> Settings</h4>
+      <p>Office information (name, contact details, currency symbol), the list of <strong>Case Statuses</strong> a case
+      can be set to (and whether each one counts as closed), <strong>Expense Categories</strong>, and account lockout
+      security thresholds are all managed here.</p>
+    </div>
+
+    <div class="guide-section">
+      <h4><i class="fas fa-users-gear"></i> User Management, Roles &amp; Permissions</h4>
       <ul>
-        <li><strong>Lawyer</strong> — full access, including billing, reports, and user management.</li>
-        <li><strong>Secretary</strong> — can manage clients, cases, hearings, documents, tasks, and expenses, but cannot see billing figures or reports.</li>
-        <li><strong>Assistant</strong> — can manage clients, hearings, documents, and tasks, but cannot edit cases, expenses, or see billing.</li>
+        <li><strong>User Management</strong> — create staff accounts, assign each one a role, reset passwords, unlock,
+        deactivate, or delete an account. Roles themselves aren't fixed — <strong>Add Role</strong> here lets you create
+        a new one (e.g. "Paralegal"); a brand-new role starts with no capabilities until you grant it some.</li>
+        <li><strong>Permissions &amp; Access</strong> — the <strong>Role Capability Matrix</strong> is what actually
+        controls what each role can do (create/delete cases, manage billing, view reports, and so on) — check a box
+        and save that role's row to grant it. <strong>User Page Access</strong> further restricts one specific
+        individual to only certain pages, on top of their role.</li>
       </ul>
-      <p>See the full breakdown on the <a href="/permissions" style="color:var(--accent-gold);">Permissions &amp; Access</a> page.</p>
+      <p>The <strong>admin</strong> account always has full access to everything and isn't shown in the matrix.</p>
     </div>
 
   </div></div>
