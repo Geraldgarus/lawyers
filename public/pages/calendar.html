@@ -102,8 +102,9 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 <!-- Appointment Modal -->
 <div class="modal-overlay" id="appt-modal-overlay">
   <div class="modal">
-    <div class="modal-header"><h3><i class="fas fa-calendar-plus"></i> Add Appointment</h3><button onclick="closeApptModal()"><i class="fas fa-times"></i></button></div>
+    <div class="modal-header"><h3><i class="fas fa-calendar-plus"></i> <span id="appt-modal-title">Add Appointment</span></h3><button onclick="closeApptModal()"><i class="fas fa-times"></i></button></div>
     <div class="modal-body">
+      <input type="hidden" id="appt-id">
       <div class="form-group">
         <label>Client *</label>
         <input class="form-control" id="appt-client-name" placeholder="Type client name">
@@ -114,7 +115,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
       </div>
       <div class="form-group"><label>Date &amp; Time *</label><input type="datetime-local" class="form-control" id="appt-date"></div>
       <div class="form-group"><label>Purpose</label><input class="form-control" id="appt-purpose" placeholder="e.g. Initial consultation"></div>
-      <div class="form-group"><label>Consultation Fee (TSh, optional)</label><input type="number" class="form-control" id="appt-fee"></div>
+      <div class="form-group"><label>Consultation Fee (TSh, optional)</label><input type="number" class="form-control" id="appt-fee" placeholder="Leave blank to keep unchanged"></div>
     </div>
     <div class="modal-footer"><button class="btn-outline" onclick="closeApptModal()">Cancel</button><button class="btn-primary" onclick="saveAppointment()">Save</button></div>
   </div>
@@ -146,6 +147,7 @@ async function loadCalendar() {
   try {
     const { courtDates, appointments } = await apiGet('/calendar?' + params.toString());
     renderCourtDates(courtDates);
+    appointmentsData = appointments;
     renderAppointments(appointments);
   } catch (err) {
     courtList.innerHTML = '<div class="empty-state">Failed to load</div>';
@@ -186,6 +188,8 @@ function renderCourtDates(items) {
   `).join('');
 }
 
+let appointmentsData = [];
+
 function renderAppointments(items) {
   const list = document.getElementById('appointments-list');
   if (!items.length) { list.innerHTML = '<div class="empty-state"><i class="fas fa-user-clock"></i>No appointments in this range</div>'; return; }
@@ -194,46 +198,78 @@ function renderAppointments(items) {
     <div class="day-group">
       <div class="day-group-label">${fmtDate(day)}</div>
       ${groups[day].map(e => `
-        <div class="cal-event appointment" ${e.case_number ? `style="cursor:pointer;" onclick="window.location.href='/case-detail?id=${e.case_id}'"` : ''}>
-          <div class="cal-icon"><i class="fas fa-user-clock"></i></div>
-          <div class="cal-time">${new Date(e.date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</div>
-          <div class="cal-details">
+        <div class="cal-event appointment">
+          <div class="cal-icon" ${e.case_number ? `style="cursor:pointer;" onclick="window.location.href='/case-detail?id=${e.case_id}'"` : ''}><i class="fas fa-user-clock"></i></div>
+          <div class="cal-time" ${e.case_number ? `style="cursor:pointer;" onclick="window.location.href='/case-detail?id=${e.case_id}'"` : ''}>${new Date(e.date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</div>
+          <div class="cal-details" ${e.case_number ? `style="cursor:pointer;" onclick="window.location.href='/case-detail?id=${e.case_id}'"` : ''}>
             <div class="cal-title">${escapeHtml(e.client_name)}</div>
             <div class="cal-sub">${e.case_number ? escapeHtml(e.case_number) + ' — ' : ''}${escapeHtml(e.purpose) || 'Meeting'}</div>
           </div>
+          <button class="btn-icon" onclick="event.stopPropagation();openApptModal(${e.id})" title="Edit"><i class="fas fa-pen"></i></button>
+          <button class="btn-icon danger" onclick="event.stopPropagation();deleteAppointment(${e.id})" title="Delete"><i class="fas fa-trash"></i></button>
         </div>
       `).join('')}
     </div>
   `).join('');
 }
 
-async function openApptModal() {
+function toDatetimeLocal(dateStr) {
+  const d = new Date(dateStr);
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+async function openApptModal(id) {
   const caseSel = document.getElementById('appt-case');
   try {
     const cases = await apiGet('/cases');
     caseSel.innerHTML = '<option value="">— No case, general consultation —</option>' + cases.map(c => `<option value="${c.id}">${escapeHtml(c.case_number)} — ${escapeHtml(c.case_title)}</option>`).join('');
   } catch (err) { showToast(err.message, 'error'); }
-  document.getElementById('appt-client-name').value = '';
-  document.getElementById('appt-date').value = '';
-  document.getElementById('appt-purpose').value = '';
+
+  const appt = id ? appointmentsData.find(a => a.id === id) : null;
+  document.getElementById('appt-id').value = appt ? appt.id : '';
+  document.getElementById('appt-modal-title').innerText = appt ? 'Edit Appointment' : 'Add Appointment';
+  document.getElementById('appt-client-name').value = appt ? appt.client_name : '';
+  document.getElementById('appt-client-name').disabled = !!appt;
+  document.getElementById('appt-case').value = appt && appt.case_id ? appt.case_id : '';
+  document.getElementById('appt-case').disabled = !!appt;
+  document.getElementById('appt-date').value = appt ? toDatetimeLocal(appt.date) : '';
+  document.getElementById('appt-purpose').value = appt ? (appt.purpose || '') : '';
   document.getElementById('appt-fee').value = '';
   document.getElementById('appt-modal-overlay').classList.add('show');
 }
 function closeApptModal() { document.getElementById('appt-modal-overlay').classList.remove('show'); }
 
 async function saveAppointment() {
-  const clientName = document.getElementById('appt-client-name').value.trim();
+  const id = document.getElementById('appt-id').value;
   const appointmentDate = document.getElementById('appt-date').value;
-  if (!clientName || !appointmentDate) { showToast('Client name and date/time are required', 'error'); return; }
+  const purpose = document.getElementById('appt-purpose').value.trim();
+  const consultationFee = document.getElementById('appt-fee').value || null;
+
   try {
-    await apiPost('/appointments', {
-      clientName, appointmentDate,
-      caseId: document.getElementById('appt-case').value || null,
-      purpose: document.getElementById('appt-purpose').value.trim(),
-      consultationFee: document.getElementById('appt-fee').value || null
-    });
+    if (id) {
+      if (!appointmentDate) { showToast('Date/time is required', 'error'); return; }
+      await apiPut(`/appointments/${id}`, { appointmentDate, purpose, consultationFee });
+      showToast('Appointment updated');
+    } else {
+      const clientName = document.getElementById('appt-client-name').value.trim();
+      if (!clientName || !appointmentDate) { showToast('Client name and date/time are required', 'error'); return; }
+      await apiPost('/appointments', {
+        clientName, appointmentDate, purpose, consultationFee,
+        caseId: document.getElementById('appt-case').value || null
+      });
+      showToast('Appointment added');
+    }
     closeApptModal();
-    showToast('Appointment added');
+    loadCalendar();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+async function deleteAppointment(id) {
+  if (!confirm('Delete this appointment? This cannot be undone.')) return;
+  try {
+    await apiDelete(`/appointments/${id}`);
+    showToast('Appointment deleted');
     loadCalendar();
   } catch (err) { showToast(err.message, 'error'); }
 }

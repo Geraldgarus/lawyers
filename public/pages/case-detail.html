@@ -105,7 +105,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
     <div class="card">
       <div class="card-header"><h3><i class="fas fa-gavel"></i> Court Dates</h3><button class="btn-primary btn-sm" onclick="openHearingModal()"><i class="fas fa-plus"></i> Add Court Date</button></div>
       <div class="table-wrap"><table class="data-table">
-        <thead><tr><th>Record Date</th><th>Proceeding Type</th><th>Presiding Judge</th><th>Court Order/Direction</th><th></th></tr></thead>
+        <thead><tr><th>Date</th><th>Proceeding Type</th><th>Presiding Judge</th><th>Court Order/Direction</th><th></th></tr></thead>
         <tbody id="hearings-body"><tr><td colspan="5" class="empty-state">Loading...</td></tr></tbody>
       </table></div>
     </div>
@@ -200,15 +200,15 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
       <div class="form-group"><label>Parties *</label><input class="form-control" id="hearing-parties" placeholder="Names of all parties involved" required></div>
       <div class="form-group"><label>Versus (Opponent) *</label><input class="form-control" id="hearing-opposing" required></div>
       <div class="form-row">
-        <div class="form-group"><label>Counsel for Plaintiff/Applicant/Petitioner/Objector *</label><textarea class="form-control" id="hearing-counsel-plaintiff" rows="3" required></textarea></div>
-        <div class="form-group"><label>Counsel for Defendant/Respondent *</label><textarea class="form-control" id="hearing-counsel-defendant" rows="3" required></textarea></div>
+        <div class="form-group"><label>Counsel for Plaintiff/Applicant/Petitioner/Objector *</label><textarea class="form-control" id="hearing-counsel-plaintiff" rows="6" required></textarea></div>
+        <div class="form-group"><label>Counsel for Defendant/Respondent *</label><textarea class="form-control" id="hearing-counsel-defendant" rows="6" required></textarea></div>
       </div>
       <div class="form-group"><label>Court Clerk *</label><input class="form-control" id="hearing-court-clerk" required></div>
 
       <div class="tc-section-label"><i class="fas fa-scroll"></i> Orders &amp; Directions</div>
-      <div class="form-group"><label>Last Court Order *</label><textarea class="form-control" id="hearing-last-order" rows="3" required></textarea></div>
-      <div class="form-group"><label>Current Prayer/Order/Direction Sought *</label><textarea class="form-control" id="hearing-prayer" rows="3" required></textarea></div>
-      <div class="form-group"><label>Court Order/Direction *</label><textarea class="form-control" id="hearing-order-direction" rows="3" placeholder="e.g. Case adjourned to 15 Aug" required></textarea></div>
+      <div class="form-group"><label>Last Court Order *</label><textarea class="form-control" id="hearing-last-order" rows="6" required></textarea></div>
+      <div class="form-group"><label>Current Prayer/Order/Direction Sought *</label><textarea class="form-control" id="hearing-prayer" rows="6" required></textarea></div>
+      <div class="form-group"><label>Court Order/Direction *</label><textarea class="form-control" id="hearing-order-direction" rows="6" placeholder="e.g. Case adjourned to 15 Aug" required></textarea></div>
       <div class="form-group">
         <label><i class="fas fa-calendar-check" style="color:var(--accent-gold);"></i> Next Court Date *</label>
         <input type="datetime-local" class="form-control" id="hearing-next-court-date" required>
@@ -372,7 +372,7 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
         <div class="form-group"><label>Consultation End Time</label><input type="time" class="form-control" id="edit-case-consult-end"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Record Date</label><input type="date" class="form-control" id="edit-case-record-date"></div>
+        <div class="form-group"><label>Date</label><input type="date" class="form-control" id="edit-case-record-date"></div>
         <div class="form-group"><label>Recorded By / Advocate Signature</label><input class="form-control" id="edit-case-recorded-by"></div>
       </div>
 

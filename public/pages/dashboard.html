@@ -238,15 +238,15 @@ async function loadDashboard() {
           </div>`).join('') + `</div>`
       : '<div class="empty-state">No cases yet</div>';
 
-    renderNotifications(data.todayHearings, data.upcomingAppointments);
+    renderNotifications(data.todayHearings, data.upcomingHearings, data.upcomingAppointments);
 
   } catch (err) {
     showToast(err.message, 'error');
   }
 }
 
-function renderNotifications(todayHearings, upcomingAppointments) {
-  const total = todayHearings.length + upcomingAppointments.length;
+function renderNotifications(todayHearings, upcomingHearings, upcomingAppointments) {
+  const total = todayHearings.length + upcomingHearings.length + upcomingAppointments.length;
   const badge = document.getElementById('notif-badge');
   if (total > 0) { badge.style.display = 'flex'; badge.innerText = total > 99 ? '99+' : total; }
   else { badge.style.display = 'none'; }
@@ -266,6 +266,17 @@ function renderNotifications(todayHearings, upcomingAppointments) {
         <div>
           <div class="notif-title">${escapeHtml(h.case_number)} — ${escapeHtml(h.client_name)}</div>
           <div class="notif-sub">${h.next_court_date ? new Date(h.next_court_date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : 'Today'}${h.court ? ' · ' + escapeHtml(h.court) : ''}</div>
+        </div>
+      </div>`).join('');
+  }
+  if (upcomingHearings.length) {
+    html += `<div class="notif-section-label">Upcoming Court Dates (${upcomingHearings.length})</div>`;
+    html += upcomingHearings.map(h => `
+      <div class="notif-item">
+        <i class="fas fa-calendar-check"></i>
+        <div>
+          <div class="notif-title">${escapeHtml(h.case_number)} — ${escapeHtml(h.client_name)}</div>
+          <div class="notif-sub">${fmtDateShort(h.next_court_date)} · ${new Date(h.next_court_date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}${h.court ? ' · ' + escapeHtml(h.court) : ''}</div>
         </div>
       </div>`).join('');
   }

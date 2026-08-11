@@ -167,8 +167,11 @@ app.get('/api/health', async (req, res) => {
 //  AUTH
 // ════════════════════════════════════════════════════════════════════════════
 
-const MAX_ATTEMPTS = 5;
-const LOCKOUT_MINUTES = 15;
+// Falls back to these only if the settings rows are ever missing —
+// Settings → Security is the real, editable source of truth (db/schema.sql
+// seeds both keys on first boot).
+const DEFAULT_MAX_ATTEMPTS = 5;
+const DEFAULT_LOCKOUT_MINUTES = 15;
 
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
@@ -196,9 +199,17 @@ app.post('/api/auth/login', async (req, res) => {
 
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) {
+      const { rows: secRows } = await pool.query(
+        "SELECT key, value FROM settings WHERE key IN ('max_login_attempts', 'lockout_minutes')"
+      );
+      const secSettings = {};
+      secRows.forEach(r => { secSettings[r.key] = r.value; });
+      const maxAttempts = parseInt(secSettings.max_login_attempts, 10) || DEFAULT_MAX_ATTEMPTS;
+      const lockoutMinutes = parseInt(secSettings.lockout_minutes, 10) || DEFAULT_LOCKOUT_MINUTES;
+
       const newCount = user.failed_attempts + 1;
-      if (newCount >= MAX_ATTEMPTS) {
-        const lockUntil = new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000);
+      if (newCount >= maxAttempts) {
+        const lockUntil = new Date(Date.now() + lockoutMinutes * 60 * 1000);
         await pool.query('UPDATE users SET failed_attempts = $1, locked_until = $2 WHERE id = $3', [newCount, lockUntil, user.id]);
       } else {
         await pool.query('UPDATE users SET failed_attempts = $1 WHERE id = $2', [newCount, user.id]);
