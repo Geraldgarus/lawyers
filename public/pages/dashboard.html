@@ -18,6 +18,11 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 .list-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; }
 .list-row:last-child { border-bottom:none; }
 
+.case-status-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+@media (max-width:900px) { .case-status-grid { grid-template-columns:1fr 1fr; } }
+@media (max-width:600px) { .case-status-grid { grid-template-columns:1fr; } }
+.case-status-cell { border:1px solid var(--border); border-radius:8px; padding:10px 12px; font-size:13px; display:flex; flex-direction:column; gap:5px; }
+
 .fin-stats-row { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
 .fin-stat { flex:1 1 160px; background:var(--surface-tint); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
 .fin-charts-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
@@ -209,7 +214,7 @@ async function loadDashboard() {
     document.getElementById('today-hearings').innerHTML = data.todayHearings.length
       ? data.todayHearings.map(h => `
         <div class="list-row">
-          <span><a href="/case-detail?id=${h.case_id}" style="color:var(--accent-gold);font-weight:600;">${escapeHtml(h.case_number)}</a> — ${escapeHtml(h.client_name)}</span>
+          <span>Case #: <a href="/case-detail?id=${h.case_id}" style="color:var(--accent-gold);font-weight:600;">${escapeHtml(h.case_number)}</a> — ${escapeHtml(h.client_name)}</span>
           <span>${h.next_court_date ? new Date(h.next_court_date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : 'Today'}</span>
         </div>`).join('')
       : '<div class="empty-state">No court hearings today</div>';
@@ -217,24 +222,21 @@ async function loadDashboard() {
     document.getElementById('upcoming-hearings').innerHTML = data.upcomingHearings.length
       ? data.upcomingHearings.map(h => `
         <div class="list-row">
-          <span><a href="/case-detail?id=${h.case_id}" style="color:var(--accent-gold);font-weight:600;">${escapeHtml(h.case_number)}</a> — ${escapeHtml(h.client_name)}</span>
+          <span>Case #: <a href="/case-detail?id=${h.case_id}" style="color:var(--accent-gold);font-weight:600;">${escapeHtml(h.case_number)}</a> — ${escapeHtml(h.client_name)}</span>
           <span>${fmtDateTime(h.next_court_date)}</span>
         </div>`).join('')
       : '<div class="empty-state">No upcoming court dates</div>';
 
-    document.getElementById('case-status').innerHTML = data.caseStatusCounts.length
-      ? data.caseStatusCounts.map(s => {
-          const nums = (s.case_numbers || []).map((num, i) =>
-            `<a href="/case-detail?id=${s.case_ids[i]}" style="color:var(--accent-gold);">${escapeHtml(num)}</a>`).join(', ');
-          return `
-            <div class="list-row" style="flex-direction:column;align-items:stretch;gap:4px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span class="badge ${s.status}">${statusLabel(s.status)}</span>
-                <span style="font-weight:700;">${s.count}</span>
-              </div>
-              <div style="font-size:11.5px;color:var(--text-muted);">${nums}</div>
-            </div>`;
-        }).join('')
+    const caseStatusRows = data.caseStatusCounts.flatMap(s =>
+      (s.case_numbers || []).map((num, i) => ({ caseId: s.case_ids[i], caseNumber: num, status: s.status }))
+    ).sort((a, b) => a.caseNumber.localeCompare(b.caseNumber));
+
+    document.getElementById('case-status').innerHTML = caseStatusRows.length
+      ? `<div class="case-status-grid">` + caseStatusRows.map(r => `
+          <div class="case-status-cell">
+            <div>Case #: <a href="/case-detail?id=${r.caseId}" style="color:var(--accent-gold);font-weight:600;">${escapeHtml(r.caseNumber)}</a></div>
+            <div>Status: <span class="badge ${r.status}">${statusLabel(r.status)}</span></div>
+          </div>`).join('') + `</div>`
       : '<div class="empty-state">No cases yet</div>';
 
     renderNotifications(data.todayHearings, data.upcomingAppointments);
