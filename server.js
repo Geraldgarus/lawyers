@@ -889,6 +889,65 @@ app.delete('/api/expense-categories/:id', requireCapability('manage_settings'), 
 });
 
 // ════════════════════════════════════════════════════════════════════════════
+//  PAYMENT METHODS
+// ════════════════════════════════════════════════════════════════════════════
+
+app.get('/api/payment-methods', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM payment_methods WHERE is_active = TRUE ORDER BY label');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/payment-methods', requireCapability('manage_settings'), async (req, res) => {
+  const { label } = req.body;
+  if (!label) return res.status(400).json({ error: 'label is required' });
+  const name = slugify(label);
+  if (!name) return res.status(400).json({ error: 'label must contain at least one letter or number' });
+  try {
+    const { rows } = await pool.query(
+      'INSERT INTO payment_methods (name, label) VALUES ($1, $2) RETURNING *',
+      [name, label]
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ error: 'A payment method with that name already exists' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/payment-methods/:id', requireCapability('manage_settings'), async (req, res) => {
+  const { label, isActive } = req.body;
+  try {
+    const { rows } = await pool.query(
+      `UPDATE payment_methods SET label = COALESCE($1, label), is_active = COALESCE($2, is_active)
+       WHERE id = $3 RETURNING *`,
+      [label, isActive, req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Payment method not found' });
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/payment-methods/:id', requireCapability('manage_settings'), async (req, res) => {
+  try {
+    const { rowCount } = await pool.query('DELETE FROM payment_methods WHERE id = $1', [req.params.id]);
+    if (!rowCount) return res.status(404).json({ error: 'Payment method not found' });
+    res.json({ success: true });
+  } catch (err) {
+    if (err.code === '23503') {
+      await pool.query('UPDATE payment_methods SET is_active = FALSE WHERE id = $1', [req.params.id]);
+      return res.json({ success: true, message: 'Payment method is in use by existing payments — deactivated instead of deleted.' });
+    }
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════════════
 //  CASES (the hub)
 // ════════════════════════════════════════════════════════════════════════════
 

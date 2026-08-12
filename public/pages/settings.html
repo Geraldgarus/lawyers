@@ -110,6 +110,19 @@
   </div>
 
   <div class="card">
+    <div class="card-header">
+      <h3><i class="fas fa-money-check-dollar"></i> Payment Methods</h3>
+      <button class="btn-primary btn-sm" onclick="openPaymentMethodModal()"><i class="fas fa-plus"></i> Add Method</button>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Label</th><th>Status</th><th></th></tr></thead>
+        <tbody id="payment-methods-body"><tr><td colspan="3" class="empty-state">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="card-header"><h3><i class="fas fa-shield-halved"></i> Security</h3></div>
     <div class="card-body">
       <div class="form-group"><label>Max Login Attempts Before Lockout</label><input type="number" class="form-control" id="max_login_attempts"></div>
@@ -141,6 +154,17 @@
       <div class="form-group"><label>Category Label *</label><input class="form-control" id="expense-category-label" placeholder="e.g. Translation Fees"></div>
     </div>
     <div class="modal-footer"><button class="btn-outline" onclick="closeModal('expense-category-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveExpenseCategory()">Save</button></div>
+  </div>
+</div>
+
+<!-- Payment Method Modal -->
+<div class="modal-overlay" id="payment-method-modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h3><i class="fas fa-money-check-dollar"></i> Add Payment Method</h3><button onclick="closeModal('payment-method-modal-overlay')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Method Label *</label><input class="form-control" id="payment-method-label" placeholder="e.g. Airtel Money"></div>
+    </div>
+    <div class="modal-footer"><button class="btn-outline" onclick="closeModal('payment-method-modal-overlay')">Cancel</button><button class="btn-primary" onclick="savePaymentMethod()">Save</button></div>
   </div>
 </div>
 
@@ -237,6 +261,40 @@ async function deleteExpenseCategory(id) {
   catch (err) { showToast(err.message, 'error'); }
 }
 
+async function loadPaymentMethods() {
+  setLoading('payment-methods-body');
+  try {
+    const methods = await apiGet('/payment-methods');
+    const tbody = document.getElementById('payment-methods-body');
+    tbody.innerHTML = methods.map(m => `
+      <tr>
+        <td>${escapeHtml(m.label)}</td>
+        <td><span class="badge ${m.is_active ? 'success' : 'danger'}">${m.is_active ? 'Active' : 'Inactive'}</span></td>
+        <td><button class="btn-icon danger" onclick="deletePaymentMethod(${m.id})" title="Deactivate"><i class="fas fa-ban"></i></button></td>
+      </tr>
+    `).join('');
+  } catch (err) { showToast(err.message, 'error'); }
+}
+function openPaymentMethodModal() {
+  document.getElementById('payment-method-label').value = '';
+  document.getElementById('payment-method-modal-overlay').classList.add('show');
+}
+async function savePaymentMethod() {
+  const label = document.getElementById('payment-method-label').value.trim();
+  if (!label) { showToast('Method label is required', 'error'); return; }
+  try {
+    await apiPost('/payment-methods', { label });
+    closeModal('payment-method-modal-overlay');
+    showToast('Payment method added');
+    loadPaymentMethods();
+  } catch (err) { showToast(err.message, 'error'); }
+}
+async function deletePaymentMethod(id) {
+  if (!confirm('Deactivate this payment method? It will no longer appear when recording a payment.')) return;
+  try { const r = await apiDelete(`/payment-methods/${id}`); showToast(r.message || 'Payment method removed'); loadPaymentMethods(); }
+  catch (err) { showToast(err.message, 'error'); }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   const user = initPageChrome();
   if (!user) return;
@@ -248,6 +306,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadSettings();
   loadStatuses();
   loadExpenseCategories();
+  loadPaymentMethods();
 });
 </script>
 </body>

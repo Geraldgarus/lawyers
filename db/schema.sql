@@ -547,6 +547,25 @@ CREATE TABLE IF NOT EXISTS invoice_items (
 );
 CREATE INDEX IF NOT EXISTS idx_invoice_items_invoice ON invoice_items(invoice_id);
 
+-- ============================================================
+-- PAYMENT METHODS (editable lookup — not a hardcoded enum, same
+-- pattern as expense_categories above)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS payment_methods (
+  id         SERIAL PRIMARY KEY,
+  name       VARCHAR(50)  NOT NULL UNIQUE,
+  label      VARCHAR(100) NOT NULL,
+  is_active  BOOLEAN      NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+INSERT INTO payment_methods (name, label) VALUES
+  ('cash', 'Cash'),
+  ('bank_transfer', 'Bank Transfer'),
+  ('mpesa', 'Mobile Money'),
+  ('cheque', 'Cheque'),
+  ('other', 'Other')
+ON CONFLICT (name) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS payments (
   id             SERIAL PRIMARY KEY,
   invoice_id     INT NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,

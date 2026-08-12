@@ -264,8 +264,9 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 <!-- Expense Modal -->
 <div class="modal-overlay" id="expense-modal-overlay">
   <div class="modal">
-    <div class="modal-header"><h3><i class="fas fa-receipt"></i> Add Expense</h3><button onclick="closeModal('expense-modal-overlay')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-header"><h3><i class="fas fa-receipt"></i> <span id="expense-modal-title">Add Expense</span></h3><button onclick="closeModal('expense-modal-overlay')"><i class="fas fa-times"></i></button></div>
     <div class="modal-body">
+      <input type="hidden" id="expense-id">
       <div class="form-group"><label>Description *</label><input class="form-control" id="expense-desc"></div>
       <div class="form-row">
         <div class="form-group"><label>Category</label>
@@ -286,13 +287,14 @@ body{opacity:0;transition:opacity .2s} body.loaded{opacity:1}
 <!-- Invoice Modal -->
 <div class="modal-overlay" id="invoice-modal-overlay">
   <div class="modal">
-    <div class="modal-header"><h3><i class="fas fa-file-invoice-dollar"></i> New Invoice</h3><button onclick="closeModal('invoice-modal-overlay')"><i class="fas fa-times"></i></button></div>
+    <div class="modal-header"><h3><i class="fas fa-file-invoice-dollar"></i> <span id="invoice-modal-title">New Invoice</span></h3><button onclick="closeModal('invoice-modal-overlay')"><i class="fas fa-times"></i></button></div>
     <div class="modal-body">
+      <input type="hidden" id="invoice-id">
       <div class="form-group"><label>Description</label><input class="form-control" id="invoice-desc" placeholder="e.g. Legal fees — land dispute filing"></div>
       <div class="form-group"><label>Total Amount (TSh) *</label><input type="number" class="form-control" id="invoice-amount"></div>
       <div class="form-group"><label>Due Date</label><input type="date" class="form-control" id="invoice-due"></div>
     </div>
-    <div class="modal-footer"><button class="btn-outline" onclick="closeModal('invoice-modal-overlay')">Cancel</button><button class="btn-primary" onclick="saveInvoice()">Create Invoice</button></div>
+    <div class="modal-footer"><button class="btn-outline" onclick="closeModal('invoice-modal-overlay')">Cancel</button><button class="btn-primary" id="invoice-save-btn" onclick="saveInvoice()">Create Invoice</button></div>
   </div>
 </div>
 
@@ -393,6 +395,7 @@ let currentCase = null;
 let currentUser = null;
 let myCaps = [];
 let expenseCategoriesList = [];
+let paymentMethodsList = [];
 
 function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 
@@ -808,40 +811,49 @@ async function deleteDocument(id) {
 }
 
 // ---------- EXPENSES ----------
+let expensesData = [];
 async function loadExpenses() {
   setLoading('expenses-body');
-  const expenses = await apiGet(`/cases/${CASE_ID}/expenses`);
+  expensesData = await apiGet(`/cases/${CASE_ID}/expenses`);
   const tbody = document.getElementById('expenses-body');
-  if (!expenses.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No expenses recorded</td></tr>'; return; }
-  tbody.innerHTML = expenses.map(e => `
+  if (!expensesData.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No expenses recorded</td></tr>'; return; }
+  tbody.innerHTML = expensesData.map(e => `
     <tr>
       <td>${fmtDate(e.expense_date)}</td>
       <td>${escapeHtml(e.description)}</td>
       <td><span class="badge neutral">${e.category.replace('_',' ')}</span></td>
       <td>${fmtCurrency(e.amount)}</td>
-      <td><button class="btn-icon danger" onclick="deleteExpense(${e.id})" title="Delete"><i class="fas fa-trash"></i></button></td>
+      <td style="white-space:nowrap;">
+        <button class="btn-icon" onclick="openExpenseModal(${e.id})" title="Edit"><i class="fas fa-pen"></i></button>
+        <button class="btn-icon danger" onclick="deleteExpense(${e.id})" title="Delete"><i class="fas fa-trash"></i></button>
+      </td>
     </tr>
   `).join('');
 }
-function openExpenseModal() {
+function openExpenseModal(id) {
+  const e = id ? expensesData.find(x => x.id === id) : null;
   const sel = document.getElementById('expense-category');
-  sel.innerHTML = expenseCategoriesList.map(c => `<option value="${c.name}" ${c.name === 'other' ? 'selected' : ''}>${escapeHtml(c.label)}</option>`).join('');
-  document.getElementById('expense-desc').value = '';
-  document.getElementById('expense-amount').value = '';
-  document.getElementById('expense-date').value = isoDate(new Date());
+  sel.innerHTML = expenseCategoriesList.map(c => `<option value="${c.name}" ${c.name === (e ? e.category : 'other') ? 'selected' : ''}>${escapeHtml(c.label)}</option>`).join('');
+  document.getElementById('expense-id').value = e ? e.id : '';
+  document.getElementById('expense-modal-title').innerText = e ? 'Edit Expense' : 'Add Expense';
+  document.getElementById('expense-desc').value = e ? e.description : '';
+  document.getElementById('expense-amount').value = e ? e.amount : '';
+  document.getElementById('expense-date').value = e ? isoDate(e.expense_date) : isoDate(new Date());
   document.getElementById('expense-modal-overlay').classList.add('show');
 }
 async function saveExpense() {
+  const id = document.getElementById('expense-id').value;
   const description = document.getElementById('expense-desc').value.trim();
   const amount = document.getElementById('expense-amount').value;
   if (!description || !amount) { showToast('Description and amount are required', 'error'); return; }
+  const payload = {
+    description, amount, category: document.getElementById('expense-category').value,
+    expenseDate: document.getElementById('expense-date').value
+  };
   try {
-    await apiPost(`/cases/${CASE_ID}/expenses`, {
-      description, amount, category: document.getElementById('expense-category').value,
-      expenseDate: document.getElementById('expense-date').value
-    });
+    if (id) { await apiPut(`/expenses/${id}`, payload); showToast('Expense updated'); }
+    else { await apiPost(`/cases/${CASE_ID}/expenses`, payload); showToast('Expense recorded'); }
     closeModal('expense-modal-overlay');
-    showToast('Expense recorded');
     loadExpenses();
   } catch (err) { showToast(err.message, 'error'); }
 }
@@ -852,12 +864,13 @@ async function deleteExpense(id) {
 }
 
 // ---------- INVOICES / PAYMENTS ----------
+let invoicesData = [];
 async function loadInvoices() {
   setLoading('invoices-body');
-  const invoices = await apiGet(`/cases/${CASE_ID}/invoices`);
+  invoicesData = await apiGet(`/cases/${CASE_ID}/invoices`);
   const tbody = document.getElementById('invoices-body');
-  if (!invoices.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No invoices yet</td></tr>'; return; }
-  tbody.innerHTML = invoices.map(i => {
+  if (!invoicesData.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No invoices yet</td></tr>'; return; }
+  tbody.innerHTML = invoicesData.map(i => {
     const balance = parseFloat(i.total_amount) - parseFloat(i.amount_paid);
     return `
     <tr>
@@ -869,32 +882,47 @@ async function loadInvoices() {
       <td><span class="badge ${i.status}">${statusLabel(i.status)}</span></td>
       <td style="white-space:nowrap;">
         ${balance > 0 ? `<button class="btn-icon" onclick="openPaymentModal(${i.id})" title="Record Payment"><i class="fas fa-money-bill-wave"></i></button>` : ''}
+        <button class="btn-icon" onclick="openInvoiceModal(${i.id})" title="Edit"><i class="fas fa-pen"></i></button>
         <button class="btn-icon danger" onclick="deleteInvoice(${i.id})" title="Delete"><i class="fas fa-trash"></i></button>
       </td>
     </tr>`;
   }).join('');
 }
-function openInvoiceModal() {
-  document.getElementById('invoice-desc').value = '';
-  document.getElementById('invoice-amount').value = '';
-  document.getElementById('invoice-due').value = '';
+function openInvoiceModal(id) {
+  const i = id ? invoicesData.find(x => x.id === id) : null;
+  document.getElementById('invoice-id').value = i ? i.id : '';
+  document.getElementById('invoice-modal-title').innerText = i ? 'Edit Invoice' : 'New Invoice';
+  document.getElementById('invoice-desc').value = i ? (i.description || '') : '';
+  document.getElementById('invoice-amount').value = i ? i.total_amount : '';
+  document.getElementById('invoice-amount').disabled = !!i;
+  document.getElementById('invoice-due').value = i && i.due_date ? isoDate(i.due_date) : '';
+  document.getElementById('invoice-save-btn').innerText = i ? 'Save Changes' : 'Create Invoice';
   document.getElementById('invoice-modal-overlay').classList.add('show');
 }
 async function saveInvoice() {
-  const totalAmount = document.getElementById('invoice-amount').value;
-  if (!totalAmount) { showToast('Total amount is required', 'error'); return; }
+  const id = document.getElementById('invoice-id').value;
+  const description = document.getElementById('invoice-desc').value.trim();
+  const dueDate = document.getElementById('invoice-due').value || null;
   try {
-    await apiPost(`/cases/${CASE_ID}/invoices`, {
-      description: document.getElementById('invoice-desc').value.trim(),
-      totalAmount, dueDate: document.getElementById('invoice-due').value || null
-    });
+    if (id) {
+      await apiPut(`/invoices/${id}`, { description, dueDate });
+      showToast('Invoice updated');
+    } else {
+      const totalAmount = document.getElementById('invoice-amount').value;
+      if (!totalAmount) { showToast('Total amount is required', 'error'); return; }
+      await apiPost(`/cases/${CASE_ID}/invoices`, { description, totalAmount, dueDate });
+      showToast('Invoice created');
+    }
     closeModal('invoice-modal-overlay');
-    showToast('Invoice created');
     loadInvoices();
     renderOverview();
   } catch (err) { showToast(err.message, 'error'); }
 }
 function openPaymentModal(invoiceId) {
+  if (paymentMethodsList.length) {
+    const sel = document.getElementById('payment-method');
+    sel.innerHTML = paymentMethodsList.map(m => `<option value="${m.name}" ${m.name === 'cash' ? 'selected' : ''}>${escapeHtml(m.label)}</option>`).join('');
+  }
   document.getElementById('payment-invoice-id').value = invoiceId;
   document.getElementById('payment-amount').value = '';
   document.getElementById('payment-date').value = isoDate(new Date());
@@ -977,6 +1005,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   try { expenseCategoriesList = await apiGet('/expense-categories'); } catch (e) { expenseCategoriesList = []; }
+  try { paymentMethodsList = await apiGet('/payment-methods'); } catch (e) { paymentMethodsList = []; }
   await loadCase();
 
   // Lets other pages (e.g. Case Status Report's Edit button) land straight

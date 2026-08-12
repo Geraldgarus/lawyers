@@ -18,6 +18,10 @@
 .fin-charts-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
 @media (max-width:700px) { .fin-charts-row { grid-template-columns:1fr; } }
 .fin-chart-box { position:relative; height:260px; }
+.case-status-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+@media (max-width:900px) { .case-status-grid { grid-template-columns:1fr 1fr; } }
+@media (max-width:600px) { .case-status-grid { grid-template-columns:1fr; } }
+.case-status-cell { border:1px solid var(--border); border-radius:8px; padding:10px 12px; font-size:13px; display:flex; flex-direction:column; gap:5px; }
 </style>
 <script>document.addEventListener('DOMContentLoaded',()=>document.body.classList.add('loaded'));</script>
 </head>
@@ -169,19 +173,16 @@ async function loadReports() {
 
     renderFinancialCharts(financial.totalIncome, financial.totalExpenses, financial.netProfit);
 
-    document.getElementById('cases-summary').innerHTML = casesSummary.length
-      ? casesSummary.map(s => {
-          const nums = (s.case_numbers || []).map((num, i) =>
-            `<a href="/case-detail?id=${s.case_ids[i]}" style="color:var(--accent-gold);">${escapeHtml(num)}</a>`).join(', ');
-          return `
-            <div class="list-row" style="flex-direction:column;align-items:stretch;gap:4px;">
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <span class="badge ${s.status}">${statusLabel(s.status)}</span>
-                <span style="font-weight:700;">${s.count}</span>
-              </div>
-              <div style="font-size:11.5px;color:var(--text-muted);">${nums}</div>
-            </div>`;
-        }).join('')
+    const statusRows = casesSummary.flatMap(s =>
+      (s.case_numbers || []).map((num, i) => ({ caseId: s.case_ids[i], caseNumber: num, status: s.status }))
+    ).sort((a, b) => a.caseNumber.localeCompare(b.caseNumber));
+
+    document.getElementById('cases-summary').innerHTML = statusRows.length
+      ? `<div class="case-status-grid">` + statusRows.map(r => `
+          <div class="case-status-cell">
+            <div>Case #: <a href="/case-detail?id=${r.caseId}" style="color:var(--accent-gold);font-weight:600;">${escapeHtml(r.caseNumber)}</a></div>
+            <div>Status: <span class="badge ${r.status}">${statusLabel(r.status)}</span></div>
+          </div>`).join('') + `</div>`
       : '<div class="empty-state">No cases in this period</div>';
 
   } catch (err) { showToast(err.message, 'error'); }
