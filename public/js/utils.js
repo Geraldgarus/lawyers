@@ -40,6 +40,17 @@ function fmtTimeStr(t) {
   return `${h12}:${String(m).padStart(2, '0')} ${period}`;
 }
 
+// Wraps fn so rapid calls (e.g. every keystroke in a live search box)
+// only actually run once input pauses for `wait`ms — avoids firing a
+// request per character typed.
+function debounce(fn, wait = 350) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), wait);
+  };
+}
+
 function isPastDate(d) {
   if (!d) return false;
   return new Date(d) < new Date(new Date().toDateString());

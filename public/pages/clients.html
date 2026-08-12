@@ -249,7 +249,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!currentUser) return;
   myCaps = await getMyCapabilities();
   loadClients();
-  document.getElementById('search-input').addEventListener('keydown', e => { if (e.key === 'Enter') loadClients(); });
+  document.getElementById('search-input').addEventListener('input', debounce(loadClients));
 });
 </script>
 </body>

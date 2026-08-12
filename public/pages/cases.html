@@ -305,6 +305,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!myCaps.includes('create_edit_case')) document.getElementById('new-case-btn').style.display = 'none';
   await loadLookups();
   await loadCases();
+  document.getElementById('filter-q').addEventListener('input', debounce(loadCases));
+  document.getElementById('filter-status').addEventListener('change', loadCases);
 });
 
 async function deleteCase(id, caseNumber) {

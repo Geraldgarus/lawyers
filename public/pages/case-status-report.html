@@ -319,6 +319,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   document.getElementById('print-date').textContent = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
   loadCaseStatusReport();
+  document.getElementById('filter-q').addEventListener('input', debounce(loadCaseStatusReport));
 });
 </script>
 </body>

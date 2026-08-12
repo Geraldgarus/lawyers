@@ -169,6 +169,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
   loadActivityLog();
+  document.getElementById('filter-q').addEventListener('input', debounce(loadActivityLog));
 });
 </script>
 </body>
